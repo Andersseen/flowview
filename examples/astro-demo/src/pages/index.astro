@@ -1,0 +1,148 @@
+---
+import Layout from "../layouts/Layout.astro";
+import CodeBlock from "../components/CodeBlock.astro";
+import { render } from "../generated/index.js";
+import { demoContext } from "../data/context.js";
+
+const html = render(demoContext);
+
+const templateSource = `<main>
+  <h1>{{ ctx.title }}</h1>
+  <p>{{ ctx.description }}</p>
+
+  @if (ctx.featured) {
+    <span class="tag">Featured</span>
+  } @else {
+    <span class="tag">Standard</span>
+  }
+
+  <h2>Products</h2>
+
+  @for (product of ctx.products; track product.id) {
+    <article>
+      <h3>{{ product.name }}</h3>
+      <p>{{ product.description }}</p>
+      @switch (product.status) {
+        @case ('available') {
+          <span class="tag available">In stock</span>
+        }
+        @case ('sale') {
+          <span class="tag sale">On sale</span>
+        }
+        @default {
+          <span class="tag unavailable">Unavailable</span>
+        }
+      }
+    </article>
+  } @empty {
+    <p class="empty">No products found.</p>
+  }
+</main>`;
+---
+
+<Layout title="Flowmark Demo">
+  <main>
+    <section class="hero">
+      <span class="badge">Framework-agnostic template compiler</span>
+      <h1>Flowmark</h1>
+      <p>
+        Compiles HTML-like templates with Angular-inspired control flow into
+        plain JavaScript render functions. No runtime framework required.
+      </p>
+      <nav class="nav">
+        <a href="/empty">See @empty state</a>
+        <a href="https://github.com/andersseen/flowmark" target="_blank"
+          >View on GitHub</a
+        >
+      </nav>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">What is happening here?</h2>
+      <p class="section-description">
+        On the left is the <code>.flow</code> template source. On the right is
+        the rendered HTML, produced by the generated JavaScript render function.
+      </p>
+
+      <div class="grid">
+        <CodeBlock title="src/templates/index.flow" language="flow">
+          {templateSource}
+        </CodeBlock>
+
+        <div class="card">
+          <h3>Rendered output</h3>
+          <div class="preview" set:html={html} />
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Generated JavaScript</h2>
+      <p class="section-description">
+        Flowmark generates a single ESM function that builds an HTML string. The
+        runtime only provides <code>escapeHtml</code> and
+        <code>renderValue</code> helpers.
+      </p>
+      <CodeBlock title="src/generated/index.js" language="javascript">
+        {`import { escapeHtml, renderValue } from '@flowmark/runtime';
+
+export function render(ctx) {
+  let output = '';
+  // ... interpolated values and control flow
+  const __items0 = ctx.products;
+  if (__items0.length === 0) {
+    output += '<p class="empty">No products found.</p>';
+  } else {
+    for (const product of __items0) {
+      // ... product rendering
+      const __switch1 = product.status;
+      switch (__switch1) {
+        case 'available':
+          output += '<span class="tag available">In stock</span>';
+          break;
+        // ...
+      }
+    }
+  }
+  return output;
+}`}
+        </CodeBlock>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Why Flowmark?</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Plain JavaScript output</h3>
+          <p>
+            No virtual DOM, no hydration, no framework lock-in. Just a function
+            that returns an HTML string.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Control flow syntax</h3>
+          <p>
+            Write <code>@if</code>, <code>@for</code>, and <code>@switch</code>
+            blocks with a clear, expressive syntax inspired by Angular.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Rust compiler</h3>
+          <p>
+            Parsing and code generation run in a fast Rust binary that emits
+            diagnostics instead of panicking on invalid templates.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>
+      Built with <a href="https://astro.build" target="_blank">Astro</a> +
+      Flowmark. Explore the
+      <a href="https://github.com/andersseen/flowmark" target="_blank">repository</a
+      >.
+    </p>
+  </footer>
+</Layout>

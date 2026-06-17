@@ -29,3 +29,7 @@ node_modules/
 coverage/
 .turbo/
 .cache/
+.astro/
+
+# Generated demo artifacts
+examples/astro-demo/src/generated/

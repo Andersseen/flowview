@@ -1,0 +1,32 @@
+<main>
+  <h1>{{ ctx.title }}</h1>
+  <p>{{ ctx.description }}</p>
+
+  @if (ctx.featured) {
+    <span class="tag">Featured</span>
+  } @else {
+    <span class="tag">Standard</span>
+  }
+
+  <h2>Products</h2>
+
+  @for (product of ctx.products; track product.id) {
+    <article>
+      <h3>{{ product.name }}</h3>
+      <p>{{ product.description }}</p>
+      @switch (product.status) {
+        @case ('available') {
+          <span class="tag available">In stock</span>
+        }
+        @case ('sale') {
+          <span class="tag sale">On sale</span>
+        }
+        @default {
+          <span class="tag unavailable">Unavailable</span>
+        }
+      }
+    </article>
+  } @empty {
+    <p class="empty">No products found.</p>
+  }
+</main>

@@ -13,10 +13,14 @@
     "test:runtime": "pnpm --filter @flowmark/runtime test",
     "format": "pnpm run format:rust && pnpm run format:ts",
     "format:rust": "cargo fmt --all",
-    "format:ts": "prettier --write --no-error-on-unmatched-pattern \"packages/**/*.ts\" \"examples/**/*.ts\"",
-    "compile:example": "cargo run -p flowmark-cli -- compile examples/basic/for.flow"
+    "format:ts": "prettier --write --no-error-on-unmatched-pattern \"packages/**/*.ts\" \"packages/**/*.mjs\" \"examples/**/*.ts\" \"examples/**/*.mjs\" ",
+    "compile:example": "cargo run -p flowmark-cli -- compile examples/basic/for.flow",
+    "demo": "pnpm --filter @flowmark/astro-demo dev",
+    "build:demo": "pnpm --filter @flowmark/astro-demo run build",
+    "deploy:demo": "pnpm run build:demo && pnpm exec wrangler pages deploy examples/astro-demo/dist --project-name=flowmark-demo"
   },
   "devDependencies": {
-    "prettier": "^3.5.0"
+    "prettier": "^3.5.0",
+    "wrangler": "^3.0.0"
   }
 }

@@ -1,0 +1,54 @@
+---
+import Layout from "../layouts/Layout.astro";
+import CodeBlock from "../components/CodeBlock.astro";
+import { render } from "../generated/index.js";
+
+const emptyContext = {
+  title: "Empty State Demo",
+  description: "This page demonstrates the @empty branch of a @for block.",
+  featured: false,
+  products: [],
+};
+
+const html = render(emptyContext);
+---
+
+<Layout title="Flowmark Empty State Demo">
+  <main>
+    <section class="hero">
+      <span class="badge">@empty branch demo</span>
+      <h1>Empty State</h1>
+      <p>
+        When the iterable is empty, Flowmark renders the
+        <code>@empty</code> block instead of the loop body.
+      </p>
+      <nav class="nav">
+        <a href="/">Back to main demo</a>
+      </nav>
+    </section>
+
+    <section class="section">
+      <div class="grid">
+        <CodeBlock title="Context" language="javascript">
+          {`{
+  title: "Empty State Demo",
+  featured: false,
+  products: []
+}`}
+        </CodeBlock>
+
+        <div class="card">
+          <h3>Rendered output</h3>
+          <div class="preview" set:html={html} />
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>
+      Built with <a href="https://astro.build" target="_blank">Astro</a> +
+      Flowmark.
+    </p>
+  </footer>
+</Layout>

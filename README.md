@@ -69,7 +69,8 @@ flowmark/
 ├── packages/
 │   └── runtime/             # TypeScript runtime
 └── examples/
-    └── basic/               # Example .flow templates
+    ├── basic/               # Example .flow templates
+    └── astro-demo/          # Astro site demo using the compiler
 ```
 
 ### Why Rust for the Compiler?
@@ -119,6 +120,31 @@ Individual test suites:
 pnpm run test:rust     # cargo test --workspace
 pnpm run test:runtime  # pnpm --filter @flowmark/runtime test
 ```
+
+## Astro Demo
+
+The `examples/astro-demo` directory contains a working Astro site that uses the
+Flowmark compiler to render `.flow` templates at build time.
+
+```sh
+cd examples/astro-demo
+pnpm run dev
+```
+
+The demo compiles `src/templates/index.flow` into `src/generated/index.js` and
+renders it inside an Astro page.
+
+### Deploy the demo
+
+Build and deploy to Cloudflare Pages from the root:
+
+```sh
+pnpm run deploy:demo
+```
+
+For CI deployment, add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as
+GitHub repository secrets. The workflow is defined in
+`.github/workflows/deploy-demo.yml`.
 
 ## Run the CLI
 
