@@ -1,0 +1,24 @@
+{
+  "name": "Flowmark Astro Injection",
+  "scopeName": "flowmark.astro.injection",
+  "injectionSelector": "L:source.astro",
+  "patterns": [
+    {
+      "name": "meta.embedded.block.flowmark.astro",
+      "begin": "(<)(Flowmark)(\\b[^>]*\\bis:raw\\b[^>]*)(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.astro.flowmark" },
+        "3": { "name": "meta.tag.attributes.astro" },
+        "4": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "end": "(</)(Flowmark)(>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.astro.flowmark" },
+        "3": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "patterns": [{ "include": "source.flowmark" }]
+    }
+  ]
+}

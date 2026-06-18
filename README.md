@@ -171,7 +171,31 @@ pnpm run demo
 ```
 
 The demo uses Astro, Tailwind CSS 4, and
-`@andersseen/web-components`.
+`@andersseen/web-components`. It also includes an experimental Astro component
+that renders inline Flowmark templates:
+
+```astro
+<Flowmark context={context} is:raw>
+  <main>
+    <h1>{{ ctx.title }}</h1>
+    @if (ctx.featured) {
+      <span>Featured</span>
+    }
+  </main>
+</Flowmark>
+```
+
+`is:raw` is currently required so Astro passes the template body through without
+parsing it as Astro markup.
+
+## Editor Support
+
+The repository includes a local VS Code language support package at
+`packages/vscode-flowmark`. It contributes:
+
+- `.flow` syntax highlighting
+- Flowmark snippets
+- basic highlighting for `<Flowmark is:raw>` blocks inside `.astro` files
 
 ## Run The CLI
 

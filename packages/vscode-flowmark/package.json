@@ -1,0 +1,45 @@
+{
+  "name": "vscode-flowmark",
+  "displayName": "Flowmark Language Support",
+  "description": "Syntax highlighting and snippets for Flowmark templates.",
+  "version": "0.1.0",
+  "private": true,
+  "publisher": "andersseen",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Programming Languages", "Snippets"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "flowmark",
+        "aliases": ["Flowmark", "flowmark"],
+        "extensions": [".flow"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "flowmark",
+        "scopeName": "source.flowmark",
+        "path": "./syntaxes/flowmark.tmLanguage.json"
+      },
+      {
+        "scopeName": "flowmark.astro.injection",
+        "path": "./syntaxes/flowmark-astro-injection.tmLanguage.json",
+        "injectTo": ["source.astro"]
+      }
+    ],
+    "snippets": [
+      {
+        "language": "flowmark",
+        "path": "./snippets/flowmark.json"
+      },
+      {
+        "language": "astro",
+        "path": "./snippets/astro-flowmark.json"
+      }
+    ]
+  }
+}

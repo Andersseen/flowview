@@ -1,0 +1,14 @@
+{
+  "Flowmark block": {
+    "prefix": "flowmark",
+    "body": [
+      "<Flowmark context={${1:context}} is:raw>",
+      "  <main>",
+      "    <h1>{{ ctx.${2:title} }}</h1>",
+      "    $0",
+      "  </main>",
+      "</Flowmark>"
+    ],
+    "description": "Inline Flowmark block inside Astro"
+  }
+}

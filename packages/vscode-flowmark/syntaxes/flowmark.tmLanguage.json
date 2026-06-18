@@ -1,0 +1,57 @@
+{
+  "name": "Flowmark",
+  "scopeName": "source.flowmark",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#interpolation" },
+    { "include": "#control" },
+    { "include": "text.html.basic" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.html.flowmark",
+          "begin": "<!--",
+          "end": "-->"
+        }
+      ]
+    },
+    "interpolation": {
+      "patterns": [
+        {
+          "name": "meta.interpolation.flowmark",
+          "begin": "\\{\\{",
+          "beginCaptures": {
+            "0": { "name": "punctuation.section.embedded.begin.flowmark" }
+          },
+          "end": "\\}\\}",
+          "endCaptures": {
+            "0": { "name": "punctuation.section.embedded.end.flowmark" }
+          },
+          "patterns": [{ "include": "source.js" }]
+        }
+      ]
+    },
+    "control": {
+      "patterns": [
+        {
+          "name": "keyword.control.flowmark",
+          "match": "@(if|else|for|empty|switch|case|default)\\b"
+        },
+        {
+          "name": "keyword.operator.flowmark",
+          "match": "\\b(of|track)\\b"
+        },
+        {
+          "name": "punctuation.section.block.flowmark",
+          "match": "[{}]"
+        },
+        {
+          "name": "punctuation.section.parens.flowmark",
+          "match": "[()]"
+        }
+      ]
+    }
+  }
+}

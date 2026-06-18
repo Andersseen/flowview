@@ -34,52 +34,125 @@ const context = {
 };
 ---
 
+<!-- prettier-ignore -->
 <Flowmark context={context} is:raw>
-  <header class="hero-panel"> <div class="page-frame grid gap-8 py-10
-  lg:grid-cols-[1.1fr_0.9fr] lg:items-end" > <div class="max-w-3xl"> <and-badge
-  variant="outline">{{ ctx.badge }}</and-badge> <h1 class="mt-5 text-4xl
-  font-black tracking-normal text-foreground sm:text-5xl" > {{ ctx.title }}
-  </h1> <p class="mt-4 max-w-2xl text-lg text-muted-foreground"> {{
-  ctx.description }} </p> <div class="mt-6 flex flex-wrap gap-3"> @if (ctx.mode
-  === 'empty') { <and-button href="/" variant="default">Back to main
-  demo</and-button> } @else { <and-button href="/empty" variant="default" >View
-  empty state</and-button > } <and-button
-  href="https://github.com/andersseen/flowmark" target="_blank"
-  variant="outline" > GitHub </and-button> </div> </div> <and-card
-  variant="elevated" padded class="block"> <div class="grid gap-4"> <div> <p
-  class="text-sm font-semibold text-muted-foreground"> Astro-native authoring
-  </p> <p class="mt-1 text-2xl font-bold text-foreground"> \@if, \@for, \@switch
-  </p> </div> <div class="grid grid-cols-3 gap-2 text-sm"> <div
-  class="rounded-md border border-border p-3"> <p class="font-bold">Inline</p>
-  <p class="text-muted-foreground">template</p> </div> <div class="rounded-md
-  border border-border p-3"> <p class="font-bold">Rust</p> <p
-  class="text-muted-foreground">compiler</p> </div> <div class="rounded-md
-  border border-border p-3"> <p class="font-bold">Astro</p> <p
-  class="text-muted-foreground">host</p> </div> </div> </div> </and-card> </div>
-  </header> <main class="page-frame py-10"> <section class="grid gap-6
-  lg:grid-cols-[0.85fr_1.15fr]"> <and-card variant="outline" padded
-  class="block"> <div class="grid gap-5"> <div> <and-badge
-  variant="secondary">Flowmark block</and-badge> <h2 class="mt-4 text-2xl
-  font-bold text-foreground"> Written directly in Astro </h2> <p class="mt-3
-  text-muted-foreground"> This page uses a real Flowmark template inside a
-  .astro component. Astro passes the raw slot to Flowmark, and Flowmark renders
-  it on the server. </p> </div> <div class="grid gap-3 text-sm"> @for (note of
-  ctx.notes; track note.title) { <div class="rounded-md border border-border
-  p-4"> <p class="font-semibold">{{ note.title }}</p> <p class="mt-1
-  text-muted-foreground">{{ note.body }}</p> </div> } </div> </div> </and-card>
-  <and-card variant="outline" class="block h-full"> <and-card-header> <div
-  class="flex items-center justify-between gap-3"> <and-card-title>Rendered
-  products</and-card-title> <and-badge variant="secondary">Flowmark</and-badge>
-  </div> <and-card-description> The list below is rendered by \@for, \@empty,
-  and \@switch. </and-card-description> </and-card-header> <and-card-content>
-  <div class="preview-surface flow-preview"> <main> <h1>{{ ctx.title }}</h1>
-  <p>{{ ctx.description }}</p> @if (ctx.featured) { <span
-  class="tag">Featured</span> } @else { <span class="tag">Standard</span> }
-  <h2>Products</h2> @for (product of ctx.products; track product.id) { <article>
-  <h3>{{ product.name }}</h3> <p>{{ product.description }}</p> @switch
-  (product.status) { @case ('available') { <span class="tag available">In
-  stock</span> } @case ('sale') { <span class="tag sale">On sale</span> }
-  @default { <span class="tag unavailable">Unavailable</span> } } </article> }
-  @empty { <p class="empty">No products found.</p> } </main> </div>
-  </and-card-content> </and-card> </section> </main>
+  <header class="hero-panel">
+    <div class="page-frame grid gap-8 py-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+      <div class="max-w-3xl">
+        <and-badge variant="outline">{{ ctx.badge }}</and-badge>
+        <h1 class="mt-5 text-4xl font-black tracking-normal text-foreground sm:text-5xl">
+          {{ ctx.title }}
+        </h1>
+        <p class="mt-4 max-w-2xl text-lg text-muted-foreground">
+          {{ ctx.description }}
+        </p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          @if (ctx.mode === 'empty') {
+            <and-button href="/" variant="default">Back to main demo</and-button>
+          } @else {
+            <and-button href="/empty" variant="default">View empty state</and-button>
+          }
+          <and-button href="https://github.com/andersseen/flowmark" target="_blank" variant="outline">
+            GitHub
+          </and-button>
+        </div>
+      </div>
+
+      <and-card variant="elevated" padded class="block">
+        <div class="grid gap-4">
+          <div>
+            <p class="text-sm font-semibold text-muted-foreground">Astro-native authoring</p>
+            <p class="mt-1 text-2xl font-bold text-foreground">\@if, \@for, \@switch</p>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-sm">
+            <div class="rounded-md border border-border p-3">
+              <p class="font-bold">Inline</p>
+              <p class="text-muted-foreground">template</p>
+            </div>
+            <div class="rounded-md border border-border p-3">
+              <p class="font-bold">Rust</p>
+              <p class="text-muted-foreground">compiler</p>
+            </div>
+            <div class="rounded-md border border-border p-3">
+              <p class="font-bold">Astro</p>
+              <p class="text-muted-foreground">host</p>
+            </div>
+          </div>
+        </div>
+      </and-card>
+    </div>
+  </header>
+
+  <main class="page-frame py-10">
+    <section class="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+      <and-card variant="outline" padded class="block">
+        <div class="grid gap-5">
+          <div>
+            <and-badge variant="secondary">Flowmark block</and-badge>
+            <h2 class="mt-4 text-2xl font-bold text-foreground">Written directly in Astro</h2>
+            <p class="mt-3 text-muted-foreground">
+              This page uses a real Flowmark template inside a .astro component.
+              Astro passes the raw slot to Flowmark, and Flowmark renders it on the server.
+            </p>
+          </div>
+          <div class="grid gap-3 text-sm">
+            @for (note of ctx.notes; track note.title) {
+              <div class="rounded-md border border-border p-4">
+                <p class="font-semibold">{{ note.title }}</p>
+                <p class="mt-1 text-muted-foreground">{{ note.body }}</p>
+              </div>
+            }
+          </div>
+        </div>
+      </and-card>
+
+      <and-card variant="outline" class="block h-full">
+        <and-card-header>
+          <div class="flex items-center justify-between gap-3">
+            <and-card-title>Rendered products</and-card-title>
+            <and-badge variant="secondary">Flowmark</and-badge>
+          </div>
+          <and-card-description>
+            The list below is rendered by \@for, \@empty, and \@switch.
+          </and-card-description>
+        </and-card-header>
+        <and-card-content>
+          <div class="preview-surface flow-preview">
+            <main>
+              <h1>{{ ctx.title }}</h1>
+              <p>{{ ctx.description }}</p>
+
+              @if (ctx.featured) {
+                <span class="tag">Featured</span>
+              } @else {
+                <span class="tag">Standard</span>
+              }
+
+              <h2>Products</h2>
+
+              @for (product of ctx.products; track product.id) {
+                <article>
+                  <h3>{{ product.name }}</h3>
+                  <p>{{ product.description }}</p>
+                  @switch (product.status) {
+                    @case ('available') {
+                      <span class="tag available">In stock</span>
+                    }
+                    @case ('sale') {
+                      <span class="tag sale">On sale</span>
+                    }
+                    @default {
+                      <span class="tag unavailable">Unavailable</span>
+                    }
+                  }
+                </article>
+              } @empty {
+                <p class="empty">No products found.</p>
+              }
+            </main>
+          </div>
+        </and-card-content>
+      </and-card>
+    </section>
+  </main>
 </Flowmark>
