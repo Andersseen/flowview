@@ -221,6 +221,11 @@ cargo run -p flowmark-cli -- compile examples/basic/for.flow --runtime "#flowmar
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines.
 
+## Specification
+
+See [docs/flowmark-spec.md](./docs/flowmark-spec.md) for the draft
+specification and integration roadmap.
+
 ## Security
 
 See [SECURITY.md](./SECURITY.md) for the security policy and template trust
