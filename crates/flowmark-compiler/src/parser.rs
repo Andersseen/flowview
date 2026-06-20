@@ -287,7 +287,8 @@ fn parse_if_block(cursor: &mut Cursor) -> Result<IfBlockNode, Vec<Diagnostic>> {
     let condition = parse_parenthesized_expression(cursor)?;
     expect_block_open(cursor)?;
 
-    let first_branch_children = parse_nodes(cursor, &[ELSE_IF_START, ELSE_START, "}"])?;
+    let first_branch_children = parse_nodes(cursor, &["}"])?;
+    expect_block_close(cursor)?;
     let mut branches = vec![IfBranch {
         condition,
         children: first_branch_children,
@@ -298,53 +299,41 @@ fn parse_if_block(cursor: &mut Cursor) -> Result<IfBlockNode, Vec<Diagnostic>> {
     }];
 
     let mut else_branch: Option<Vec<Node>> = None;
-    let mut closed = false;
 
     loop {
+        let continuation_start = cursor.clone();
         skip_whitespace(cursor);
 
-        if cursor.starts_with(ELSE_IF_START) {
+        if matches_keyword(cursor, ELSE_IF_START) {
+            let branch_start = cursor.position();
             cursor.advance_by(ELSE_IF_START.len());
             let condition = parse_parenthesized_expression(cursor)?;
             expect_block_open(cursor)?;
-            let children = parse_nodes(cursor, &[ELSE_IF_START, ELSE_START, "}"])?;
+            let children = parse_nodes(cursor, &["}"])?;
+            expect_block_close(cursor)?;
             branches.push(IfBranch {
                 condition,
                 children,
                 span: Span {
-                    start,
+                    start: branch_start,
                     end: cursor.position(),
                 },
             });
             continue;
         }
 
-        if cursor.starts_with(ELSE_START) {
+        if matches_keyword(cursor, ELSE_START) {
             cursor.advance_by(ELSE_START.len());
             expect_block_open(cursor)?;
             else_branch = Some(parse_nodes(cursor, &["}"])?);
             expect_block_close(cursor)?;
-            closed = true;
             break;
         }
 
-        if cursor.starts_with("}") {
-            expect_block_close(cursor)?;
-            skip_whitespace(cursor);
-
-            if cursor.starts_with(ELSE_IF_START) || cursor.starts_with(ELSE_START) {
-                continue;
-            }
-
-            closed = true;
-            break;
-        }
-
+        // Whitespace belongs to the rendered template unless it separates a
+        // control-flow continuation such as `} @else {`.
+        *cursor = continuation_start;
         break;
-    }
-
-    if !closed {
-        expect_block_close(cursor)?;
     }
 
     let end = cursor.position();
@@ -364,29 +353,23 @@ fn parse_for_block(cursor: &mut Cursor) -> Result<ForBlockNode, Vec<Diagnostic>>
     let (item, iterable, track) = parse_for_header(&header, start, cursor)?;
 
     expect_block_open(cursor)?;
-    let children = parse_nodes(cursor, &[EMPTY_START, "}"])?;
+    let children = parse_nodes(cursor, &["}"])?;
+    expect_block_close(cursor)?;
 
+    let continuation_start = cursor.clone();
     skip_whitespace(cursor);
 
-    let empty = if cursor.starts_with(EMPTY_START) {
+    let empty = if matches_keyword(cursor, EMPTY_START) {
         cursor.advance_by(EMPTY_START.len());
         expect_block_open(cursor)?;
         let empty_children = parse_nodes(cursor, &["}"])?;
         expect_block_close(cursor)?;
         Some(empty_children)
     } else {
-        expect_block_close(cursor)?;
-        skip_whitespace(cursor);
-
-        if cursor.starts_with(EMPTY_START) {
-            cursor.advance_by(EMPTY_START.len());
-            expect_block_open(cursor)?;
-            let empty_children = parse_nodes(cursor, &["}"])?;
-            expect_block_close(cursor)?;
-            Some(empty_children)
-        } else {
-            None
-        }
+        // Keep whitespace after a complete loop when there is no `@empty`
+        // continuation. It is observable HTML and must not be trimmed.
+        *cursor = continuation_start;
+        None
     };
 
     let end = cursor.position();
@@ -835,6 +818,11 @@ fn current_js_string_quote(cursor: &Cursor) -> Option<char> {
 }
 
 fn skip_js_string(cursor: &mut Cursor, quote: char) {
+    if quote == '`' {
+        skip_js_template(cursor);
+        return;
+    }
+
     cursor.advance();
 
     while let Some(ch) = cursor.current() {
@@ -848,6 +836,59 @@ fn skip_js_string(cursor: &mut Cursor, quote: char) {
         if ch == quote {
             break;
         }
+    }
+}
+
+fn skip_js_template(cursor: &mut Cursor) {
+    cursor.advance(); // opening backtick
+
+    while let Some(ch) = cursor.current() {
+        if ch == '\\' {
+            cursor.advance();
+            cursor.advance();
+            continue;
+        }
+
+        if ch == '`' {
+            cursor.advance();
+            return;
+        }
+
+        if cursor.starts_with("${") {
+            cursor.advance_by(2);
+            skip_js_template_expression(cursor);
+            continue;
+        }
+
+        cursor.advance();
+    }
+}
+
+fn skip_js_template_expression(cursor: &mut Cursor) {
+    let expression_start = cursor.position();
+    let mut brace_depth = 1usize;
+
+    while !cursor.is_eof() && brace_depth > 0 {
+        if let Some(quote) = current_js_string_quote(cursor) {
+            skip_js_string(cursor, quote);
+            continue;
+        }
+
+        if skip_js_comment(cursor) {
+            continue;
+        }
+
+        if cursor.starts_with("/") && is_probable_js_regex(cursor, expression_start) {
+            skip_js_regex(cursor);
+            continue;
+        }
+
+        match cursor.current() {
+            Some('{') => brace_depth += 1,
+            Some('}') => brace_depth -= 1,
+            _ => {}
+        }
+        cursor.advance();
     }
 }
 
@@ -883,7 +924,7 @@ fn is_probable_js_regex(cursor: &Cursor, expression_start: usize) -> bool {
         return true;
     };
 
-    matches!(
+    if matches!(
         previous,
         '(' | '['
             | '{'
@@ -903,6 +944,31 @@ fn is_probable_js_regex(cursor: &Cursor, expression_start: usize) -> bool {
             | '~'
             | '<'
             | '>'
+    ) {
+        return true;
+    }
+
+    let previous_word = before
+        .rsplit(|character: char| !(character.is_ascii_alphanumeric() || character == '_'))
+        .next()
+        .unwrap_or_default();
+
+    matches!(
+        previous_word,
+        "await"
+            | "case"
+            | "delete"
+            | "do"
+            | "else"
+            | "in"
+            | "instanceof"
+            | "new"
+            | "of"
+            | "return"
+            | "throw"
+            | "typeof"
+            | "void"
+            | "yield"
     )
 }
 

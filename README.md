@@ -32,6 +32,12 @@ export function render(ctx) {
 Flowmark is experimental and pre-stable. The public shape is intentionally
 small, but syntax and generated output may still change before a stable release.
 
+The current milestone is the inline Astro authoring path: Flowmark control flow
+inside `<template flowmark context={...}>` regions in normal `.astro` files.
+Standalone `.flow` imports remain supported, but broader Vite and server-runtime
+usage is a later milestone after the Astro integration and core syntax are
+reliable.
+
 ## What Flowmark Is
 
 - A Rust compiler crate: `flowmark-compiler`
@@ -178,6 +184,8 @@ Individual suites:
 ```sh
 pnpm run test:rust
 pnpm run test:runtime
+pnpm run test:vite
+pnpm run test:astro
 pnpm run test:demo
 ```
 

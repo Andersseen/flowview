@@ -64,6 +64,12 @@ jobs:
       - name: Build and test Vite integration
         run: pnpm run test:vite
 
+      - name: Test Astro integration
+        run: pnpm run test:astro
+
+      - name: Check TypeScript types
+        run: pnpm run typecheck
+
   astro-demo:
     runs-on: ubuntu-latest
     steps:

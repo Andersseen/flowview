@@ -6,6 +6,14 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+- Preserved observable whitespace after completed `@if` and `@for` blocks while
+  still allowing whitespace before `@else`, `@empty`, and `@else if`.
+- Required explicit closing braces before `@else`, `@else if`, and `@empty`.
+- Hardened JavaScript-expression scanning for nested template literals and
+  regular expressions after expression-leading keywords.
+- Hardened Astro inline-template discovery around comments, raw-text elements,
+  nested templates, tag-name boundaries, and frontmatter insertion.
+- Added focused Astro transformation tests and generated-code execution tests.
 - Preserved template whitespace exactly instead of collapsing individual text nodes.
 - Hardened interpolation escaping for unquoted HTML attributes and documented
   context-specific security limits.
