@@ -50,61 +50,62 @@
           "match": "(@)(else if)\\b",
           "captures": {
             "1": { "name": "punctuation.definition.keyword.flowmark" },
-            "2": { "name": "keyword.control.conditional.flowmark" }
+            "2": { "name": "keyword.control.flowmark" }
           }
         },
         {
           "match": "(@)(if)\\b",
           "captures": {
             "1": { "name": "punctuation.definition.keyword.flowmark" },
-            "2": { "name": "keyword.control.conditional.if.flowmark" }
+            "2": { "name": "keyword.control.flowmark" }
           }
         },
         {
           "match": "(@)(else)\\b",
           "captures": {
             "1": { "name": "punctuation.definition.keyword.flowmark" },
-            "2": { "name": "keyword.control.conditional.flowmark" }
+            "2": { "name": "keyword.control.flowmark" }
           }
         },
         {
           "match": "(@)(for)\\b",
           "captures": {
             "1": { "name": "punctuation.definition.keyword.flowmark" },
-            "2": { "name": "keyword.control.repeat.flowmark" }
+            "2": { "name": "keyword.control.flowmark" }
           }
         },
         {
           "match": "(@)(empty)\\b",
           "captures": {
             "1": { "name": "punctuation.definition.keyword.flowmark" },
-            "2": { "name": "keyword.control.repeat.flowmark" }
+            "2": { "name": "keyword.control.flowmark" }
           }
         },
         {
           "match": "(@)(switch)\\b",
           "captures": {
             "1": { "name": "punctuation.definition.keyword.flowmark" },
-            "2": { "name": "keyword.control.switch.flowmark" }
+            "2": { "name": "keyword.control.flowmark" }
           }
         },
         {
           "match": "(@)(case)\\b",
           "captures": {
             "1": { "name": "punctuation.definition.keyword.flowmark" },
-            "2": { "name": "keyword.control.switch.flowmark" }
+            "2": { "name": "keyword.control.flowmark" }
           }
         },
         {
           "match": "(@)(default)\\b",
           "captures": {
             "1": { "name": "punctuation.definition.keyword.flowmark" },
-            "2": { "name": "keyword.control.switch.flowmark" }
+            "2": { "name": "keyword.control.flowmark" }
           }
         }
       ]
     },
     "control-expression": {
+      "name": "meta.control.expression.flowmark",
       "begin": "(?<=@(if|else if|for|switch|case)\\b)\\s*(\\()",
       "end": "\\)",
       "beginCaptures": {

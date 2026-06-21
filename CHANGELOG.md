@@ -14,6 +14,9 @@ This project does not have a stable release yet.
 - Hardened Astro inline-template discovery around comments, raw-text elements,
   nested templates, tag-name boundaries, and frontmatter insertion.
 - Added focused Astro transformation tests and generated-code execution tests.
+- Added an editor-compatible Astro authoring wrapper, executable VS Code grammar
+  tests, and a clean `astro check` gate for the demo.
+- Migrated every demo page-content surface to inline Flowmark in `.astro` files.
 - Preserved template whitespace exactly instead of collapsing individual text nodes.
 - Hardened interpolation escaping for unquoted HTML attributes and documented
   context-specific security limits.

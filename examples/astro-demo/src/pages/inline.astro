@@ -1,0 +1,10 @@
+---
+const context = {
+  name: "from an inline Astro template",
+};
+---
+
+<!-- prettier-ignore -->
+<template flowmark is:raw context={context}>
+  <p id="inline">Hello {{ ctx.name }}</p>
+</template>

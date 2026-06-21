@@ -45,7 +45,7 @@ describe("Flowmark Astro integration", () => {
     const result = await transformAstro(`---
 const context = { title: "Hello" };
 ---
-<template flowmark context={context}>
+<template flowmark is:raw context={context}>
   <h1>{{ ctx.title }}</h1>
 </template>`);
 

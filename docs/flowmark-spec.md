@@ -118,7 +118,9 @@ Flowmark should support two authoring modes.
 
 ### 5.1 Standalone `.flow` Files
 
-Standalone `.flow` files are the canonical format.
+Standalone `.flow` files are the portable format for hosts that do not provide
+an embedded authoring surface. They remain supported, but are secondary to the
+current Astro milestone.
 
 Example:
 
@@ -158,7 +160,7 @@ const context = {
 };
 ---
 
-<template flowmark context={context}>
+<template flowmark is:raw context={context}>
   <section>
     <h1>{{ ctx.title }}</h1>
 
@@ -171,11 +173,11 @@ const context = {
 </template>
 ```
 
-This must not require:
-
-- `is:raw`
-- A wrapper component such as `<Flowmark>`
-- Manual calls to compiler APIs inside the page
+This must not require a wrapper component such as `<Flowmark>` or manual calls
+to compiler APIs inside the page. `is:raw` is an editor-compatibility marker:
+Astro's official Language Server needs it to keep the embedded language inert
+before the Vite integration runs. The Flowmark integration replaces the whole
+element during compilation.
 
 The exact Astro syntax may evolve during implementation, but the supported
 experience must remain explicit, readable, and easy for editor tooling to
@@ -373,8 +375,9 @@ Package name:
 
 Primary goal:
 
-Use Flowmark naturally inside Astro projects without requiring `is:raw` or a
-parent wrapper component.
+Use Flowmark naturally inside Astro projects without a parent wrapper component
+or manual compiler calls. The recommended editor-compatible wrapper includes
+Astro's `is:raw` marker.
 
 Target usage:
 
@@ -406,7 +409,7 @@ Target embedded usage:
 const context = Astro.props;
 ---
 
-<template flowmark context={context}>
+<template flowmark is:raw context={context}>
   <h1>{{ ctx.title }}</h1>
 
   @if (ctx.featured) {
@@ -422,7 +425,8 @@ Required behavior:
   normal component markup, or otherwise transform them safely during the Astro
   build pipeline.
 - Preserve Astro frontmatter and surrounding Astro markup.
-- Avoid requiring `is:raw`.
+- Accept the editor-compatible `is:raw` marker and replace it together with the
+  complete Flowmark template before Astro builds the page.
 - Avoid requiring a `<Flowmark>` wrapper component.
 - Render escaped HTML by default.
 - Surface compiler diagnostics with useful file and line information.
@@ -439,8 +443,10 @@ authoring experience is part of this spec.
 
 Acceptance tests:
 
-- An `.astro` page can use `<template flowmark context={context}>`.
-- The page builds without `is:raw`.
+- An `.astro` page can use
+  `<template flowmark is:raw context={context}>` without editor diagnostics.
+- The build integration also accepts omission of `is:raw` for programmatic or
+  non-editor-generated sources.
 - The page builds without importing a `<Flowmark>` component.
 - `@if`, `@for`, `@empty`, and `@switch` work inside the embedded template.
 - Escaped interpolation prevents HTML injection from context values.
@@ -474,9 +480,9 @@ Required support:
 
 - `.flow` syntax highlighting.
 - Snippets for core control flow.
-- Embedded highlighting for Astro `<template flowmark>` regions.
-- Embedded highlighting for any legacy `<Flowmark is:raw>` demo pattern until
-  it is removed.
+- Embedded highlighting for Astro
+  `<template flowmark is:raw context={...}>` regions.
+- An Astro snippet that inserts the complete editor-compatible wrapper.
 
 Future support:
 
@@ -511,7 +517,7 @@ Vite plugin tests:
 Astro integration tests:
 
 - Standalone `.flow` import in Astro.
-- Embedded `<template flowmark>` usage.
+- Embedded `<template flowmark is:raw>` usage.
 - Static build output.
 - Browser-level rendered output.
 
@@ -548,8 +554,8 @@ Definition of done:
 - `@flowmark/astro` package exists.
 - It registers Flowmark support for Astro projects.
 - `.flow` imports work in Astro.
-- Embedded `<template flowmark>` works in `.astro` files.
-- `is:raw` is no longer required for the supported path.
+- Embedded `<template flowmark is:raw>` works in `.astro` files.
+- `astro check` reports no false diagnostics for Flowmark regions.
 - The demo uses the supported integration instead of the temporary wrapper
   component.
 
@@ -558,7 +564,7 @@ Definition of done:
 Definition of done:
 
 - The VS Code extension highlights standalone `.flow` files.
-- The VS Code extension highlights `<template flowmark>` in Astro files.
+- The VS Code extension highlights `<template flowmark is:raw>` in Astro files.
 - Snippets match the documented syntax.
 
 ### Milestone 5: Framework Expansion

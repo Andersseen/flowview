@@ -38,12 +38,18 @@ test("preserves whitespace and escapes interpolated HTML", async ({ page }) => {
     '<img src=x onerror="globalThis.__flowmarkXss = true">',
   );
   await expect(page.locator("#escaped img")).toHaveCount(0);
-  expect(await page.evaluate(() => globalThis.__flowmarkXss)).toBeUndefined();
+  expect(
+    await page.evaluate(
+      () =>
+        (globalThis as typeof globalThis & { __flowmarkXss?: boolean })
+          .__flowmarkXss,
+    ),
+  ).toBeUndefined();
 });
 
-test("imports a standalone .flow template through Vite", async ({ page }) => {
-  await page.goto("/standalone");
-  await expect(page.locator("#standalone")).toHaveText(
-    "Hello from a standalone template",
+test("renders an isolated inline Flowmark page in Astro", async ({ page }) => {
+  await page.goto("/inline");
+  await expect(page.locator("#inline")).toHaveText(
+    "Hello from an inline Astro template",
   );
 });

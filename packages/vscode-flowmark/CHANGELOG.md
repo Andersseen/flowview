@@ -1,5 +1,14 @@
 # Change Log
 
+## Unreleased
+
+- Use theme-compatible TextMate scopes for every Flowmark control keyword.
+- Mark interpolations and control expressions as embedded JavaScript regions.
+- Improve Astro injection around quoted and braced attributes.
+- Make the Astro snippet emit the complete
+  `<template flowmark is:raw context={...}>` editor-compatible wrapper.
+- Add executable grammar checks.
+
 ## 0.1.0
 
 - Initial release.

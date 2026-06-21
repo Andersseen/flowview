@@ -1,8 +1,8 @@
 # Flowmark Astro Demo
 
-This example primarily shows Flowmark control flow embedded directly in normal
-`.astro` components. It also includes one standalone `.flow` import as a small
-compatibility check for the Vite integration.
+This example uses Flowmark control flow embedded directly in normal `.astro`
+components. Every page-content surface is authored with inline Flowmark; Astro
+remains the host for routing, layouts, and slot composition.
 
 The demo UI uses:
 
@@ -25,8 +25,7 @@ examples/astro-demo/
 │   ├── layouts/          # Astro layouts and unit tests
 │   ├── pages/            # Demo pages
 │   ├── scripts/          # Browser entrypoints
-│   ├── styles/           # Tailwind and theme CSS
-│   └── templates/        # Flowmark templates
+│   └── styles/           # Tailwind and theme CSS
 ├── playwright.config.ts
 └── vitest.config.ts
 ```
@@ -36,6 +35,8 @@ examples/astro-demo/
 ```sh
 pnpm run dev
 pnpm run build
+pnpm run check
+pnpm run lint
 pnpm run preview
 pnpm run test:unit
 pnpm run test:e2e
@@ -58,12 +59,13 @@ pnpm --filter @flowmark/astro-demo exec playwright install chromium
 
 ## How It Works
 
-1. `@flowmark/astro` finds `<template flowmark context={...}>` regions before
-   Astro parses the component.
+1. `@flowmark/astro` finds `<template flowmark is:raw context={...}>` regions
+   before Astro parses the component. The VS Code snippet writes this wrapper.
 2. Each region is compiled into a virtual JavaScript render module.
 3. The integration replaces the region with an Astro fragment that renders the
    generated, escaped HTML.
-4. The standalone example imports a `.flow` file through `@flowmark/vite`.
+4. Astro continues to own routing, layouts, and component slots around those
+   Flowmark-rendered content surfaces.
 5. Web components are registered in `src/scripts/web-components.ts`.
 
 ## Deploy to Cloudflare Pages

@@ -7,8 +7,8 @@ describe("CodeBlock", () => {
     const container = await AstroContainer.create();
     const html = await container.renderToString(CodeBlock, {
       props: {
-        title: "src/templates/index.flow",
-        language: "flow",
+        title: "src/components/Inventory.astro",
+        language: "astro + flowmark",
       },
       slots: {
         default: "<main>{{ ctx.title }}</main>",
@@ -16,8 +16,8 @@ describe("CodeBlock", () => {
     });
 
     expect(html).toContain("<and-card");
-    expect(html).toContain("src/templates/index.flow");
-    expect(html).toContain("flow");
+    expect(html).toContain("src/components/Inventory.astro");
+    expect(html).toContain("astro + flowmark");
     expect(html).toContain("<main>{{ ctx.title }}</main>");
   });
 });

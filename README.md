@@ -33,7 +33,8 @@ Flowmark is experimental and pre-stable. The public shape is intentionally
 small, but syntax and generated output may still change before a stable release.
 
 The current milestone is the inline Astro authoring path: Flowmark control flow
-inside `<template flowmark context={...}>` regions in normal `.astro` files.
+inside `<template flowmark is:raw context={...}>` regions in normal `.astro`
+files.
 Standalone `.flow` imports remain supported, but broader Vite and server-runtime
 usage is a later milestone after the Astro integration and core syntax are
 reliable.
@@ -204,10 +205,10 @@ pnpm run demo
 
 The demo uses Astro, Tailwind CSS 4, `@andersseen/web-components`, and the
 local `@flowmark/astro` integration. Inline Flowmark templates can be authored
-with `<template flowmark>`:
+with the editor-compatible `<template flowmark is:raw>` wrapper:
 
 ```text
-<template flowmark context={context}>
+<template flowmark is:raw context={context}>
   <main>
     <h1>{{ ctx.title }}</h1>
     @if (ctx.featured) {
@@ -218,8 +219,10 @@ with `<template flowmark>`:
 ```
 
 The integration transforms embedded Flowmark templates before Astro parses the
-page, so the supported path does not require `is:raw` or a wrapper component.
-It invokes a prebuilt `flowmark` CLI from `PATH`; pass
+page. `is:raw` is included in the recommended Astro authoring form so Astro's
+Language Server treats the custom syntax as inert; the Flowmark integration
+replaces the entire element before the application build. The integration
+invokes a prebuilt `flowmark` CLI from `PATH`; pass
 `flowmark({ compilerPath: "/path/to/flowmark" })` when the binary lives
 elsewhere. The integration never runs Cargo and sends templates over stdin, so
 it does not create temporary source files.

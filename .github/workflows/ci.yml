@@ -100,6 +100,9 @@ jobs:
       - name: Run Astro demo unit tests
         run: pnpm run test:demo
 
+      - name: Test VS Code grammar
+        run: pnpm run test:vscode
+
       - name: Install Chromium
         run: pnpm --filter @flowmark/astro-demo exec playwright install --with-deps chromium
 
