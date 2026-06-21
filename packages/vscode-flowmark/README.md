@@ -5,7 +5,8 @@ VS Code extension for [Flowmark](https://github.com/andersseen/flowmark) templat
 ## Features
 
 - Syntax highlighting for `.flow` files.
-- Inline Flowmark highlighting inside Astro `<template flowmark context={...}>` blocks.
+- Inline Flowmark highlighting inside Astro
+  `<template flowmark is:raw context={...}>` blocks.
 - Snippets for Flowmark control flow (`@if`, `@for`, `@switch`) and Astro embedding.
 
 ## Supported syntax
@@ -58,7 +59,8 @@ Flowmark control markers can be escaped with a backslash:
 
 ## Usage in Astro
 
-The extension injects the Flowmark grammar inside `<template flowmark>` tags:
+The extension injects the Flowmark grammar inside
+`<template flowmark is:raw>` tags:
 
 ```text
 ---
@@ -68,13 +70,19 @@ const context = {
 };
 ---
 
-<template flowmark context={context}>
+<template flowmark is:raw context={context}>
   <h1>{{ ctx.title }}</h1>
   @if (ctx.featured) {
     <span>Featured</span>
   }
 </template>
 ```
+
+Type `flowmark` in an Astro file to insert the complete wrapper. `is:raw` is an
+editor-compatibility marker for Astro's official Language Server: it prevents
+Astro from interpreting Flowmark expressions as TSX before the Vite integration
+runs. The Flowmark integration replaces the whole template during compilation,
+so the marker does not affect generated HTML.
 
 ## Installation from a VSIX
 

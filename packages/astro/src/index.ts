@@ -191,9 +191,9 @@ function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
     }
 
     const contextExpression = readBracedAttribute(openTag, "context");
-    if (contextExpression === null) {
+    if (contextExpression === null || contextExpression.length === 0) {
       throw new Error(
-        "Flowmark embedded templates require a context={...} attribute.",
+        "Flowmark embedded templates require a non-empty context={...} attribute.",
       );
     }
 
@@ -202,7 +202,11 @@ function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
       throw new Error("Flowmark embedded template is missing </template>.");
     }
 
-    const closeEnd = closeStart + "</template>".length;
+    const closeTagEnd = findTagEnd(code, closeStart);
+    if (closeTagEnd === -1) {
+      throw new Error("Flowmark embedded template has an invalid closing tag.");
+    }
+    const closeEnd = closeTagEnd + 1;
     templates.push({
       source: code.slice(openEnd + 1, closeStart),
       contextExpression,
@@ -217,10 +221,8 @@ function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
 }
 
 function findFrontmatterEnd(code: string): number {
-  if (!code.startsWith("---")) return 0;
-  const closingFence = code.indexOf("\n---", 3);
-  if (closingFence === -1) return 0;
-  return closingFence + "\n---".length;
+  const closingFence = findFrontmatterClose(code);
+  return closingFence === -1 ? 0 : closingFence + "---".length;
 }
 
 function findNextTemplateOpen(code: string, start: number): number {
@@ -232,13 +234,15 @@ function findNextTemplateOpen(code: string, start: number): number {
 
     if (code.startsWith("<!--", tagStart)) {
       const commentEnd = code.indexOf("-->", tagStart + 4);
-      return commentEnd === -1
-        ? -1
-        : findNextTemplateOpen(code, commentEnd + 3);
+      if (commentEnd === -1) return -1;
+      cursor = commentEnd + 3;
+      continue;
     }
 
-    const rawTextTag = ["script", "style"].find((name) =>
-      code.startsWith(`<${name}`, tagStart),
+    const rawTextTag = ["script", "style"].find(
+      (name) =>
+        code.startsWith(`<${name}`, tagStart) &&
+        isTagNameBoundary(code[tagStart + name.length + 1]),
     );
     if (rawTextTag !== undefined) {
       const closeStart = code.indexOf(`</${rawTextTag}>`, tagStart + 1);
@@ -247,7 +251,12 @@ function findNextTemplateOpen(code: string, start: number): number {
       continue;
     }
 
-    if (code.startsWith("<template", tagStart)) return tagStart;
+    if (
+      code.startsWith("<template", tagStart) &&
+      isTagNameBoundary(code[tagStart + "<template".length])
+    ) {
+      return tagStart;
+    }
     cursor = tagStart + 1;
   }
 
@@ -259,22 +268,59 @@ function findMatchingTemplateClose(code: string, start: number): number {
   let depth = 1;
 
   while (cursor < code.length) {
-    const nextOpen = code.indexOf("<template", cursor);
-    const nextClose = code.indexOf("</template>", cursor);
-    if (nextClose === -1) return -1;
+    const tagStart = code.indexOf("<", cursor);
+    if (tagStart === -1) return -1;
 
-    if (nextOpen !== -1 && nextOpen < nextClose) {
-      depth += 1;
-      cursor = nextOpen + "<template".length;
+    if (code.startsWith("<!--", tagStart)) {
+      const commentEnd = code.indexOf("-->", tagStart + 4);
+      if (commentEnd === -1) return -1;
+      cursor = commentEnd + 3;
       continue;
     }
 
-    depth -= 1;
-    if (depth === 0) return nextClose;
-    cursor = nextClose + "</template>".length;
+    const rawTextTag = ["script", "style"].find(
+      (name) =>
+        code.startsWith(`<${name}`, tagStart) &&
+        isTagNameBoundary(code[tagStart + name.length + 1]),
+    );
+    if (rawTextTag !== undefined) {
+      const closeStart = code.indexOf(`</${rawTextTag}>`, tagStart + 1);
+      if (closeStart === -1) return -1;
+      cursor = closeStart + rawTextTag.length + 3;
+      continue;
+    }
+
+    if (
+      code.startsWith("<template", tagStart) &&
+      isTagNameBoundary(code[tagStart + "<template".length])
+    ) {
+      const tagEnd = findTagEnd(code, tagStart);
+      if (tagEnd === -1) return -1;
+      depth += 1;
+      cursor = tagEnd + 1;
+      continue;
+    }
+
+    if (
+      code.startsWith("</template", tagStart) &&
+      isTagNameBoundary(code[tagStart + "</template".length])
+    ) {
+      const tagEnd = findTagEnd(code, tagStart);
+      if (tagEnd === -1) return -1;
+      depth -= 1;
+      if (depth === 0) return tagStart;
+      cursor = tagEnd + 1;
+      continue;
+    }
+
+    cursor = tagStart + 1;
   }
 
   return -1;
+}
+
+function isTagNameBoundary(character: string | undefined): boolean {
+  return character === undefined || /[\s/>]/.test(character);
 }
 
 function countNewlines(value: string, start: number, end: number): number {
@@ -382,15 +428,33 @@ function readBracedAttribute(tag: string, name: string): string | null {
 }
 
 function injectFrontmatter(code: string, content: string): string {
-  if (code.startsWith("---")) {
-    const closingFence = code.indexOf("\n---", 3);
+  const closingFence = findFrontmatterClose(code);
 
-    if (closingFence !== -1) {
-      return `${code.slice(0, closingFence)}\n${content}${code.slice(closingFence)}`;
-    }
+  if (closingFence !== -1) {
+    return `${code.slice(0, closingFence)}${content}\n${code.slice(closingFence)}`;
   }
 
   return `---\n${content}\n---\n\n${code}`;
+}
+
+function findFrontmatterClose(code: string): number {
+  const firstLineEnd = code.indexOf("\n");
+  if (firstLineEnd === -1 || code.slice(0, firstLineEnd).trim() !== "---") {
+    return -1;
+  }
+
+  let lineStart = firstLineEnd + 1;
+  while (lineStart <= code.length) {
+    const lineEnd = code.indexOf("\n", lineStart);
+    const end = lineEnd === -1 ? code.length : lineEnd;
+    if (code.slice(lineStart, end).trim() === "---") {
+      return lineStart;
+    }
+    if (lineEnd === -1) break;
+    lineStart = lineEnd + 1;
+  }
+
+  return -1;
 }
 
 function stripQuery(id: string): string {

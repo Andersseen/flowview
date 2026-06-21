@@ -2,7 +2,7 @@
   "Flowmark block": {
     "prefix": "flowmark",
     "body": [
-      "<template flowmark context={${1:context}}>",
+      "<template flowmark is:raw context={${1:context}}>",
       "  <main>",
       "    <h1>{{ ctx.${2:title} }}</h1>",
       "    $0",

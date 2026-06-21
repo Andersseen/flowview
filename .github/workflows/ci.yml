@@ -64,6 +64,12 @@ jobs:
       - name: Build and test Vite integration
         run: pnpm run test:vite
 
+      - name: Test Astro integration
+        run: pnpm run test:astro
+
+      - name: Check TypeScript types
+        run: pnpm run typecheck
+
   astro-demo:
     runs-on: ubuntu-latest
     steps:
@@ -93,6 +99,9 @@ jobs:
 
       - name: Run Astro demo unit tests
         run: pnpm run test:demo
+
+      - name: Test VS Code grammar
+        run: pnpm run test:vscode
 
       - name: Install Chromium
         run: pnpm --filter @flowmark/astro-demo exec playwright install --with-deps chromium

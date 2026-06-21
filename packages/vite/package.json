@@ -15,7 +15,8 @@
   ],
   "scripts": {
     "build": "tsup",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@flowmark/runtime": "workspace:*"

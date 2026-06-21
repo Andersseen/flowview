@@ -14,7 +14,9 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup"
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@flowmark/runtime": "workspace:*",
@@ -25,7 +27,8 @@
     "astro": "^5.7.10",
     "tsup": "^8.5.0",
     "typescript": "^5.9.0",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
   },
   "peerDependencies": {
     "astro": "^5.0.0"

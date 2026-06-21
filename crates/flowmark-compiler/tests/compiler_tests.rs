@@ -59,6 +59,26 @@ fn preserves_preformatted_whitespace() {
 }
 
 #[test]
+fn preserves_whitespace_after_complete_control_flow_blocks() {
+    let after_if = compile_source("@if (ctx.visible) {x} next");
+    assert!(after_if.contains("output += ' next';"));
+
+    let after_for = compile_source("@for (item of ctx.items) {x} next");
+    assert!(after_for.contains("output += ' next';"));
+}
+
+#[test]
+fn consumes_only_whitespace_that_separates_block_continuations() {
+    let if_output = compile_source("@if (ctx.visible) {x}\n  @else {y} next");
+    assert!(!if_output.contains("output += '\\n  ';"));
+    assert!(if_output.contains("output += ' next';"));
+
+    let for_output = compile_source("@for (item of ctx.items) {x}\n  @empty {y} next");
+    assert!(!for_output.contains("output += '\\n  ';"));
+    assert!(for_output.contains("output += ' next';"));
+}
+
+#[test]
 fn r#if() {
     let source = "@if (ctx.visible) { <p>Visible</p> }";
     let output = compile_source(source);
@@ -290,6 +310,19 @@ fn unclosed_block() {
 }
 
 #[test]
+fn requires_a_closing_brace_before_else_and_empty() {
+    let if_errors = expect_error("@if (ctx.visible) {x @else {y}");
+    assert!(if_errors
+        .iter()
+        .any(|message| message.contains("Unexpected '@else'")));
+
+    let for_errors = expect_error("@for (item of ctx.items) {x @empty {y}");
+    assert!(for_errors
+        .iter()
+        .any(|message| message.contains("Unexpected '@empty'")));
+}
+
+#[test]
 fn unexpected_else() {
     let errors = expect_error("<p>Text</p> @else { <p>Else</p> }");
     assert!(errors.iter().any(|m| m.contains("Unexpected '@else'")));
@@ -333,6 +366,20 @@ fn expressions_support_escaped_quotes_and_template_literals() {
     let output = compile_source(source);
     assert!(output.contains(r#"ctx.label === "a \"quoted\" value""#));
     assert!(output.contains("ctx.label === `a ) literal`"));
+}
+
+#[test]
+fn expressions_support_nested_template_literals() {
+    let source = r#"@if (`outer ${`inner ) ${ctx.value}`}` === ctx.label) { <p>OK</p> }"#;
+    let output = compile_source(source);
+    assert!(output.contains(r#"`outer ${`inner ) ${ctx.value}`}` === ctx.label"#));
+}
+
+#[test]
+fn expressions_support_regex_literals_after_javascript_keywords() {
+    let source = r"@if ((() => { return /\)/.test(ctx.value); })()) { <p>OK</p> }";
+    let output = compile_source(source);
+    assert!(output.contains(r"return /\)/.test(ctx.value)"));
 }
 
 #[test]
