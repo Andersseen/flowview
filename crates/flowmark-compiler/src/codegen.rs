@@ -17,7 +17,7 @@ pub fn generate(root: &RootNode, options: &CompileOptions) -> String {
     format!(
         "import {{ renderValue }} from '{}';
 
-export function render(ctx) {{
+export function render(context) {{
   let output = '';{}
   return output;
 }}

@@ -7,9 +7,9 @@ const context = {
 
 <template flowmark is:raw context={context}>
   <main>
-    <p id="space"><span>Hello </span>{{ ctx.name }}</p>
+    <p id="space"><span>Hello </span>{{ context.name }}</p>
     <pre id="pre">first
   second</pre>
-    <p id="escaped">{{ ctx.markup }}</p>
+    <p id="escaped">{{ context.markup }}</p>
   </main>
 </template>

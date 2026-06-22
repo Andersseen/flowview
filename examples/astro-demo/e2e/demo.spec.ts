@@ -24,9 +24,21 @@ test("renders the @empty branch page", async ({ page }) => {
   ).toBeVisible();
   await expect(
     page.getByText(
-      "The same inline Flowmark template renders the fallback branch when ctx.products is empty.",
+      "The same inline Flowmark template renders the fallback branch when context.products is empty.",
     ),
   ).toBeVisible();
+});
+
+test("renders @else if and nested stock-health branches", async ({ page }) => {
+  await page.goto("/attention");
+
+  await expect(
+    page.getByRole("heading", { name: "Inventory Attention" }),
+  ).toBeVisible();
+  await expect(page.getByText("Low · 4")).toBeVisible();
+  await expect(page.getByText("None")).toBeVisible();
+  await expect(page.getByText("View full inventory")).toBeVisible();
+  await expect(page.getByText("Ergonomic Keyboard")).toHaveCount(0);
 });
 
 test("preserves whitespace and escapes interpolated HTML", async ({ page }) => {

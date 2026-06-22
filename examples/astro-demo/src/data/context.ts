@@ -6,7 +6,6 @@ export const demoContext = {
   title: "Inventory Dashboard",
   description:
     "A server-rendered product catalog built with Flowmark control flow inside Astro.",
-  featured: true,
   products: [
     {
       id: 1,
@@ -51,12 +50,12 @@ export const demoContext = {
       body: "Expressions are emitted as JavaScript. Context values are escaped when interpolated.",
     },
     {
-      title: "`track` is reserved syntax",
-      body: "It is parsed today, but string rendering has no DOM diffing step where keys would matter.",
+      title: "Whitespace is preserved",
+      body: "Text around completed control-flow blocks keeps its original spacing and line breaks.",
     },
     {
-      title: "Plain JavaScript expressions",
-      body: "You can use `.filter`, `.length`, and any other JS expression inside interpolations.",
+      title: "JavaScript-aware boundaries",
+      body: "Nested template literals, comments, regular expressions, and object literals can appear inside expressions.",
     },
   ],
 };

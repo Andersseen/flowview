@@ -1,4 +1,4 @@
-@for (product of ctx.products; track product.id) {
+@for (product of context.products; track product.id) {
   <article>{{ product.title }}</article>
 } @empty {
   <p>No products found</p>

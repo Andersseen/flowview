@@ -1,4 +1,4 @@
-@if (ctx.visible) {
+@if (context.visible) {
   <p>Visible</p>
 } @else {
   <p>Hidden</p>

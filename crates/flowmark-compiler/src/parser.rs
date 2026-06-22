@@ -485,7 +485,7 @@ fn is_valid_binding_identifier(value: &str) -> bool {
         "class",
         "const",
         "continue",
-        "ctx",
+        "context",
         "debugger",
         "default",
         "delete",

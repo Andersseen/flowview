@@ -8,14 +8,14 @@ const compilerPath = fileURLToPath(
 
 describe("compileFlowmark", () => {
   it("compiles stdin without temporary files", () => {
-    const code = compileFlowmark("<p>Hello {{ ctx.name }}</p>", {
+    const code = compileFlowmark("<p>Hello {{ context.name }}</p>", {
       filename: "greeting.flow",
       runtimeImport: "@flowmark/runtime",
       compilerPath,
     });
 
     expect(code).toContain("output += '<p>Hello ';");
-    expect(code).toContain("renderValue(ctx.name)");
+    expect(code).toContain("renderValue(context.name)");
   });
 
   it("preserves display filenames and line offsets in diagnostics", () => {
@@ -31,7 +31,7 @@ describe("compileFlowmark", () => {
 
   it("executes all current control-flow blocks with escaped values", () => {
     const code = compileFlowmark(
-      "@if (ctx.visible) {<p>{{ ctx.label }}</p>} @else {<p>hidden</p>}@for (item of ctx.items; track item.id) {<span>{{ item.name }}</span>} @empty {<span>empty</span>}@switch (ctx.status) {@case ('ready') {<strong>ready</strong>}@default {<strong>other</strong>}}",
+      "@if (context.visible) {<p>{{ context.label }}</p>} @else {<p>hidden</p>}@for (item of context.items; track item.id) {<span>{{ item.name }}</span>} @empty {<span>empty</span>}@switch (context.status) {@case ('ready') {<strong>ready</strong>}@default {<strong>other</strong>}}",
       {
         filename: "control-flow.flow",
         runtimeImport: "@flowmark/runtime",

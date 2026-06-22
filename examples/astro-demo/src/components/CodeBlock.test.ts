@@ -11,13 +11,13 @@ describe("CodeBlock", () => {
         language: "astro + flowmark",
       },
       slots: {
-        default: "<main>{{ ctx.title }}</main>",
+        default: "<main>{{ context.title }}</main>",
       },
     });
 
     expect(html).toContain("<and-card");
     expect(html).toContain("src/components/Inventory.astro");
     expect(html).toContain("astro + flowmark");
-    expect(html).toContain("<main>{{ ctx.title }}</main>");
+    expect(html).toContain("<main>{{ context.title }}</main>");
   });
 });

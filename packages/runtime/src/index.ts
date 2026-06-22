@@ -10,5 +10,5 @@ export type RenderContext = Record<string, unknown>;
  * Type of a generated Flowmark render function.
  */
 export type RenderFunction<C extends RenderContext = RenderContext> = (
-  ctx: C,
+  context: C,
 ) => string;

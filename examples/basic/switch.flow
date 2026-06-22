@@ -1,4 +1,4 @@
-@switch (ctx.status) {
+@switch (context.status) {
   @case ('loading') {
     <p>Loading</p>
   }

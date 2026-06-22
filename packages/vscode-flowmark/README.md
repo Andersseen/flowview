@@ -14,15 +14,15 @@ VS Code extension for [Flowmark](https://github.com/andersseen/flowmark) templat
 ### Interpolation
 
 ```flowmark
-<h1>{{ ctx.title }}</h1>
+<h1>{{ context.title }}</h1>
 ```
 
 ### Conditional blocks
 
 ```flowmark
-@if (ctx.featured) {
+@if (context.featured) {
   <span>Featured</span>
-} @else if (ctx.promo) {
+} @else if (context.promo) {
   <span>Promo</span>
 } @else {
   <span>Standard</span>
@@ -32,7 +32,7 @@ VS Code extension for [Flowmark](https://github.com/andersseen/flowmark) templat
 ### Repeat blocks
 
 ```flowmark
-@for (product of ctx.products; track product.id) {
+@for (product of context.products; track product.id) {
   <article>{{ product.name }}</article>
 } @empty {
   <p>No products found.</p>
@@ -71,8 +71,8 @@ const context = {
 ---
 
 <template flowmark is:raw context={context}>
-  <h1>{{ ctx.title }}</h1>
-  @if (ctx.featured) {
+  <h1>{{ context.title }}</h1>
+  @if (context.featured) {
     <span>Featured</span>
   }
 </template>

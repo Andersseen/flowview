@@ -46,7 +46,7 @@ describe("Flowmark Astro integration", () => {
 const context = { title: "Hello" };
 ---
 <template flowmark is:raw context={context}>
-  <h1>{{ ctx.title }}</h1>
+  <h1>{{ context.title }}</h1>
 </template>`);
 
     expect(result).toContain(
@@ -60,7 +60,7 @@ const context = { title: "Hello" };
 
   it("creates frontmatter when an Astro file does not have it", async () => {
     const result = await transformAstro(
-      `<template flowmark context={{ title: "Hello" }}><h1>{{ ctx.title }}</h1></template>`,
+      `<template flowmark context={{ title: "Hello" }}><h1>{{ context.title }}</h1></template>`,
     );
 
     expect(result).toMatch(/^---\nimport \{ render as __flowmarkRender0/);
@@ -74,8 +74,8 @@ const context = { title: "Hello" };
 const first = { value: "A" };
 const second = { value: "B" };
 ---
-<template flowmark context={first}>{{ ctx.value }}</template>
-<template flowmark context={second}>{{ ctx.value }}</template>`);
+<template flowmark context={first}>{{ context.value }}</template>
+<template flowmark context={second}>{{ context.value }}</template>`);
 
     expect(result?.match(/import \{ render as __flowmarkRender/g)).toHaveLength(
       2,
@@ -103,7 +103,7 @@ const context = { title: "Hello" };
   <!-- </template> -->
   <script>const marker = "</template>";</script>
   <template><span>Nested HTML template</span></template>
-  <h1>{{ ctx.title }}</h1>
+  <h1>{{ context.title }}</h1>
 </template>
 <p id="after">After</p>`);
 

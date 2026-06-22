@@ -12,10 +12,10 @@ Its core purpose is to make this authoring style:
 
 ```text
 <section>
-  <h1>{{ ctx.title }}</h1>
+  <h1>{{ context.title }}</h1>
 
-  @if (ctx.products.length > 0) {
-    @for (product of ctx.products; track product.id) {
+  @if (context.products.length > 0) {
+    @for (product of context.products; track product.id) {
       <article>{{ product.name }}</article>
     }
   } @else {
@@ -126,9 +126,9 @@ Example:
 
 ```text
 <main>
-  <h1>{{ ctx.title }}</h1>
+  <h1>{{ context.title }}</h1>
 
-  @for (item of ctx.items; track item.id) {
+  @for (item of context.items; track item.id) {
     <p>{{ item.label }}</p>
   } @empty {
     <p>No items.</p>
@@ -162,9 +162,9 @@ const context = {
 
 <template flowmark is:raw context={context}>
   <section>
-    <h1>{{ ctx.title }}</h1>
+    <h1>{{ context.title }}</h1>
 
-    @for (product of ctx.products; track product.id) {
+    @for (product of context.products; track product.id) {
       <article>{{ product.name }}</article>
     } @empty {
       <p>No products found.</p>
@@ -287,8 +287,13 @@ It returns either:
 The generated module must export:
 
 ```ts
-export function render(ctx: Record<string, unknown>): string;
+export function render(context: Record<string, unknown>): string;
 ```
+
+`context` is the single explicit top-level data binding available to template
+expressions. Integrations pass their host value to `render`, but must not invent
+aliases such as `ctx`. For example, Astro's `context={pageData}` attribute still
+exposes that value inside the Flowmark region as `context`.
 
 Compiler options should include:
 
@@ -314,7 +319,7 @@ export function escapeHtml(value: unknown): string;
 export function renderValue(value: unknown): string;
 export type RenderContext = Record<string, unknown>;
 export type RenderFunction<C extends RenderContext = RenderContext> = (
-  ctx: C,
+  context: C,
 ) => string;
 ```
 
@@ -410,9 +415,9 @@ const context = Astro.props;
 ---
 
 <template flowmark is:raw context={context}>
-  <h1>{{ ctx.title }}</h1>
+  <h1>{{ context.title }}</h1>
 
-  @if (ctx.featured) {
+  @if (context.featured) {
     <p>Featured</p>
   }
 </template>

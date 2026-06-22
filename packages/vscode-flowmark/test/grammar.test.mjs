@@ -52,15 +52,15 @@ const grammar = await registry.loadGrammar("source.flowmark");
 assert.ok(grammar, "Flowmark grammar must load");
 
 const samples = [
-  "@if (ctx.visible) {",
-  "} @else if (ctx.pending) {",
+  "@if (context.visible) {",
+  "} @else if (context.pending) {",
   "} @else {",
-  "@for (product of ctx.products; track product.id) {",
+  "@for (product of context.products; track product.id) {",
   "} @empty {",
   "@switch (product.status) {",
   "@case ('available') {",
   "@default {",
-  "<h1>{{ ctx.title }}</h1>",
+  "<h1>{{ context.title }}</h1>",
 ];
 
 const scopes = samples.flatMap((line) =>

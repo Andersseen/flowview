@@ -7,7 +7,7 @@
   "@for": {
     "prefix": "@for",
     "body": [
-      "@for (${1:item} of ${2:ctx.items}; track ${1:item}.${3:id}) {",
+      "@for (${1:item} of ${2:context.items}; track ${1:item}.${3:id}) {",
       "  $0",
       "} @empty {",
       "  ",
@@ -31,7 +31,7 @@
   },
   "interpolation": {
     "prefix": "{{",
-    "body": ["{{ ${1:ctx.value} }}"],
+    "body": ["{{ ${1:context.value} }}"],
     "description": "Flowmark escaped interpolation"
   }
 }
