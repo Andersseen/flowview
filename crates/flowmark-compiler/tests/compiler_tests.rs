@@ -256,6 +256,14 @@ fn supports_semicolons_inside_for_expressions() {
 }
 
 #[test]
+fn supports_semicolons_inside_regular_expressions_in_for_headers() {
+    let source = "@for (item of context.values.filter((value) => /;/.test(value)); track item) { {{ item }} }";
+    let output = compile_source(source);
+
+    assert!(output.contains("context.values.filter((value) => /;/.test(value))"));
+}
+
+#[test]
 fn invalid_for_syntax() {
     let errors = expect_error("@for (item in context.items; track item.id) { <p></p> }");
     assert!(errors.iter().any(|m| m.contains("@for")));
@@ -394,4 +402,61 @@ fn interpolation_supports_closing_braces_inside_strings() {
 fn malformed_switch_block() {
     let errors = expect_error("@switch (context.status) { <p>Missing case</p> }");
     assert!(errors.iter().any(|m| m.contains("Unexpected")));
+}
+
+#[test]
+fn html_raw_text_and_comments_do_not_start_flowmark_syntax() {
+    let source = r#"
+  <script>const marker = "@if";</script>
+  <style>.card { color: red; }</style>
+  <!-- @for (item of items) {} -->"#;
+    let output = compile_source(source);
+
+    assert!(output.contains(r#"const marker = "@if";"#));
+    assert!(output.contains(".card { color: red; }"));
+    assert!(output.contains("@for (item of items) {}"));
+}
+
+#[test]
+fn control_flow_keywords_inside_html_attributes_are_plain_text() {
+    let source = r#"
+  <div data-example="@if (not syntax)" title="contact@if.example">OK</div>"#;
+    let output = compile_source(source);
+
+    assert!(output.contains(r#"data-example="@if (not syntax)""#));
+    assert!(output.contains("contact@if.example"));
+}
+
+#[test]
+fn embedded_at_signs_do_not_start_control_flow() {
+    let source = "<p>contact@if.example</p>";
+    let output = compile_source(source);
+
+    assert!(output.contains(source));
+}
+
+#[test]
+fn invalid_javascript_expressions_are_rejected_by_the_compiler() {
+    for source in [
+        "@if (context.) {x}",
+        "@for (item of context.) {x}",
+        "@for (item of context.items; track item.) {x}",
+        "@switch (context.) {@default {x}}",
+        "{{ context. }}",
+    ] {
+        let errors = expect_error(source);
+        assert!(
+            errors
+                .iter()
+                .any(|message| message.contains("Invalid JavaScript expression")),
+            "expected a JavaScript diagnostic for {source:?}, got {errors:?}"
+        );
+    }
+}
+
+#[test]
+fn text_that_is_invalid_inside_javascript_strings_is_escaped() {
+    let output = compile_source("first\0second\u{2028}third\u{2029}fourth");
+
+    assert!(output.contains("first\\u0000second\\u2028third\\u2029fourth"));
 }

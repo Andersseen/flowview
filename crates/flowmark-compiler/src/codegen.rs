@@ -212,6 +212,11 @@ fn escape_js_string(value: &str) -> String {
             '\n' => result.push_str("\\n"),
             '\r' => result.push_str("\\r"),
             '\t' => result.push_str("\\t"),
+            '\u{2028}' => result.push_str("\\u2028"),
+            '\u{2029}' => result.push_str("\\u2029"),
+            character if character.is_control() => {
+                result.push_str(&format!("\\u{:04x}", character as u32));
+            }
             _ => result.push(ch),
         }
     }

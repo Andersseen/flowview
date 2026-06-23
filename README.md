@@ -101,6 +101,10 @@ and the template reads it as `context.*`.
 To render syntax markers literally in text, escape the leading character:
 `\@if`, `\{{`, and `\}`.
 
+Control-flow markers are recognized in template content, not inside HTML tag
+attributes, HTML comments, `<script>`, or `<style>` elements. An `@` embedded in
+a word, such as `contact@if.example`, is also plain text.
+
 ## Security Model
 
 `.flow` files are trusted source code. Flowmark preserves expressions as
@@ -180,6 +184,17 @@ The plugin compiles `.flow` imports at build time using the prebuilt CLI. In
 the monorepo it discovers the local Rust binary automatically; installed usage
 resolves `flowmark` from `PATH`. `compilerPath` remains available as an advanced
 override.
+
+TypeScript projects that import `.flow` files can add the bundled module
+declaration to their `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "types": ["@flowmark/vite/client"]
+  }
+}
+```
 
 ## Test
 

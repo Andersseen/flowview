@@ -45,4 +45,29 @@ impl Diagnostic {
         self.code = Some(code.into());
         self
     }
+
+    /// Build a diagnostic from byte offsets in the original source.
+    pub fn from_source(message: impl Into<String>, source: &str, start: usize, end: usize) -> Self {
+        let safe_start = start.min(source.len());
+        let safe_end = end.max(safe_start).min(source.len());
+        let (line, column) = line_and_column(source, safe_start);
+
+        Self::new(message, line, column, safe_start, safe_end)
+    }
+}
+
+fn line_and_column(source: &str, offset: usize) -> (usize, usize) {
+    let mut line = 1;
+    let mut column = 1;
+
+    for character in source[..offset].chars() {
+        if character == '\n' {
+            line += 1;
+            column = 1;
+        } else {
+            column += 1;
+        }
+    }
+
+    (line, column)
 }

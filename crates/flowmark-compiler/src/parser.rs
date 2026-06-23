@@ -1,4 +1,4 @@
-use crate::{ast::*, cursor::Cursor, diagnostics::Diagnostic};
+use crate::{ast::*, cursor::Cursor, diagnostics::Diagnostic, javascript};
 
 const IF_START: &str = "@if";
 const ELSE_IF_START: &str = "@else if";
@@ -36,6 +36,18 @@ fn parse_nodes(cursor: &mut Cursor, terminators: &[&str]) -> Result<Vec<Node>, V
     loop {
         if cursor.is_eof() {
             break;
+        }
+
+        if cursor.starts_with("<") {
+            match parse_html_segment(cursor) {
+                Ok(html_nodes) => {
+                    for node in html_nodes {
+                        push_node(&mut nodes, node);
+                    }
+                }
+                Err(errors) => diagnostics.extend(errors),
+            }
+            continue;
         }
 
         if cursor.starts_with("}") {
@@ -106,7 +118,7 @@ fn parse_nodes(cursor: &mut Cursor, terminators: &[&str]) -> Result<Vec<Node>, V
         match parse_text(cursor) {
             Ok(node) => {
                 if !node.value.is_empty() {
-                    nodes.push(Node::Text(node));
+                    push_node(&mut nodes, Node::Text(node));
                 }
             }
             Err(err) => diagnostics.extend(err),
@@ -118,6 +130,20 @@ fn parse_nodes(cursor: &mut Cursor, terminators: &[&str]) -> Result<Vec<Node>, V
     }
 
     Ok(nodes)
+}
+
+fn push_node(nodes: &mut Vec<Node>, node: Node) {
+    if let Node::Text(next) = node {
+        if let Some(Node::Text(previous)) = nodes.last_mut() {
+            previous.value.push_str(&next.value);
+            previous.span.end = next.span.end;
+            return;
+        }
+        nodes.push(Node::Text(next));
+        return;
+    }
+
+    nodes.push(node);
 }
 
 fn match_terminator<'a>(cursor: &Cursor, terminators: &[&'a str]) -> Option<&'a str> {
@@ -167,17 +193,17 @@ fn parse_interpolation(cursor: &mut Cursor) -> Result<InterpolationNode, Vec<Dia
             break;
         }
 
-        if let Some(quote) = current_js_string_quote(cursor) {
-            skip_js_string(cursor, quote);
+        if let Some(quote) = javascript::current_string_quote(cursor) {
+            javascript::skip_string(cursor, quote);
             continue;
         }
 
-        if skip_js_comment(cursor) {
+        if javascript::skip_comment(cursor) {
             continue;
         }
 
-        if cursor.starts_with("/") && is_probable_js_regex(cursor, expression_start) {
-            skip_js_regex(cursor);
+        if cursor.starts_with("/") && javascript::is_probable_regex(cursor, expression_start) {
+            javascript::skip_regex(cursor);
             continue;
         }
 
@@ -204,10 +230,9 @@ fn parse_interpolation(cursor: &mut Cursor) -> Result<InterpolationNode, Vec<Dia
         )]);
     }
 
-    let expression = cursor
-        .slice(expression_start, cursor.position())
-        .trim()
-        .to_owned();
+    let raw_expression = cursor.slice(expression_start, cursor.position());
+    let leading_whitespace = raw_expression.len() - raw_expression.trim_start().len();
+    let expression = raw_expression.trim().to_owned();
 
     if expression.is_empty() {
         return Err(vec![Diagnostic::new(
@@ -219,6 +244,12 @@ fn parse_interpolation(cursor: &mut Cursor) -> Result<InterpolationNode, Vec<Dia
         )]);
     }
 
+    javascript::validate_expression(
+        cursor.source(),
+        &expression,
+        expression_start + leading_whitespace,
+    )?;
+
     cursor.advance_by(2); // skip }}
     let end = cursor.position();
 
@@ -226,6 +257,133 @@ fn parse_interpolation(cursor: &mut Cursor) -> Result<InterpolationNode, Vec<Dia
         expression,
         span: Span { start, end },
     })
+}
+
+fn parse_html_segment(cursor: &mut Cursor) -> Result<Vec<Node>, Vec<Diagnostic>> {
+    if cursor.starts_with("<!--") {
+        return Ok(vec![Node::Text(consume_html_comment(cursor))]);
+    }
+
+    if let Some(tag_name) = raw_text_tag_name(cursor) {
+        return Ok(vec![Node::Text(consume_raw_text_element(cursor, tag_name))]);
+    }
+
+    let mut nodes = Vec::new();
+    let mut text = String::new();
+    let mut text_start = cursor.position();
+    let mut quote = None;
+
+    while !cursor.is_eof() {
+        if cursor.starts_with("{{") {
+            push_text_node(&mut nodes, &mut text, text_start, cursor.position());
+            nodes.push(Node::Interpolation(parse_interpolation(cursor)?));
+            text_start = cursor.position();
+            continue;
+        }
+
+        if is_escaped_syntax(cursor) {
+            cursor.advance();
+            if let Some(character) = cursor.advance() {
+                text.push(character);
+            }
+            continue;
+        }
+
+        let Some(character) = cursor.advance() else {
+            break;
+        };
+        text.push(character);
+
+        match (quote, character) {
+            (None, '\'' | '"' | '`') => quote = Some(character),
+            (Some(active), current) if active == current => quote = None,
+            (None, '>') => break,
+            _ => {}
+        }
+    }
+
+    push_text_node(&mut nodes, &mut text, text_start, cursor.position());
+    Ok(nodes)
+}
+
+fn consume_html_comment(cursor: &mut Cursor) -> TextNode {
+    let start = cursor.position();
+    while !cursor.is_eof() && !cursor.starts_with("-->") {
+        cursor.advance();
+    }
+    if cursor.starts_with("-->") {
+        cursor.advance_by(3);
+    }
+
+    TextNode {
+        value: cursor.slice(start, cursor.position()).to_owned(),
+        span: Span {
+            start,
+            end: cursor.position(),
+        },
+    }
+}
+
+fn raw_text_tag_name(cursor: &Cursor) -> Option<&'static str> {
+    ["script", "style"].into_iter().find(|name| {
+        let remaining = &cursor.source()[cursor.position()..];
+        let opening = format!("<{name}");
+        remaining
+            .get(..opening.len())
+            .is_some_and(|candidate| candidate.eq_ignore_ascii_case(&opening))
+            && remaining[opening.len()..]
+                .chars()
+                .next()
+                .is_some_and(|character| {
+                    character.is_whitespace() || matches!(character, '>' | '/')
+                })
+    })
+}
+
+fn consume_raw_text_element(cursor: &mut Cursor, tag_name: &str) -> TextNode {
+    let start = cursor.position();
+    let closing = format!("</{tag_name}");
+
+    while !cursor.is_eof() {
+        let remaining = &cursor.source()[cursor.position()..];
+        let is_closing = remaining
+            .get(..closing.len())
+            .is_some_and(|candidate| candidate.eq_ignore_ascii_case(&closing))
+            && remaining[closing.len()..]
+                .chars()
+                .next()
+                .is_some_and(|character| character.is_whitespace() || character == '>');
+
+        if is_closing {
+            while let Some(character) = cursor.advance() {
+                if character == '>' {
+                    break;
+                }
+            }
+            break;
+        }
+
+        cursor.advance();
+    }
+
+    TextNode {
+        value: cursor.slice(start, cursor.position()).to_owned(),
+        span: Span {
+            start,
+            end: cursor.position(),
+        },
+    }
+}
+
+fn push_text_node(nodes: &mut Vec<Node>, text: &mut String, start: usize, end: usize) {
+    if text.is_empty() {
+        return;
+    }
+
+    nodes.push(Node::Text(TextNode {
+        value: std::mem::take(text),
+        span: Span { start, end },
+    }));
 }
 
 fn is_unquoted_html_tag_interpolation(source: &str, position: usize) -> bool {
@@ -284,7 +442,7 @@ fn parse_if_block(cursor: &mut Cursor) -> Result<IfBlockNode, Vec<Diagnostic>> {
     let start = cursor.position();
     cursor.advance_by(IF_START.len());
 
-    let condition = parse_parenthesized_expression(cursor)?;
+    let condition = parse_parenthesized_expression(cursor, true)?;
     expect_block_open(cursor)?;
 
     let first_branch_children = parse_nodes(cursor, &["}"])?;
@@ -307,7 +465,7 @@ fn parse_if_block(cursor: &mut Cursor) -> Result<IfBlockNode, Vec<Diagnostic>> {
         if matches_keyword(cursor, ELSE_IF_START) {
             let branch_start = cursor.position();
             cursor.advance_by(ELSE_IF_START.len());
-            let condition = parse_parenthesized_expression(cursor)?;
+            let condition = parse_parenthesized_expression(cursor, true)?;
             expect_block_open(cursor)?;
             let children = parse_nodes(cursor, &["}"])?;
             expect_block_close(cursor)?;
@@ -349,8 +507,22 @@ fn parse_for_block(cursor: &mut Cursor) -> Result<ForBlockNode, Vec<Diagnostic>>
     let start = cursor.position();
     cursor.advance_by(FOR_START.len());
 
-    let header = parse_parenthesized_expression(cursor)?;
+    let header = parse_parenthesized_expression(cursor, false)?;
     let (item, iterable, track) = parse_for_header(&header, start, cursor)?;
+
+    let header_start = cursor.source()[start..cursor.position()]
+        .find(&header)
+        .map_or(start, |offset| start + offset);
+    let iterable_start = header
+        .find(&iterable)
+        .map_or(header_start, |offset| header_start + offset);
+    javascript::validate_expression(cursor.source(), &iterable, iterable_start)?;
+    if let Some(track_expression) = &track {
+        let track_start = header
+            .rfind(track_expression)
+            .map_or(header_start, |offset| header_start + offset);
+        javascript::validate_expression(cursor.source(), track_expression, track_start)?;
+    }
 
     expect_block_open(cursor)?;
     let children = parse_nodes(cursor, &["}"])?;
@@ -391,7 +563,7 @@ fn parse_for_header(
 ) -> Result<(String, String, Option<String>), Vec<Diagnostic>> {
     let trimmed = header.trim();
 
-    let (for_part, track) = match find_last_top_level_semicolon(trimmed) {
+    let (for_part, track) = match javascript::find_last_top_level_semicolon(trimmed) {
         Some(index) => {
             let track_part = trimmed[index + 1..].trim();
             if !starts_with_track_keyword(track_part) {
@@ -526,84 +698,11 @@ fn is_valid_binding_identifier(value: &str) -> bool {
     !value.starts_with("__") && !RESERVED.contains(&value)
 }
 
-fn find_last_top_level_semicolon(value: &str) -> Option<usize> {
-    let mut quote = None;
-    let mut escaped = false;
-    let mut line_comment = false;
-    let mut block_comment = false;
-    let mut paren_depth = 0usize;
-    let mut bracket_depth = 0usize;
-    let mut brace_depth = 0usize;
-    let mut last = None;
-    let bytes = value.as_bytes();
-    let mut index = 0usize;
-
-    while index < bytes.len() {
-        let ch = bytes[index] as char;
-        let next = bytes.get(index + 1).copied().map(char::from);
-
-        if line_comment {
-            if ch == '\n' {
-                line_comment = false;
-            }
-            index += 1;
-            continue;
-        }
-        if block_comment {
-            if ch == '*' && next == Some('/') {
-                block_comment = false;
-                index += 2;
-            } else {
-                index += 1;
-            }
-            continue;
-        }
-        if let Some(active_quote) = quote {
-            if escaped {
-                escaped = false;
-            } else if ch == '\\' {
-                escaped = true;
-            } else if ch == active_quote {
-                quote = None;
-            }
-            index += 1;
-            continue;
-        }
-
-        match (ch, next) {
-            ('/', Some('/')) => {
-                line_comment = true;
-                index += 2;
-                continue;
-            }
-            ('/', Some('*')) => {
-                block_comment = true;
-                index += 2;
-                continue;
-            }
-            ('\'' | '"' | '`', _) => quote = Some(ch),
-            ('(', _) => paren_depth += 1,
-            (')', _) => paren_depth = paren_depth.saturating_sub(1),
-            ('[', _) => bracket_depth += 1,
-            (']', _) => bracket_depth = bracket_depth.saturating_sub(1),
-            ('{', _) => brace_depth += 1,
-            ('}', _) => brace_depth = brace_depth.saturating_sub(1),
-            (';', _) if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 => {
-                last = Some(index)
-            }
-            _ => {}
-        }
-        index += 1;
-    }
-
-    last
-}
-
 fn parse_switch_block(cursor: &mut Cursor) -> Result<SwitchBlockNode, Vec<Diagnostic>> {
     let start = cursor.position();
     cursor.advance_by(SWITCH_START.len());
 
-    let expression = parse_parenthesized_expression(cursor)?;
+    let expression = parse_parenthesized_expression(cursor, true)?;
     expect_block_open(cursor)?;
 
     let mut cases = Vec::new();
@@ -612,9 +711,9 @@ fn parse_switch_block(cursor: &mut Cursor) -> Result<SwitchBlockNode, Vec<Diagno
     loop {
         skip_whitespace(cursor);
 
-        if cursor.starts_with(CASE_START) {
+        if matches_keyword(cursor, CASE_START) {
             cursor.advance_by(CASE_START.len());
-            let case_expression = parse_parenthesized_expression(cursor)?;
+            let case_expression = parse_parenthesized_expression(cursor, true)?;
             expect_block_open(cursor)?;
             let children = parse_nodes(cursor, &[CASE_START, DEFAULT_START, "}"])?;
             expect_block_close(cursor)?;
@@ -629,7 +728,7 @@ fn parse_switch_block(cursor: &mut Cursor) -> Result<SwitchBlockNode, Vec<Diagno
             continue;
         }
 
-        if cursor.starts_with(DEFAULT_START) {
+        if matches_keyword(cursor, DEFAULT_START) {
             cursor.advance_by(DEFAULT_START.len());
             expect_block_open(cursor)?;
             default = Some(parse_nodes(cursor, &[CASE_START, DEFAULT_START, "}"])?);
@@ -655,7 +754,10 @@ fn parse_switch_block(cursor: &mut Cursor) -> Result<SwitchBlockNode, Vec<Diagno
     })
 }
 
-fn parse_parenthesized_expression(cursor: &mut Cursor) -> Result<String, Vec<Diagnostic>> {
+fn parse_parenthesized_expression(
+    cursor: &mut Cursor,
+    validate: bool,
+) -> Result<String, Vec<Diagnostic>> {
     skip_whitespace(cursor);
     let start = cursor.position();
 
@@ -676,17 +778,17 @@ fn parse_parenthesized_expression(cursor: &mut Cursor) -> Result<String, Vec<Dia
     while !cursor.is_eof() && depth > 0 {
         let ch = cursor.current().unwrap();
 
-        if let Some(quote) = current_js_string_quote(cursor) {
-            skip_js_string(cursor, quote);
+        if let Some(quote) = javascript::current_string_quote(cursor) {
+            javascript::skip_string(cursor, quote);
             continue;
         }
 
-        if skip_js_comment(cursor) {
+        if javascript::skip_comment(cursor) {
             continue;
         }
 
-        if cursor.starts_with("/") && is_probable_js_regex(cursor, expression_start) {
-            skip_js_regex(cursor);
+        if cursor.starts_with("/") && javascript::is_probable_regex(cursor, expression_start) {
+            javascript::skip_regex(cursor);
             continue;
         }
 
@@ -709,10 +811,9 @@ fn parse_parenthesized_expression(cursor: &mut Cursor) -> Result<String, Vec<Dia
         )]);
     }
 
-    let expression = cursor
-        .slice(expression_start, cursor.position() - 1)
-        .trim()
-        .to_owned();
+    let raw_expression = cursor.slice(expression_start, cursor.position() - 1);
+    let leading_whitespace = raw_expression.len() - raw_expression.trim_start().len();
+    let expression = raw_expression.trim().to_owned();
 
     if expression.is_empty() {
         return Err(vec![Diagnostic::new(
@@ -722,6 +823,14 @@ fn parse_parenthesized_expression(cursor: &mut Cursor) -> Result<String, Vec<Dia
             expression_start,
             cursor.position().saturating_sub(1),
         )]);
+    }
+
+    if validate {
+        javascript::validate_expression(
+            cursor.source(),
+            &expression,
+            expression_start + leading_whitespace,
+        )?;
     }
 
     Ok(expression)
@@ -774,7 +883,8 @@ fn skip_whitespace(cursor: &mut Cursor) {
 }
 
 fn starts_syntax(cursor: &Cursor) -> bool {
-    cursor.starts_with("{{")
+    cursor.starts_with("<")
+        || cursor.starts_with("{{")
         || cursor.starts_with("}")
         || matches_keyword(cursor, IF_START)
         || matches_keyword(cursor, FOR_START)
@@ -799,6 +909,12 @@ fn matches_keyword(cursor: &Cursor, keyword: &str) -> bool {
         return false;
     }
 
+    let previous = cursor.source()[..cursor.position()].chars().next_back();
+    if matches!(previous, Some(character) if character.is_ascii_alphanumeric() || matches!(character, '_' | '-'))
+    {
+        return false;
+    }
+
     let next = cursor.source()[cursor.position() + keyword.len()..]
         .chars()
         .next();
@@ -808,189 +924,4 @@ fn matches_keyword(cursor: &Cursor, keyword: &str) -> bool {
 
 fn is_escaped_syntax(cursor: &Cursor) -> bool {
     cursor.starts_with("\\") && matches!(cursor.peek(1), Some('@' | '{' | '}' | '\\'))
-}
-
-fn current_js_string_quote(cursor: &Cursor) -> Option<char> {
-    match cursor.current() {
-        Some('\'' | '"' | '`') => cursor.current(),
-        _ => None,
-    }
-}
-
-fn skip_js_string(cursor: &mut Cursor, quote: char) {
-    if quote == '`' {
-        skip_js_template(cursor);
-        return;
-    }
-
-    cursor.advance();
-
-    while let Some(ch) = cursor.current() {
-        cursor.advance();
-
-        if ch == '\\' {
-            cursor.advance();
-            continue;
-        }
-
-        if ch == quote {
-            break;
-        }
-    }
-}
-
-fn skip_js_template(cursor: &mut Cursor) {
-    cursor.advance(); // opening backtick
-
-    while let Some(ch) = cursor.current() {
-        if ch == '\\' {
-            cursor.advance();
-            cursor.advance();
-            continue;
-        }
-
-        if ch == '`' {
-            cursor.advance();
-            return;
-        }
-
-        if cursor.starts_with("${") {
-            cursor.advance_by(2);
-            skip_js_template_expression(cursor);
-            continue;
-        }
-
-        cursor.advance();
-    }
-}
-
-fn skip_js_template_expression(cursor: &mut Cursor) {
-    let expression_start = cursor.position();
-    let mut brace_depth = 1usize;
-
-    while !cursor.is_eof() && brace_depth > 0 {
-        if let Some(quote) = current_js_string_quote(cursor) {
-            skip_js_string(cursor, quote);
-            continue;
-        }
-
-        if skip_js_comment(cursor) {
-            continue;
-        }
-
-        if cursor.starts_with("/") && is_probable_js_regex(cursor, expression_start) {
-            skip_js_regex(cursor);
-            continue;
-        }
-
-        match cursor.current() {
-            Some('{') => brace_depth += 1,
-            Some('}') => brace_depth -= 1,
-            _ => {}
-        }
-        cursor.advance();
-    }
-}
-
-fn skip_js_comment(cursor: &mut Cursor) -> bool {
-    if cursor.starts_with("//") {
-        cursor.advance_by(2);
-        while let Some(ch) = cursor.current() {
-            cursor.advance();
-            if ch == '\n' {
-                break;
-            }
-        }
-        return true;
-    }
-
-    if cursor.starts_with("/*") {
-        cursor.advance_by(2);
-        while !cursor.is_eof() && !cursor.starts_with("*/") {
-            cursor.advance();
-        }
-        if cursor.starts_with("*/") {
-            cursor.advance_by(2);
-        }
-        return true;
-    }
-
-    false
-}
-
-fn is_probable_js_regex(cursor: &Cursor, expression_start: usize) -> bool {
-    let before = cursor.slice(expression_start, cursor.position()).trim_end();
-    let Some(previous) = before.chars().next_back() else {
-        return true;
-    };
-
-    if matches!(
-        previous,
-        '(' | '['
-            | '{'
-            | ':'
-            | ','
-            | ';'
-            | '='
-            | '!'
-            | '?'
-            | '&'
-            | '|'
-            | '+'
-            | '-'
-            | '*'
-            | '%'
-            | '^'
-            | '~'
-            | '<'
-            | '>'
-    ) {
-        return true;
-    }
-
-    let previous_word = before
-        .rsplit(|character: char| !(character.is_ascii_alphanumeric() || character == '_'))
-        .next()
-        .unwrap_or_default();
-
-    matches!(
-        previous_word,
-        "await"
-            | "case"
-            | "delete"
-            | "do"
-            | "else"
-            | "in"
-            | "instanceof"
-            | "new"
-            | "of"
-            | "return"
-            | "throw"
-            | "typeof"
-            | "void"
-            | "yield"
-    )
-}
-
-fn skip_js_regex(cursor: &mut Cursor) {
-    cursor.advance(); // opening slash
-    let mut in_character_class = false;
-
-    while let Some(ch) = cursor.current() {
-        cursor.advance();
-        match ch {
-            '\\' => {
-                cursor.advance();
-            }
-            '[' => in_character_class = true,
-            ']' => in_character_class = false,
-            '/' if !in_character_class => break,
-            '\n' | '\r' => break,
-            _ => {}
-        }
-    }
-
-    while cursor.current().is_some_and(|ch| ch.is_ascii_alphabetic()) {
-        cursor.advance();
-    }
 }

@@ -1,4 +1,5 @@
-import { execFileSync } from "node:child_process";
+import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
@@ -16,6 +17,29 @@ export interface FlowmarkCompileRequest {
   compilerPath?: string;
 }
 
+export interface FlowmarkDiagnostic {
+  message: string;
+  severity: "error" | "warning";
+  code?: string | null;
+  filename: string;
+  line: number;
+  column: number;
+  start: number;
+  end: number;
+}
+
+export class FlowmarkCompileError extends Error {
+  readonly diagnostics: FlowmarkDiagnostic[];
+
+  constructor(message: string, diagnostics: FlowmarkDiagnostic[] = []) {
+    super(message);
+    this.name = "FlowmarkCompileError";
+    this.diagnostics = diagnostics;
+  }
+}
+
+const compileCache = new Map<string, Promise<string>>();
+
 export default function flowmark(options: FlowmarkViteOptions = {}): Plugin {
   const runtimeImport = options.runtimeImport ?? "@flowmark/runtime";
   const compilerPath = resolveCompilerPath(options.compilerPath);
@@ -24,18 +48,35 @@ export default function flowmark(options: FlowmarkViteOptions = {}): Plugin {
     name: "@flowmark/vite",
     enforce: "pre",
 
-    transform(code, id) {
+    async transform(code, id) {
       const filename = stripQuery(id);
       if (!filename.endsWith(".flow")) return null;
 
-      return {
-        code: compileFlowmark(code, {
-          filename,
-          runtimeImport,
-          compilerPath,
-        }),
-        map: null,
-      };
+      try {
+        return {
+          code: await compileFlowmark(code, {
+            filename,
+            runtimeImport,
+            compilerPath,
+          }),
+          map: null,
+        };
+      } catch (error) {
+        if (error instanceof FlowmarkCompileError) {
+          const diagnostic = error.diagnostics[0];
+          if (diagnostic) {
+            this.error({
+              message: formatDiagnostic(diagnostic),
+              id: filename,
+              loc: {
+                line: diagnostic.line,
+                column: Math.max(0, diagnostic.column - 1),
+              },
+            });
+          }
+        }
+        throw error;
+      }
     },
   };
 }
@@ -43,12 +84,33 @@ export default function flowmark(options: FlowmarkViteOptions = {}): Plugin {
 export function compileFlowmark(
   source: string,
   request: FlowmarkCompileRequest,
-): string {
+): Promise<string> {
   const compilerPath = resolveCompilerPath(request.compilerPath);
+  const normalizedRequest = { ...request, compilerPath };
+  const cacheKey = createHash("sha256")
+    .update(source)
+    .update("\0")
+    .update(JSON.stringify(normalizedRequest))
+    .digest("hex");
+  const cached = compileCache.get(cacheKey);
+  if (cached) return cached;
 
-  try {
-    return execFileSync(
-      compilerPath,
+  const compilation = runCompiler(source, normalizedRequest).catch((error) => {
+    compileCache.delete(cacheKey);
+    throw error;
+  });
+  compileCache.set(cacheKey, compilation);
+  return compilation;
+}
+
+function runCompiler(
+  source: string,
+  request: Required<Pick<FlowmarkCompileRequest, "compilerPath">> &
+    FlowmarkCompileRequest,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      request.compilerPath,
       [
         "compile",
         "-",
@@ -58,34 +120,88 @@ export function compileFlowmark(
         request.filename,
         "--line-offset",
         String(request.lineOffset ?? 0),
+        "--diagnostic-format",
+        "json",
       ],
-      {
-        encoding: "utf8",
-        input: source,
-        stdio: ["pipe", "pipe", "pipe"],
-      },
+      { stdio: ["pipe", "pipe", "pipe"] },
     );
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      "code" in error &&
-      (error as NodeJS.ErrnoException).code === "ENOENT"
-    ) {
-      throw new Error(
-        `Flowmark compiler was not found at "${compilerPath}". ` +
-          "Install the Flowmark CLI, run `cargo build --workspace` in the monorepo, " +
-          "or provide compilerPath explicitly.",
-      );
-    }
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
 
-    const message =
-      error instanceof Error && "stderr" in error
-        ? String((error as Error & { stderr?: Buffer | string }).stderr)
-        : String(error);
-    throw new Error(
-      `Failed to compile Flowmark template ${request.filename}\n${message}`,
-    );
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk;
+    });
+    child.on("error", (error: NodeJS.ErrnoException) => {
+      if (settled) return;
+      settled = true;
+      if (error.code === "ENOENT") {
+        reject(
+          new FlowmarkCompileError(
+            `Flowmark compiler was not found at "${request.compilerPath}". ` +
+              "Install the Flowmark CLI, run `cargo build --workspace` in the monorepo, " +
+              "or provide compilerPath explicitly.",
+          ),
+        );
+        return;
+      }
+      reject(error);
+    });
+    child.on("close", (exitCode) => {
+      if (settled) return;
+      settled = true;
+      if (exitCode === 0) {
+        resolve(stdout);
+        return;
+      }
+
+      const diagnostics = parseDiagnostics(stderr);
+      reject(
+        new FlowmarkCompileError(
+          diagnostics.length > 0
+            ? formatDiagnostic(diagnostics[0]!)
+            : `Failed to compile Flowmark template ${request.filename}\n${stderr}`,
+          diagnostics,
+        ),
+      );
+    });
+
+    child.stdin.on("error", () => {
+      // The close/error handler reports the useful compiler failure.
+    });
+    child.stdin.end(source);
+  });
+}
+
+function parseDiagnostics(stderr: string): FlowmarkDiagnostic[] {
+  const lines = stderr.trim().split("\n");
+  let line: string | undefined;
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (lines[index]?.trim().startsWith("{")) {
+      line = lines[index];
+      break;
+    }
   }
+  if (!line) return [];
+
+  try {
+    const parsed = JSON.parse(line) as {
+      diagnostics?: FlowmarkDiagnostic[];
+    };
+    return parsed.diagnostics ?? [];
+  } catch {
+    return [];
+  }
+}
+
+function formatDiagnostic(diagnostic: FlowmarkDiagnostic): string {
+  const code = diagnostic.code ? ` [${diagnostic.code}]` : "";
+  return `${diagnostic.message}${code}`;
 }
 
 /** Resolve the compiler automatically for normal usage and monorepo development. */

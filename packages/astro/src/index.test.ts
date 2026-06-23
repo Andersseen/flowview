@@ -30,6 +30,14 @@ async function transformAstro(
   source: string,
   filename = "/src/pages/example.astro",
 ): Promise<string | null> {
+  const result = await transformAstroResult(source, filename);
+  return result?.code ?? null;
+}
+
+async function transformAstroResult(
+  source: string,
+  filename = "/src/pages/example.astro",
+): Promise<{ code: string; map: unknown } | null> {
   const transform = createEmbeddedPlugin().transform;
   if (typeof transform !== "function") {
     throw new Error("Flowmark embedded plugin has no transform hook");
@@ -37,7 +45,11 @@ async function transformAstro(
 
   const result = await transform.call({} as never, source, filename);
   if (result === null || result === undefined) return null;
-  return typeof result === "string" ? result : (result.code ?? null);
+  if (typeof result === "string") return { code: result, map: null };
+  if (typeof result.code !== "string") {
+    throw new Error("Flowmark transform returned no code");
+  }
+  return { code: result.code, map: result.map };
 }
 
 describe("Flowmark Astro integration", () => {
@@ -82,6 +94,22 @@ const second = { value: "B" };
     );
     expect(result).toContain("__flowmarkRender0(first)");
     expect(result).toContain("__flowmarkRender1(second)");
+  });
+
+  it("uses Astro's parser for complex context expressions and returns a source map", async () => {
+    const filename = "/src/pages/filtered.astro";
+    const result = await transformAstroResult(
+      `<template flowmark is:raw context={{ items: source.filter((item) => item.score > 1) }}>{{ context.items.length }}</template>`,
+      filename,
+    );
+
+    expect(result?.code).toContain(
+      "__flowmarkRender0({ items: source.filter((item) => item.score > 1) })",
+    );
+    expect(result?.map).toMatchObject({
+      sources: [filename],
+      sourcesContent: [expect.stringContaining("<template flowmark")],
+    });
   });
 
   it("ignores comments, raw-text elements, and similarly named tags", async () => {

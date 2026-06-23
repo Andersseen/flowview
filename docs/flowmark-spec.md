@@ -202,6 +202,7 @@ Syntax:
 Required behavior:
 
 - The expression is emitted as JavaScript source.
+- The compiler validates expression syntax before generating JavaScript.
 - The resulting value is escaped by default through the runtime.
 - `null`, `undefined`, and `false` render as an empty string.
 - HTML escaping does not imply URL, CSS, or JavaScript sanitization. Hosts must
@@ -361,6 +362,7 @@ Required behavior:
 - Emit framework-neutral render functions.
 - Respect Vite dev server invalidation.
 - Return useful compile diagnostics through Vite errors.
+- Provide an opt-in TypeScript declaration for `*.flow` imports.
 - Avoid runtime compilation in production builds.
 
 Acceptance tests:

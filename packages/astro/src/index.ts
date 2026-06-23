@@ -1,3 +1,9 @@
+import { parse } from "@astrojs/compiler/sync";
+import type {
+  Node as AstroNode,
+  ParentLikeNode,
+  TagLikeNode,
+} from "@astrojs/compiler/types";
 import { createHash } from "node:crypto";
 import flowmarkVite, {
   compileFlowmark,
@@ -5,6 +11,7 @@ import flowmarkVite, {
   type FlowmarkViteOptions,
 } from "@flowmark/vite";
 import type { AstroIntegration } from "astro";
+import MagicString from "magic-string";
 import type { Plugin } from "vite";
 
 export interface FlowmarkAstroOptions extends FlowmarkViteOptions {}
@@ -64,9 +71,7 @@ function flowmarkAstroPlugin(options: FlowmarkAstroOptions): Plugin {
 
       if (ownIndex > astroIndex && astroIndex !== -1) {
         const [plugin] = plugins.splice(ownIndex, 1);
-        if (plugin) {
-          plugins.splice(astroIndex, 0, plugin);
-        }
+        if (plugin) plugins.splice(astroIndex, 0, plugin);
       }
     },
 
@@ -74,19 +79,15 @@ function flowmarkAstroPlugin(options: FlowmarkAstroOptions): Plugin {
       if (id.startsWith(VIRTUAL_PREFIX)) {
         return RESOLVED_VIRTUAL_PREFIX + id.slice(VIRTUAL_PREFIX.length);
       }
-
       return null;
     },
 
-    load(id) {
-      if (!id.startsWith(RESOLVED_VIRTUAL_PREFIX)) {
-        return null;
-      }
+    async load(id) {
+      if (!id.startsWith(RESOLVED_VIRTUAL_PREFIX)) return null;
 
       const publicId =
         VIRTUAL_PREFIX + id.slice(RESOLVED_VIRTUAL_PREFIX.length);
       const template = virtualModules.get(publicId);
-
       if (template === undefined) {
         throw new Error(`Missing Flowmark virtual module: ${publicId}`);
       }
@@ -101,25 +102,16 @@ function flowmarkAstroPlugin(options: FlowmarkAstroOptions): Plugin {
 
     transform(code, id) {
       const cleanId = stripQuery(id);
-
       if (!cleanId.endsWith(".astro") || !code.includes("flowmark")) {
         return null;
       }
 
-      const result = transformAstroSource(
+      return transformAstroSource(
         code,
         cleanId,
         virtualModules,
         virtualIdsByFile,
       );
-      if (result === null) {
-        return null;
-      }
-
-      return {
-        code: result,
-        map: null,
-      };
     },
   };
 }
@@ -129,20 +121,19 @@ function transformAstroSource(
   filename: string,
   virtualModules: Map<string, VirtualTemplate>,
   virtualIdsByFile: Map<string, Set<string>>,
-): string | null {
+): { code: string; map: ReturnType<MagicString["generateMap"]> } | null {
   const templates = findEmbeddedTemplates(code);
+  if (templates.length === 0) return null;
 
-  if (templates.length === 0) {
-    return null;
-  }
-
-  const hash = createHash("sha256").update(filename).digest("hex").slice(0, 12);
+  const fileHash = createHash("sha256")
+    .update(filename)
+    .digest("hex")
+    .slice(0, 12);
   const imports: string[] = [];
   const previousIds = virtualIdsByFile.get(filename);
   previousIds?.forEach((id) => virtualModules.delete(id));
   const currentIds = new Set<string>();
-  let transformed = "";
-  let cursor = 0;
+  const transformed = new MagicString(code);
 
   templates.forEach((template, index) => {
     const renderName = `__flowmarkRender${index}`;
@@ -150,7 +141,7 @@ function transformAstroSource(
       .update(template.source)
       .digest("hex")
       .slice(0, 12);
-    const virtualId = `${VIRTUAL_PREFIX}${hash}/${index}-${contentHash}.js`;
+    const virtualId = `${VIRTUAL_PREFIX}${fileHash}/${index}-${contentHash}.js`;
     virtualModules.set(virtualId, {
       source: template.source,
       filename,
@@ -158,41 +149,55 @@ function transformAstroSource(
     });
     currentIds.add(virtualId);
     imports.push(`import { render as ${renderName} } from "${virtualId}";`);
-
-    transformed += code.slice(cursor, template.start);
-    transformed += `<Fragment set:html={${renderName}(${template.contextExpression})} />`;
-    cursor = template.end;
+    transformed.overwrite(
+      template.start,
+      template.end,
+      `<Fragment set:html={${renderName}(${template.contextExpression})} />`,
+    );
   });
 
-  transformed += code.slice(cursor);
   virtualIdsByFile.set(filename, currentIds);
+  injectFrontmatter(transformed, code, imports.join("\n"));
 
-  return injectFrontmatter(transformed, imports.join("\n"));
+  return {
+    code: transformed.toString(),
+    map: transformed.generateMap({
+      source: filename,
+      includeContent: true,
+      hires: true,
+    }),
+  };
 }
 
 function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
+  const { ast } = parse(code, { position: true });
   const templates: EmbeddedTemplate[] = [];
-  let cursor = findFrontmatterEnd(code);
 
-  while (cursor < code.length) {
-    const openStart = findNextTemplateOpen(code, cursor);
-    if (openStart === -1) {
-      break;
-    }
+  visitAstroNodes(ast, (node) => {
+    if (!isTagNode(node) || node.name !== "template") return true;
+    const flowmarkAttribute = node.attributes.find(
+      (attribute) => attribute.name === "flowmark",
+    );
+    if (!flowmarkAttribute) return true;
 
+    const firstKnownOffset =
+      flowmarkAttribute.position?.start.offset ??
+      node.position?.start.offset ??
+      0;
+    const openStart = code.lastIndexOf("<", firstKnownOffset);
     const openEnd = findTagEnd(code, openStart);
-    if (openEnd === -1) {
-      break;
+    if (openStart === -1 || openEnd === -1) {
+      throw new Error("Flowmark embedded template has an invalid opening tag.");
     }
 
-    const openTag = code.slice(openStart, openEnd + 1);
-    if (!hasBooleanAttribute(openTag, "flowmark")) {
-      cursor = openEnd + 1;
-      continue;
-    }
-
-    const contextExpression = readBracedAttribute(openTag, "context");
-    if (contextExpression === null || contextExpression.length === 0) {
+    const contextAttribute = node.attributes.find(
+      (attribute) => attribute.name === "context",
+    );
+    const contextExpression =
+      contextAttribute?.kind === "expression"
+        ? contextAttribute.value.trim()
+        : "";
+    if (!contextExpression) {
       throw new Error(
         "Flowmark embedded templates require a non-empty context={...} attribute.",
       );
@@ -202,66 +207,41 @@ function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
     if (closeStart === -1) {
       throw new Error("Flowmark embedded template is missing </template>.");
     }
-
     const closeTagEnd = findTagEnd(code, closeStart);
     if (closeTagEnd === -1) {
       throw new Error("Flowmark embedded template has an invalid closing tag.");
     }
-    const closeEnd = closeTagEnd + 1;
+
     templates.push({
       source: code.slice(openEnd + 1, closeStart),
       contextExpression,
       start: openStart,
-      end: closeEnd,
+      end: closeTagEnd + 1,
       lineOffset: countNewlines(code, 0, openEnd + 1),
     });
-    cursor = closeEnd;
-  }
 
-  return templates;
+    return false;
+  });
+
+  return templates.sort((left, right) => left.start - right.start);
 }
 
-function findFrontmatterEnd(code: string): number {
-  const closingFence = findFrontmatterClose(code);
-  return closingFence === -1 ? 0 : closingFence + "---".length;
+function visitAstroNodes(
+  root: ParentLikeNode,
+  visitor: (node: AstroNode) => boolean,
+): void {
+  for (const child of root.children) {
+    const shouldVisitChildren = visitor(child);
+    if (shouldVisitChildren && "children" in child) {
+      visitAstroNodes(child, visitor);
+    }
+  }
 }
 
-function findNextTemplateOpen(code: string, start: number): number {
-  let cursor = start;
-
-  while (cursor < code.length) {
-    const tagStart = code.indexOf("<", cursor);
-    if (tagStart === -1) return -1;
-
-    if (code.startsWith("<!--", tagStart)) {
-      const commentEnd = code.indexOf("-->", tagStart + 4);
-      if (commentEnd === -1) return -1;
-      cursor = commentEnd + 3;
-      continue;
-    }
-
-    const rawTextTag = ["script", "style"].find(
-      (name) =>
-        code.startsWith(`<${name}`, tagStart) &&
-        isTagNameBoundary(code[tagStart + name.length + 1]),
-    );
-    if (rawTextTag !== undefined) {
-      const closeStart = code.indexOf(`</${rawTextTag}>`, tagStart + 1);
-      if (closeStart === -1) return -1;
-      cursor = closeStart + rawTextTag.length + 3;
-      continue;
-    }
-
-    if (
-      code.startsWith("<template", tagStart) &&
-      isTagNameBoundary(code[tagStart + "<template".length])
-    ) {
-      return tagStart;
-    }
-    cursor = tagStart + 1;
-  }
-
-  return -1;
+function isTagNode(node: AstroNode): node is TagLikeNode {
+  return ["element", "component", "custom-element", "fragment"].includes(
+    node.type,
+  );
 }
 
 function findMatchingTemplateClose(code: string, start: number): number {
@@ -320,54 +300,24 @@ function findMatchingTemplateClose(code: string, start: number): number {
   return -1;
 }
 
-function isTagNameBoundary(character: string | undefined): boolean {
-  return character === undefined || /[\s/>]/.test(character);
-}
-
-function countNewlines(value: string, start: number, end: number): number {
-  let count = 0;
-  for (let index = start; index < end; index += 1) {
-    if (value[index] === "\n") count += 1;
-  }
-  return count;
-}
-
 function findTagEnd(code: string, start: number): number {
   let quote: string | null = null;
   let braceDepth = 0;
 
   for (let index = start; index < code.length; index += 1) {
     const character = code[index];
-
     if (quote !== null) {
-      if (character === "\\") {
-        index += 1;
-        continue;
-      }
-
-      if (character === quote) {
-        quote = null;
-      }
-
+      if (character === "\\") index += 1;
+      else if (character === quote) quote = null;
       continue;
     }
-
     if (character === '"' || character === "'" || character === "`") {
       quote = character;
-      continue;
-    }
-
-    if (character === "{") {
+    } else if (character === "{") {
       braceDepth += 1;
-      continue;
-    }
-
-    if (character === "}") {
+    } else if (character === "}") {
       braceDepth = Math.max(0, braceDepth - 1);
-      continue;
-    }
-
-    if (character === ">" && braceDepth === 0) {
+    } else if (character === ">" && braceDepth === 0) {
       return index;
     }
   }
@@ -375,67 +325,17 @@ function findTagEnd(code: string, start: number): number {
   return -1;
 }
 
-function hasBooleanAttribute(tag: string, name: string): boolean {
-  const pattern = new RegExp(`(?:^|\\s)${name}(?:\\s|=|>|$)`);
-  return pattern.test(tag);
-}
-
-function readBracedAttribute(tag: string, name: string): string | null {
-  const attributeStart = tag.search(new RegExp(`(?:^|\\s)${name}\\s*=\\s*\\{`));
-  if (attributeStart === -1) {
-    return null;
-  }
-
-  const equalsIndex = tag.indexOf("=", attributeStart);
-  const braceStart = tag.indexOf("{", equalsIndex);
-  let depth = 0;
-  let quote: string | null = null;
-
-  for (let index = braceStart; index < tag.length; index += 1) {
-    const character = tag[index];
-
-    if (quote !== null) {
-      if (character === "\\") {
-        index += 1;
-        continue;
-      }
-
-      if (character === quote) {
-        quote = null;
-      }
-
-      continue;
-    }
-
-    if (character === '"' || character === "'" || character === "`") {
-      quote = character;
-      continue;
-    }
-
-    if (character === "{") {
-      depth += 1;
-      continue;
-    }
-
-    if (character === "}") {
-      depth -= 1;
-      if (depth === 0) {
-        return tag.slice(braceStart + 1, index).trim();
-      }
-    }
-  }
-
-  throw new Error(`Unclosed ${name}={...} attribute in Flowmark template.`);
-}
-
-function injectFrontmatter(code: string, content: string): string {
-  const closingFence = findFrontmatterClose(code);
-
+function injectFrontmatter(
+  transformed: MagicString,
+  original: string,
+  content: string,
+): void {
+  const closingFence = findFrontmatterClose(original);
   if (closingFence !== -1) {
-    return `${code.slice(0, closingFence)}${content}\n${code.slice(closingFence)}`;
+    transformed.appendLeft(closingFence, `${content}\n`);
+  } else {
+    transformed.prepend(`---\n${content}\n---\n\n`);
   }
-
-  return `---\n${content}\n---\n\n${code}`;
 }
 
 function findFrontmatterClose(code: string): number {
@@ -448,14 +348,24 @@ function findFrontmatterClose(code: string): number {
   while (lineStart <= code.length) {
     const lineEnd = code.indexOf("\n", lineStart);
     const end = lineEnd === -1 ? code.length : lineEnd;
-    if (code.slice(lineStart, end).trim() === "---") {
-      return lineStart;
-    }
+    if (code.slice(lineStart, end).trim() === "---") return lineStart;
     if (lineEnd === -1) break;
     lineStart = lineEnd + 1;
   }
 
   return -1;
+}
+
+function isTagNameBoundary(character: string | undefined): boolean {
+  return character === undefined || /[\s/>]/.test(character);
+}
+
+function countNewlines(value: string, start: number, end: number): number {
+  let count = 0;
+  for (let index = start; index < end; index += 1) {
+    if (value[index] === "\n") count += 1;
+  }
+  return count;
 }
 
 function stripQuery(id: string): string {

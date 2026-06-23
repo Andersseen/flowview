@@ -50,6 +50,11 @@ test("preserves whitespace and escapes interpolated HTML", async ({ page }) => {
     '<img src=x onerror="globalThis.__flowmarkXss = true">',
   );
   await expect(page.locator("#escaped img")).toHaveCount(0);
+  await expect(page.locator("#literal-at")).toHaveText("contact@if.example");
+  await expect(page.locator("#literal-at")).toHaveAttribute(
+    "title",
+    "@if inside an attribute is literal",
+  );
   expect(
     await page.evaluate(
       () =>

@@ -44,6 +44,8 @@ pnpm run demo
 - Keep compiler changes covered by Rust tests.
 - Keep runtime changes covered by Vitest tests.
 - Keep demo-only changes inside `examples/astro-demo`.
+- Every language or Astro integration change must update the Astro demo and its
+  browser assertions so the supported authoring path remains visible.
 - Do not add framework features to the compiler unless the project scope changes.
 - Document syntax changes in `README.md`.
 - Prefer clear diagnostics over panics.
@@ -58,11 +60,12 @@ pnpm run test
 pnpm run build
 ```
 
-If your change affects the demo, also run:
+For language and Astro integration changes, also run:
 
 ```sh
 pnpm run build:demo
 pnpm --filter @flowmark/astro-demo run test:unit
+pnpm run test:e2e:demo
 ```
 
 Playwright browser binaries are not committed. Install them locally before

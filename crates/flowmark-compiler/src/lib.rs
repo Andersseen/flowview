@@ -2,6 +2,7 @@ pub mod ast;
 pub mod codegen;
 pub mod cursor;
 pub mod diagnostics;
+mod javascript;
 pub mod parser;
 
 use diagnostics::Diagnostic;

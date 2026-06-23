@@ -6,6 +6,16 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+- Validated embedded JavaScript expressions with a production JavaScript parser
+  before generating modules.
+- Kept control-flow markers literal inside HTML attributes, comments, scripts,
+  styles, and word-like text such as email addresses.
+- Replaced Astro template discovery with the official Astro parser and added
+  source maps for `.astro` pre-transforms.
+- Added structured CLI diagnostics, asynchronous cached compiler execution, and
+  location-aware Vite errors.
+- Added a real Vite build fixture and TypeScript declarations for `.flow`
+  imports.
 - Preserved observable whitespace after completed `@if` and `@for` blocks while
   still allowing whitespace before `@else`, `@empty`, and `@else if`.
 - Required explicit closing braces before `@else`, `@else if`, and `@empty`.

@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use flowmark_compiler::{compile, CompileOptions, DiagnosticSeverity};
 use std::{
     fs,
@@ -13,6 +13,12 @@ use std::{
 struct Cli {
     #[command(subcommand)]
     command: Command,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum DiagnosticFormat {
+    Human,
+    Json,
 }
 
 #[derive(Subcommand)]
@@ -37,6 +43,10 @@ enum Command {
         /// Number of source lines to add to diagnostic locations
         #[arg(long, default_value_t = 0)]
         line_offset: usize,
+
+        /// Format used for compiler diagnostics
+        #[arg(long, value_enum, default_value_t = DiagnosticFormat::Human)]
+        diagnostic_format: DiagnosticFormat,
     },
 }
 
@@ -50,12 +60,14 @@ fn main() {
             runtime,
             display_name,
             line_offset,
+            diagnostic_format,
         } => compile_file(
             &input,
             out.as_deref(),
             &runtime,
             display_name.as_deref(),
             line_offset,
+            diagnostic_format,
         ),
     }
 }
@@ -66,6 +78,7 @@ fn compile_file(
     runtime: &str,
     display_name: Option<&str>,
     line_offset: usize,
+    diagnostic_format: DiagnosticFormat,
 ) {
     let path = Path::new(input);
 
@@ -107,27 +120,53 @@ fn compile_file(
             }
         }
         Err(diagnostics) => {
-            for diagnostic in diagnostics {
-                let severity = match diagnostic.severity {
-                    DiagnosticSeverity::Error => "error",
-                    DiagnosticSeverity::Warning => "warning",
-                };
-                let code = diagnostic
-                    .code
-                    .as_ref()
-                    .map(|c| format!("[{}] ", c))
-                    .unwrap_or_default();
-                eprintln!(
-                    "{}:{}:{}: {}{}: {}",
-                    diagnostic_name,
-                    diagnostic.line + line_offset,
-                    diagnostic.column,
-                    severity,
-                    code,
-                    diagnostic.message
-                );
+            match diagnostic_format {
+                DiagnosticFormat::Human => {
+                    for diagnostic in diagnostics {
+                        let severity = severity_name(diagnostic.severity);
+                        let code = diagnostic
+                            .code
+                            .as_ref()
+                            .map(|code| format!("[{}] ", code))
+                            .unwrap_or_default();
+                        eprintln!(
+                            "{}:{}:{}: {}{}: {}",
+                            diagnostic_name,
+                            diagnostic.line + line_offset,
+                            diagnostic.column,
+                            severity,
+                            code,
+                            diagnostic.message
+                        );
+                    }
+                }
+                DiagnosticFormat::Json => {
+                    let diagnostics = diagnostics
+                        .into_iter()
+                        .map(|diagnostic| {
+                            serde_json::json!({
+                                "message": diagnostic.message,
+                                "severity": severity_name(diagnostic.severity),
+                                "code": diagnostic.code,
+                                "filename": diagnostic_name,
+                                "line": diagnostic.line + line_offset,
+                                "column": diagnostic.column,
+                                "start": diagnostic.start,
+                                "end": diagnostic.end,
+                            })
+                        })
+                        .collect::<Vec<_>>();
+                    eprintln!("{}", serde_json::json!({ "diagnostics": diagnostics }));
+                }
             }
             process::exit(1);
         }
+    }
+}
+
+fn severity_name(severity: DiagnosticSeverity) -> &'static str {
+    match severity {
+        DiagnosticSeverity::Error => "error",
+        DiagnosticSeverity::Warning => "warning",
     }
 }

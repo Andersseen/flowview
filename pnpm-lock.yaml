@@ -60,12 +60,18 @@ importers:
 
   packages/astro:
     dependencies:
+      '@astrojs/compiler':
+        specifier: ^2.13.1
+        version: 2.13.1
       '@flowmark/runtime':
         specifier: workspace:*
         version: link:../runtime
       '@flowmark/vite':
         specifier: workspace:*
         version: link:../vite
+      magic-string:
+        specifier: ^0.30.21
+        version: 0.30.21
     devDependencies:
       '@types/node':
         specifier: ^26.0.0

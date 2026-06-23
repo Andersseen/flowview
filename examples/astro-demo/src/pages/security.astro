@@ -5,11 +5,14 @@ const context = {
 };
 ---
 
+<!-- prettier-ignore -->
 <template flowmark is:raw context={context}>
   <main>
     <p id="space"><span>Hello </span>{{ context.name }}</p>
     <pre id="pre">first
   second</pre>
     <p id="escaped">{{ context.markup }}</p>
+    <!-- @if inside an HTML comment is literal template content. -->
+    <p id="literal-at" title="@if inside an attribute is literal">contact@if.example</p>
   </main>
 </template>

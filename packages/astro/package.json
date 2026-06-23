@@ -19,8 +19,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@astrojs/compiler": "^2.13.1",
     "@flowmark/runtime": "workspace:*",
-    "@flowmark/vite": "workspace:*"
+    "@flowmark/vite": "workspace:*",
+    "magic-string": "^0.30.21"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
