@@ -25,18 +25,16 @@ pub fn parse_parenthesized_expression(
     let (expression, leading) = scan.trimmed(cursor.source());
 
     if expression.is_empty() {
-        return Err(vec![Diagnostic::at_cursor("Expression cannot be empty", &start_mark)
-            .with_diagnostic_code(DiagnosticCode::EmptyExpression)
-            .to_position(cursor.position())]);
+        return Err(vec![Diagnostic::at_cursor(
+            "Expression cannot be empty",
+            &start_mark,
+        )
+        .with_diagnostic_code(DiagnosticCode::EmptyExpression)
+        .to_position(cursor.position())]);
     }
 
     if validate {
-        javascript::validate_expression(
-            cursor.source(),
-            &expression,
-            scan.start + leading,
-        )
-        .map_err(|errors| errors)?;
+        javascript::validate_expression(cursor.source(), &expression, scan.start + leading)?;
     }
 
     cursor.advance(); // skip )

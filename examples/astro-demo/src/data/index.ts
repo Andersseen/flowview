@@ -7,6 +7,7 @@
  */
 
 export * from "./types";
+export { exampleSectionContext } from "./exampleSection";
 export { featuresContext } from "./features";
 export { footerContext } from "./footer";
 export { gettingStartedContext } from "./gettingStarted";

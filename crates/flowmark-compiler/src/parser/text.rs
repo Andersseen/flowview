@@ -33,4 +33,3 @@ pub fn parse_text(cursor: &mut Cursor) -> Result<TextNode, Vec<Diagnostic>> {
         },
     })
 }
-

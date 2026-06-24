@@ -1,5 +1,8 @@
 use crate::{
-    ast::{Attribute, ElementNode, ForBlockNode, IfBlockNode, Node, RootNode, SwitchBlockNode, TextNode},
+    ast::{
+        Attribute, ElementNode, ForBlockNode, IfBlockNode, Node, RootNode, SwitchBlockNode,
+        TextNode,
+    },
     CompileOptions,
 };
 
@@ -166,7 +169,7 @@ fn element_is_static(element: &ElementNode) -> bool {
         .attributes
         .iter()
         .all(|attr| matches!(attr, Attribute::Plain(_)))
-        && element.children.iter().all(|child| node_is_static(child))
+        && element.children.iter().all(node_is_static)
 }
 
 fn node_is_static(node: &Node) -> bool {
@@ -308,7 +311,11 @@ fn generate_switch_block(
         switch_block.expression
     ));
 
-    output.push_str(&format!("{}switch ({}) {{\n", ctx.spaces(indent), switch_name));
+    output.push_str(&format!(
+        "{}switch ({}) {{\n",
+        ctx.spaces(indent),
+        switch_name
+    ));
 
     let last_case_index = switch_block.cases.len().saturating_sub(1);
 

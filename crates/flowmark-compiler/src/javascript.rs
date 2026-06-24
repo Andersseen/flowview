@@ -137,7 +137,12 @@ pub fn find_last_top_level_delimiter(source: &str, delimiter: char) -> Option<us
             Some(']') => bracket_depth = bracket_depth.saturating_sub(1),
             Some('{') => brace_depth += 1,
             Some('}') => brace_depth = brace_depth.saturating_sub(1),
-            Some(ch) if ch == delimiter && paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 => {
+            Some(ch)
+                if ch == delimiter
+                    && paren_depth == 0
+                    && bracket_depth == 0
+                    && brace_depth == 0 =>
+            {
                 last = Some(cursor.position())
             }
             _ => {}

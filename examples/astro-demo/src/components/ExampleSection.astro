@@ -1,0 +1,61 @@
+---
+import { exampleSectionContext } from "../data/exampleSection";
+import type { ExampleSectionContext } from "../data/exampleSection";
+
+export interface Props {
+  context?: ExampleSectionContext;
+}
+
+const { context = exampleSectionContext } = Astro.props;
+---
+
+<!-- prettier-ignore -->
+<template flowmark is:raw context={context}>
+  <section class="page-frame py-16" aria-labelledby="example-heading">
+    <div class="text-center">
+      <h2 id="example-heading" class="text-3xl font-bold text-foreground">
+        {{ context.title }}
+      </h2>
+      <p class="mt-2 text-muted-foreground">
+        {{ context.description }}
+      </p>
+    </div>
+
+    <div class="mt-10 max-w-3xl mx-auto">
+      <ol class="grid gap-4" aria-label="Release history">
+        @for (release of context.releases; track release.id) {
+          <li class="rounded-lg border border-border bg-card p-5">
+            <div class="flex flex-wrap items-center gap-3">
+              @switch (release.kind) {
+                @case ('feature') {
+                  <and-badge variant="outline" class="w-fit border-border/60">Feature</and-badge>
+                }
+                @case ('fix') {
+                  <and-badge variant="outline" class="w-fit border-border/60">Fix</and-badge>
+                }
+                @default {
+                  <and-badge variant="outline" class="w-fit border-border/60">Docs</and-badge>
+                }
+              }
+              @if (release.breaking) {
+                <and-badge variant="secondary" class="w-fit">Breaking</and-badge>
+              }
+            </div>
+
+            <div class="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h3 class="text-lg font-bold text-foreground">{{ release.title }}</h3>
+              <span class="text-sm font-medium text-muted-foreground">v{{ release.version }}</span>
+            </div>
+
+            <p class="mt-1 text-sm text-muted-foreground">{{ release.summary }}</p>
+            <p class="mt-3 text-xs text-muted-foreground">Released {{ release.date }}</p>
+          </li>
+        } @empty {
+          <li class="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
+            No releases yet.
+          </li>
+        }
+      </ol>
+    </div>
+  </section>
+</template>

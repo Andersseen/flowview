@@ -130,7 +130,6 @@ impl Diagnostic {
     }
 }
 
-
 fn line_and_column(source: &str, offset: usize) -> (usize, usize) {
     let mut line = 1;
     let mut column = 1;

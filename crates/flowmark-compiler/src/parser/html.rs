@@ -5,10 +5,7 @@ use crate::{
     javascript,
 };
 
-use super::{
-    lexer::is_escaped_syntax,
-    nodes::parse_nodes,
-};
+use super::{lexer::is_escaped_syntax, nodes::parse_nodes};
 
 /// Parse an HTML segment starting with `<`.
 pub fn parse_html_segment(cursor: &mut Cursor) -> Result<Vec<Node>, Vec<Diagnostic>> {
@@ -85,9 +82,12 @@ fn parse_tag_name(cursor: &mut Cursor) -> Result<String, Vec<Diagnostic>> {
     }
 
     if name.is_empty() {
-        return Err(vec![Diagnostic::at_cursor("Expected HTML tag name", &start_mark)
-            .with_diagnostic_code(DiagnosticCode::InvalidHtml)
-            .to_cursor(cursor)]);
+        return Err(vec![Diagnostic::at_cursor(
+            "Expected HTML tag name",
+            &start_mark,
+        )
+        .with_diagnostic_code(DiagnosticCode::InvalidHtml)
+        .to_cursor(cursor)]);
     }
 
     Ok(name.to_ascii_lowercase())
@@ -228,12 +228,7 @@ fn parse_attribute_name(cursor: &mut Cursor) -> Result<String, Vec<Diagnostic>> 
     let mut name = String::new();
 
     while let Some(ch) = cursor.current() {
-        if ch.is_ascii_alphabetic()
-            || ch.is_ascii_digit()
-            || ch == '-'
-            || ch == ':'
-            || ch == '_'
-        {
+        if ch.is_ascii_alphabetic() || ch.is_ascii_digit() || ch == '-' || ch == ':' || ch == '_' {
             name.push(ch);
             cursor.advance();
         } else {
@@ -242,9 +237,12 @@ fn parse_attribute_name(cursor: &mut Cursor) -> Result<String, Vec<Diagnostic>> 
     }
 
     if name.is_empty() {
-        return Err(vec![Diagnostic::at_cursor("Expected attribute name", &start_mark)
-            .with_diagnostic_code(DiagnosticCode::InvalidAttribute)
-            .to_cursor(cursor)]);
+        return Err(vec![Diagnostic::at_cursor(
+            "Expected attribute name",
+            &start_mark,
+        )
+        .with_diagnostic_code(DiagnosticCode::InvalidAttribute)
+        .to_cursor(cursor)]);
     }
 
     Ok(name.to_ascii_lowercase())
@@ -334,10 +332,7 @@ fn parse_unquoted_attribute_value(
         .to_position(cursor.position())]);
     }
 
-    Ok(AttributeValue {
-        value,
-        quote: '"',
-    })
+    Ok(AttributeValue { value, quote: '"' })
 }
 
 fn parse_element_children(

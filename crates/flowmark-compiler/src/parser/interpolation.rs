@@ -33,12 +33,7 @@ pub fn parse_interpolation(cursor: &mut Cursor) -> Result<InterpolationNode, Vec
         .to_position(scan.end)]);
     }
 
-    javascript::validate_expression(
-        cursor.source(),
-        &expression,
-        scan.start + leading,
-    )
-    .map_err(|errors| errors)?;
+    javascript::validate_expression(cursor.source(), &expression, scan.start + leading)?;
 
     cursor.advance_by(2); // skip }}
     let end = cursor.position();

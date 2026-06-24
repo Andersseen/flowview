@@ -66,17 +66,17 @@ During build, the `@flowmark/astro` integration:
 
 All data lives in `src/data/`:
 
-| File | Purpose |
-|------|---------|
-| `types.ts` | TypeScript interfaces for every `context` object |
-| `site.ts` | Global metadata (title, description, URLs) |
-| `hero.ts` | Hero section content |
-| `features.ts` | Feature cards |
-| `syntaxExamples.ts` | Code examples for the syntax showcase |
-| `gettingStarted.ts` | Installation steps |
-| `footer.ts` | Footer links and copyright |
-| `navigation.ts` | Navbar items |
-| `index.ts` | Barrel export of all contexts and types |
+| File                | Purpose                                          |
+| ------------------- | ------------------------------------------------ |
+| `types.ts`          | TypeScript interfaces for every `context` object |
+| `site.ts`           | Global metadata (title, description, URLs)       |
+| `hero.ts`           | Hero section content                             |
+| `features.ts`       | Feature cards                                    |
+| `syntaxExamples.ts` | Code examples for the syntax showcase            |
+| `gettingStarted.ts` | Installation steps                               |
+| `footer.ts`         | Footer links and copyright                       |
+| `navigation.ts`     | Navbar items                                     |
+| `index.ts`          | Barrel export of all contexts and types          |
 
 ## Theming
 

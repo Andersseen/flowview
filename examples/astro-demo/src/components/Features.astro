@@ -25,7 +25,7 @@ const { context = featuresContext } = Astro.props;
         <and-card variant="outline" padded class="block h-full">
           <div class="grid gap-3">
             @if (feature.badge) {
-              <and-badge variant="secondary">{{ feature.badge }}</and-badge>
+              <and-badge variant="outline" class="w-fit border-border/60">{{ feature.badge }}</and-badge>
             }
             <h3 class="text-xl font-bold text-foreground">{{ feature.title }}</h3>
             <p class="text-muted-foreground">{{ feature.description }}</p>

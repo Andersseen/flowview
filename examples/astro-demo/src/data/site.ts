@@ -5,7 +5,8 @@ import type { SiteMeta } from "./types";
  */
 export const site: SiteMeta = {
   title: "Flowmark",
-  tagline: "HTML-like templates with modern control flow. Compiled to plain JavaScript.",
+  tagline:
+    "HTML-like templates with modern control flow. Compiled to plain JavaScript.",
   description:
     "Flowmark is a framework-agnostic template language with @if, @for, and @switch, compiled by Rust and embedded in Astro.",
   url: "https://flowmark.example",

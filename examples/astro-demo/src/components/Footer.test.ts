@@ -11,7 +11,11 @@ describe("Footer", () => {
           brand: "Flowmark",
           tagline: "HTML-like templates with modern control flow.",
           links: [
-            { label: "GitHub", href: "https://github.com/andersseen/flowmark", external: true },
+            {
+              label: "GitHub",
+              href: "https://github.com/andersseen/flowmark",
+              external: true,
+            },
             { label: "Home", href: "/" },
           ],
           copyright: "© 2024 Flowmark.",

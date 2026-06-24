@@ -1,6 +1,11 @@
 import type { SyntaxExampleId, SyntaxShowcaseContext } from "./types";
 
-const examples: { id: SyntaxExampleId; label: string; code: string; description: string }[] = [
+const examples: {
+  id: SyntaxExampleId;
+  label: string;
+  code: string;
+  description: string;
+}[] = [
   {
     id: "if",
     label: "Conditional",
@@ -24,7 +29,8 @@ const examples: { id: SyntaxExampleId; label: string; code: string; description:
 } @empty {
   <p>No products found.</p>
 }`,
-    description: "Loop over iterables with optional keyed tracking and an @empty fallback.",
+    description:
+      "Loop over iterables with optional keyed tracking and an @empty fallback.",
   },
   {
     id: "switch",
@@ -40,7 +46,8 @@ const examples: { id: SyntaxExampleId; label: string; code: string; description:
     <span>Out of stock</span>
   }
 }`,
-    description: "Match expressions against multiple cases with a fallback @default.",
+    description:
+      "Match expressions against multiple cases with a fallback @default.",
   },
 ];
 

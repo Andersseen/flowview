@@ -22,7 +22,9 @@ describe("Layout", () => {
     );
     expect(html).toContain('property="og:title" content="Flowmark Test"');
     expect(html).toContain('rel="canonical" href="https://test.example/"');
-    expect(html).toContain('rel="icon" type="image/svg+xml" href="/favicon.svg"');
+    expect(html).toContain(
+      'rel="icon" type="image/svg+xml" href="/favicon.svg"',
+    );
     expect(html).toContain("Skip to content");
     expect(html).toContain('id="main-content"');
     expect(html).toContain("<and-navbar");

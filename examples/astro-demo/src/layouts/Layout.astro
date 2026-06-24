@@ -17,7 +17,6 @@ const canonical = new URL(Astro.url.pathname, siteUrl).toString();
 
 const navItems = JSON.stringify([
   { id: "home", label: "Home", href: "/" },
-  { id: "demo", label: "Live demo", href: "#live-demo" },
   {
     id: "github",
     label: "GitHub",
@@ -33,8 +32,16 @@ const navItems = JSON.stringify([
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="hsl(210 20% 98%)" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="hsl(222 47% 5%)" media="(prefers-color-scheme: dark)" />
+    <meta
+      name="theme-color"
+      content="hsl(210 20% 98%)"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="hsl(222 47% 5%)"
+      media="(prefers-color-scheme: dark)"
+    />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />

@@ -5,8 +5,8 @@ pub mod diagnostics;
 mod javascript;
 pub mod parser;
 
-use diagnostics::Diagnostic;
 pub use cursor::CursorPosition;
+use diagnostics::Diagnostic;
 pub use diagnostics::{DiagnosticCode, DiagnosticFormatter, DiagnosticSeverity};
 
 /// Options that control code generation.

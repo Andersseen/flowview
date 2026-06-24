@@ -8,7 +8,10 @@ use super::{
     blocks::{parse_for_block, parse_if_block, parse_switch_block},
     html::parse_html_segment,
     interpolation::parse_interpolation,
-    lexer::{match_terminator, match_unexpected_keyword, matches_keyword, FOR_START, IF_START, SWITCH_START},
+    lexer::{
+        match_terminator, match_unexpected_keyword, matches_keyword, FOR_START, IF_START,
+        SWITCH_START,
+    },
     text::parse_text,
 };
 
