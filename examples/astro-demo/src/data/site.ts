@@ -1,5 +1,8 @@
 import type { SiteMeta } from "./types";
 
+/**
+ * Global site metadata used across the landing page and Layout.
+ */
 export const site: SiteMeta = {
   title: "Flowmark",
   tagline: "HTML-like templates with modern control flow. Compiled to plain JavaScript.",

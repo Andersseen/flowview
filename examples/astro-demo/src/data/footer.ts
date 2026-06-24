@@ -1,6 +1,9 @@
 import { site } from "./site";
 import type { FooterContext } from "./types";
 
+/**
+ * Context for the Footer Flowmark template.
+ */
 export const footerContext: FooterContext = {
   brand: site.title,
   tagline: site.tagline,

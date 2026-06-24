@@ -1,5 +1,8 @@
 import type { GettingStartedContext } from "./types";
 
+/**
+ * Context for the Getting Started Flowmark template.
+ */
 export const gettingStartedContext: GettingStartedContext = {
   title: "Get started",
   description: "Add Flowmark to an Astro project and embed your first template region.",

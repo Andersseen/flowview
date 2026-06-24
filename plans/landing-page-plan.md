@@ -59,6 +59,7 @@ Create in `src/data/`:
 - `syntaxExamples.ts` — syntax examples
 - `navigation.ts` — navigation links
 - `gettingStarted.ts` — steps/commands
+- `index.ts` — barrel export of all contexts and types
 
 ### Acceptance criteria
 - [x] `index.astro` only imports sections and passes contexts.
@@ -149,43 +150,19 @@ Create in `src/data/`:
 ## Phase 3 — Typed and centralized data layer
 
 ### Deliverables
-- [ ] Type every context used in Flowmark templates.
-- [ ] Move all static context to `src/data/`.
-- [ ] Document the "context + template" pattern as an example.
+- [x] Type every context used in Flowmark templates.
+- [x] Move all static context to `src/data/`.
+- [x] Document the "context + template" pattern as an example.
 
-### Types to define
-```ts
-// src/data/types.ts
-export interface HeroContext {
-  title: string;
-  tagline: string;
-  ctaPrimary: { text: string; href: string };
-  ctaSecondary?: { text: string; href: string };
-}
-
-export interface Feature {
-  id: string;
-  title: string;
-  description: string;
-  badge?: string;
-}
-
-export interface FeaturesContext {
-  items: Feature[];
-}
-
-export interface SyntaxExample {
-  id: 'for' | 'if' | 'switch';
-  label: string;
-  code: string;
-  description: string;
-}
-```
+### Types defined
+- `SiteMeta`, `HeroContext`, `Feature`, `FeaturesContext`, `SyntaxExampleId`, `SyntaxExample`, `SyntaxShowcaseContext`, `Step`, `GettingStartedContext`, `FooterLink`, `FooterContext` in `src/data/types.ts`.
+- `SyntaxExampleId` is a strict union (`"for" | "if" | "switch"`).
+- JSDoc comments added to every interface.
 
 ### Acceptance criteria
-- [ ] All `context={...}` are typed.
-- [ ] No implicit `any` in demo data.
-- [ ] `astro check` passes with no errors.
+- [x] All `context={...}` are typed.
+- [x] No implicit `any` in demo data.
+- [x] `astro check` passes with no errors.
 
 ---
 

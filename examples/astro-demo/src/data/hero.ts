@@ -1,6 +1,9 @@
 import { site } from "./site";
 import type { HeroContext } from "./types";
 
+/**
+ * Context for the Hero Flowmark template.
+ */
 export const heroContext: HeroContext = {
   title: site.title,
   tagline: site.tagline,

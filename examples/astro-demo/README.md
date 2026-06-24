@@ -1,100 +1,117 @@
-# Flowmark Astro Demo
+# Flowmark Landing Page
 
-This example uses Flowmark control flow embedded directly in normal `.astro`
-components. Every page-content surface is authored with inline Flowmark; Astro
-remains the host for routing, layouts, and slot composition.
+This is the official landing page for **Flowmark**, built as an Astro site that dogfoods the Flowmark template language.
 
-The demo UI uses:
+Every static section of the page (Hero, Features, Syntax Showcase, Getting Started, Footer) is rendered by a Flowmark `<template flowmark>` region. The live inventory demo further shows `@if`, `@else if`, `@for`, `@empty`, and `@switch` in action.
 
-- Astro
-- Tailwind CSS 4
-- `@andersseen/web-components`
-- `@andersseen/layout`
-- `@andersseen/motion`
-- Vitest for Astro component tests
-- Playwright for page-level smoke tests
+## Stack
 
-## Structure
+- [Astro](https://astro.build/) — static site generator
+- [Flowmark](https://github.com/andersseen/flowmark) — template language compiled to plain JavaScript
+- [@andersseen/web-components](https://github.com/Andersseen/and-web-components) — themeable web components
+- [@andersseen/layout](https://github.com/Andersseen/and-web-components) — layout and typography primitives
+- [@andersseen/motion](https://github.com/Andersseen/and-web-components) — animation utilities
+- [Tailwind CSS 4](https://tailwindcss.com/) — utility-first styling
 
-```text
-examples/astro-demo/
-├── e2e/                  # Playwright tests
-├── src/
-│   ├── components/       # Astro components and unit tests
-│   ├── data/             # Demo context data
-│   ├── layouts/          # Astro layouts and unit tests
-│   ├── pages/            # Demo pages
-│   ├── scripts/          # Browser entrypoints
-│   └── styles/           # Tailwind and theme CSS
-├── playwright.config.ts
-└── vitest.config.ts
+## The context + template pattern
+
+Each Flowmark section receives its data through a typed `context` object:
+
+```ts
+// src/data/hero.ts
+import type { HeroContext } from "./types";
+
+export const heroContext: HeroContext = {
+  title: "Flowmark",
+  tagline: "HTML-like templates with modern control flow.",
+  badge: "Framework-agnostic templates",
+  ctaPrimary: { text: "Get started", href: "#getting-started" },
+};
 ```
+
+The component imports the context and passes it to the template region:
+
+```astro
+---
+import { heroContext } from "../data";
+import type { HeroContext } from "../data";
+
+export interface Props {
+  context?: HeroContext;
+}
+
+const { context = heroContext } = Astro.props;
+---
+
+<!-- prettier-ignore -->
+<template flowmark is:raw context={context}>
+  <header>
+    <h1>{{ context.title }}</h1>
+    <p>{{ context.tagline }}</p>
+    @if (context.ctaPrimary) {
+      <a href="{{ context.ctaPrimary.href }}">{{ context.ctaPrimary.text }}</a>
+    }
+  </header>
+</template>
+```
+
+During build, the `@flowmark/astro` integration:
+
+1. Finds the `<template flowmark>` region.
+2. Sends the inner source to the Rust compiler.
+3. Replaces the region with `<Fragment set:html={render(context)} />`.
+4. Astro evaluates the generated render function and emits static HTML.
+
+## Data layer
+
+All data lives in `src/data/`:
+
+| File | Purpose |
+|------|---------|
+| `types.ts` | TypeScript interfaces for every `context` object |
+| `site.ts` | Global metadata (title, description, URLs) |
+| `hero.ts` | Hero section content |
+| `features.ts` | Feature cards |
+| `syntaxExamples.ts` | Code examples for the syntax showcase |
+| `gettingStarted.ts` | Installation steps |
+| `footer.ts` | Footer links and copyright |
+| `navigation.ts` | Navbar items |
+| `index.ts` | Barrel export of all contexts and types |
+
+## Theming
+
+The site uses the `slate-amber` theme from `@andersseen/web-components`. Dark mode is supported automatically via `prefers-color-scheme` and can be forced with `data-mode="dark"` or the `.dark` class.
 
 ## Scripts
 
 ```sh
+# Install dependencies
+pnpm install
+
+# Start the dev server
 pnpm run dev
-pnpm run build
+
+# Type-check
 pnpm run check
-pnpm run lint
-pnpm run preview
+
+# Build for production
+pnpm run build
+
+# Run unit tests
 pnpm run test:unit
+
+# Run E2E tests
 pnpm run test:e2e
 ```
 
-From the repository root:
+## Project structure
 
-```sh
-pnpm run demo
-pnpm run build:demo
-pnpm run test:demo
-pnpm run test:e2e:demo
 ```
-
-Install Playwright browsers before running e2e tests locally:
-
-```sh
-pnpm --filter @flowmark/astro-demo exec playwright install chromium
+src/
+├── components/     # Landing sections + shared UI
+├── data/           # Typed context objects
+├── layouts/        # Base layout with SEO and navbar
+├── pages/          # Astro routes
+├── scripts/        # Web component registration
+└── styles/         # Global CSS and Tailwind theme
 ```
-
-## How It Works
-
-1. `@flowmark/astro` finds `<template flowmark is:raw context={...}>` regions
-   before Astro parses the component. The VS Code snippet writes this wrapper.
-2. Each region is compiled into a virtual JavaScript render module.
-3. The integration replaces the region with an Astro fragment that renders the
-   generated, escaped HTML.
-4. Astro continues to own routing, layouts, and component slots around those
-   Flowmark-rendered content surfaces.
-5. Web components are registered in `src/scripts/web-components.ts`.
-
-## Deploy to Cloudflare Pages
-
-### Local Deploy
-
-1. Log in with Wrangler:
-
-   ```sh
-   pnpm exec wrangler login
-   ```
-
-2. Create a Cloudflare Pages project named `flowmark-demo`.
-3. Set your account ID:
-
-   ```sh
-   export CLOUDFLARE_ACCOUNT_ID=your-account-id
-   ```
-
-4. Deploy:
-
-   ```sh
-   pnpm run deploy:demo
-   ```
-
-### GitHub Actions
-
-`.github/workflows/deploy-demo.yml` deploys automatically on every push to
-`main`. Add these secrets to the GitHub repository:
-
-- `CLOUDFLARE_API_TOKEN`: a token with Cloudflare Pages edit access
-- `CLOUDFLARE_ACCOUNT_ID`: your Cloudflare account ID

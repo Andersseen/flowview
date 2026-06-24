@@ -8,12 +8,14 @@ import HowItWorks from "../components/HowItWorks.astro";
 import LiveDemo from "../components/LiveDemo.astro";
 import SyntaxShowcase from "../components/SyntaxShowcase.astro";
 
-import { featuresContext } from "../data/features";
-import { footerContext } from "../data/footer";
-import { gettingStartedContext } from "../data/gettingStarted";
-import { heroContext } from "../data/hero";
-import { site } from "../data/site";
-import { syntaxContext } from "../data/syntaxExamples";
+import {
+  featuresContext,
+  footerContext,
+  gettingStartedContext,
+  heroContext,
+  site,
+  syntaxContext,
+} from "../data";
 ---
 
 <Layout title={site.title} description={site.description} siteUrl={site.url}>

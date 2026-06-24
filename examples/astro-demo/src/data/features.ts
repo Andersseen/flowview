@@ -1,5 +1,8 @@
 import type { FeaturesContext } from "./types";
 
+/**
+ * Context for the Features Flowmark template.
+ */
 export const featuresContext: FeaturesContext = {
   items: [
     {
