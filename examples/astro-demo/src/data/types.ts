@@ -16,7 +16,6 @@ export interface SiteMeta {
 export interface HeroContext {
   title: string;
   tagline: string;
-  badge: string;
   ctaPrimary: { text: string; href: string };
   ctaSecondary?: { text: string; href: string };
 }
@@ -67,6 +66,7 @@ export interface Step {
   label: string;
   code: string;
   description: string;
+  className?: string;
 }
 
 /**

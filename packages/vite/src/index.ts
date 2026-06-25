@@ -48,6 +48,17 @@ export default function flowmark(options: FlowmarkViteOptions = {}): Plugin {
     name: "@flowmark/vite",
     enforce: "pre",
 
+    configResolved() {
+      // Ensure configuration changes are reflected on the next build/dev session.
+      compileCache.clear();
+    },
+
+    buildStart() {
+      // Start each build with a fresh cache so stale compilations cannot leak
+      // across rebuilds or config changes.
+      compileCache.clear();
+    },
+
     async transform(code, id) {
       const filename = stripQuery(id);
       if (!filename.endsWith(".flow")) return null;
@@ -62,20 +73,34 @@ export default function flowmark(options: FlowmarkViteOptions = {}): Plugin {
           map: null,
         };
       } catch (error) {
-        if (error instanceof FlowmarkCompileError) {
-          const diagnostic = error.diagnostics[0];
-          if (diagnostic) {
-            this.error({
-              message: formatDiagnostic(diagnostic),
-              id: filename,
-              loc: {
-                line: diagnostic.line,
-                column: Math.max(0, diagnostic.column - 1),
-              },
-            });
-          }
+        if (
+          error instanceof FlowmarkCompileError &&
+          error.diagnostics.length > 0
+        ) {
+          const first = error.diagnostics[0]!;
+          const message = error.diagnostics
+            .map((diagnostic) => formatDiagnostic(diagnostic))
+            .join("\n");
+          this.error({
+            message,
+            id: filename,
+            loc: {
+              line: first.line,
+              column: Math.max(0, first.column - 1),
+            },
+          });
         }
         throw error;
+      }
+    },
+
+    handleHotUpdate({ file, server }) {
+      if (file.endsWith(".flow")) {
+        // Ensure Vite re-runs the transform for changed .flow files in dev.
+        const moduleNode = server.moduleGraph.getModuleById(file);
+        if (moduleNode) {
+          server.moduleGraph.invalidateModule(moduleNode);
+        }
       }
     },
   };
@@ -228,4 +253,9 @@ export function resolveCompilerPath(compilerPath?: string): string {
 
 function stripQuery(id: string): string {
   return id.split("?", 1)[0] ?? id;
+}
+
+/** Exported for integrations that need to clear cached compilations. */
+export function clearCompileCache(): void {
+  compileCache.clear();
 }

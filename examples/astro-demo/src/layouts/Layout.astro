@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import { navItems } from "../data/navigation";
 
 export interface Props {
   title: string;
@@ -14,16 +15,7 @@ const {
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, siteUrl).toString();
-
-const navItems = JSON.stringify([
-  { id: "home", label: "Home", href: "/" },
-  {
-    id: "github",
-    label: "GitHub",
-    href: "https://github.com/andersseen/flowmark",
-    target: "_blank",
-  },
-]);
+const serializedNavItems = JSON.stringify(navItems);
 ---
 
 <!doctype html>
@@ -52,6 +44,21 @@ const navItems = JSON.stringify([
     <link rel="canonical" href={canonical} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
+    <script is:inline>
+      (function () {
+        const stored = localStorage.getItem("flowmark-theme");
+        const systemDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
+        const mode =
+          stored === "dark" || stored === "light"
+            ? stored
+            : systemDark
+              ? "dark"
+              : "light";
+        document.documentElement.setAttribute("data-mode", mode);
+      })();
+    </script>
     <script>
       import "../scripts/web-components";
     </script>
@@ -67,7 +74,7 @@ const navItems = JSON.stringify([
     <div class="app-shell">
       <and-navbar
         class="block border-b border-border bg-background/95"
-        items={navItems}
+        items={serializedNavItems}
         variant="default"
         position="sticky"
         active-mode="route"
@@ -86,11 +93,85 @@ const navItems = JSON.stringify([
           </span>
           Flowmark
         </a>
+
+        <div slot="end" class="flex items-center gap-1">
+          <a
+            href="https://github.com/andersseen/flowmark"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            aria-label="View Flowmark on GitHub"
+          >
+            <and-icon name="github" size="20" aria-hidden="true"></and-icon>
+          </a>
+
+          <div
+            class="inline-flex items-center rounded-md border border-border bg-background p-0.5"
+            role="group"
+            aria-label="Theme switcher"
+          >
+            <and-button
+              type="button"
+              id="theme-light"
+              size="icon"
+              variant="default"
+              aria-label="Switch to light theme"
+            >
+              <and-icon name="sun" size="16" aria-hidden="true"></and-icon>
+            </and-button>
+            <and-button
+              type="button"
+              id="theme-dark"
+              size="icon"
+              variant="outline"
+              aria-label="Switch to dark theme"
+            >
+              <and-icon name="moon" size="16" aria-hidden="true"></and-icon>
+            </and-button>
+          </div>
+        </div>
       </and-navbar>
 
       <main id="main-content">
         <slot />
       </main>
     </div>
+
+    <script is:inline>
+      (function () {
+        const lightButton = document.getElementById("theme-light");
+        const darkButton = document.getElementById("theme-dark");
+        if (!lightButton || !darkButton) return;
+
+        function applyMode(mode) {
+          document.documentElement.setAttribute("data-mode", mode);
+          const isDark = mode === "dark";
+          lightButton.setAttribute("variant", isDark ? "outline" : "default");
+          darkButton.setAttribute("variant", isDark ? "default" : "outline");
+          lightButton.setAttribute(
+            "aria-label",
+            isDark ? "Switch to light theme" : "Light theme active",
+          );
+          darkButton.setAttribute(
+            "aria-label",
+            isDark ? "Dark theme active" : "Switch to dark theme",
+          );
+        }
+
+        lightButton.addEventListener("click", function () {
+          localStorage.setItem("flowmark-theme", "light");
+          applyMode("light");
+        });
+
+        darkButton.addEventListener("click", function () {
+          localStorage.setItem("flowmark-theme", "dark");
+          applyMode("dark");
+        });
+
+        const currentMode =
+          document.documentElement.getAttribute("data-mode") || "light";
+        applyMode(currentMode);
+      })();
+    </script>
   </body>
 </html>

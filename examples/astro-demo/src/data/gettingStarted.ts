@@ -12,6 +12,7 @@ export const gettingStartedContext: GettingStartedContext = {
       label: "Install",
       code: "npm install @flowmark/astro @flowmark/runtime",
       description: "Add the Astro integration and runtime to your project.",
+      className: "bento-install",
     },
     {
       label: "Configure",
@@ -21,6 +22,7 @@ export default defineConfig({
   integrations: [flowmark()],
 });`,
       description: "Register the integration in your astro.config.mjs file.",
+      className: "bento-configure",
     },
     {
       label: "Write",
@@ -31,6 +33,7 @@ export default defineConfig({
   }
 </template>`,
       description: "Add a Flowmark region to any .astro component.",
+      className: "bento-write",
     },
   ],
 };

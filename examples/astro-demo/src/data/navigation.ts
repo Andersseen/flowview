@@ -1,14 +1,9 @@
-import { site } from "./site";
-
 /**
  * Navigation items passed to the `<and-navbar>` component in Layout.
+ * The GitHub link is rendered as an icon in the navbar end slot instead.
  */
 export const navItems = [
   { id: "home", label: "Home", href: "/" },
-  {
-    id: "github",
-    label: "GitHub",
-    href: site.github,
-    target: "_blank",
-  },
+  // { id: "examples", label: "Examples", href: "/inline" },
+  // { id: "security", label: "Security", href: "/security" },
 ];

@@ -1,0 +1,33 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+function save(event: Event) {
+  console.log("saved", event.type);
+}
+
+function removeItem(id: string) {
+  console.log("remove", id);
+}
+---
+
+<Layout title="FlowMark DOM Events">
+  <main class="container mx-auto p-8">
+    <h1 class="text-3xl font-bold mb-6">FlowMark DOM Events</h1>
+
+    <section class="space-y-4">
+      <button
+        (click)="save($event)"
+        class="px-4 py-2 bg-blue-600 text-white rounded"
+      >
+        Save
+      </button>
+
+      <button
+        (click)="removeItem('item-1')"
+        class="px-4 py-2 bg-red-600 text-white rounded"
+      >
+        Remove item 1
+      </button>
+    </section>
+  </main>
+</Layout>

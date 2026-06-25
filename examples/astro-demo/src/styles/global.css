@@ -42,6 +42,24 @@
     margin: 0;
   }
 
+  /* Getting Started bento layout */
+  @media (min-width: 1024px) {
+    .bento-install {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .bento-configure {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .bento-write {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+  }
+
   a {
     color: inherit;
     text-decoration: none;

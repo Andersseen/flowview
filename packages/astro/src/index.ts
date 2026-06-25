@@ -30,6 +30,22 @@ interface VirtualTemplate {
   lineOffset: number;
 }
 
+class FlowmarkAstroError extends Error {
+  readonly loc: { line: number; column: number };
+
+  constructor(
+    message: string,
+    readonly filename: string,
+    offset: number,
+    code: string,
+  ) {
+    super(message);
+    this.name = "FlowmarkAstroError";
+    const { line, column } = lineAndColumn(code, offset);
+    this.loc = { line, column };
+  }
+}
+
 const VIRTUAL_PREFIX = "virtual:flowmark-astro/";
 const RESOLVED_VIRTUAL_PREFIX = "\0" + VIRTUAL_PREFIX;
 
@@ -106,12 +122,27 @@ function flowmarkAstroPlugin(options: FlowmarkAstroOptions): Plugin {
         return null;
       }
 
-      return transformAstroSource(
-        code,
-        cleanId,
-        virtualModules,
-        virtualIdsByFile,
-      );
+      try {
+        return transformAstroSource(
+          code,
+          cleanId,
+          virtualModules,
+          virtualIdsByFile,
+        );
+      } catch (error) {
+        if (error instanceof FlowmarkAstroError) {
+          const locatedError = {
+            message: error.message,
+            id: cleanId,
+            loc: error.loc,
+          };
+          if (typeof this.error === "function") {
+            this.error(locatedError);
+          }
+          throw locatedError;
+        }
+        throw error;
+      }
     },
   };
 }
@@ -187,7 +218,12 @@ function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
     const openStart = code.lastIndexOf("<", firstKnownOffset);
     const openEnd = findTagEnd(code, openStart);
     if (openStart === -1 || openEnd === -1) {
-      throw new Error("Flowmark embedded template has an invalid opening tag.");
+      throw new FlowmarkAstroError(
+        "Flowmark embedded template has an invalid opening tag.",
+        code,
+        firstKnownOffset,
+        code,
+      );
     }
 
     const contextAttribute = node.attributes.find(
@@ -198,18 +234,31 @@ function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
         ? contextAttribute.value.trim()
         : "";
     if (!contextExpression) {
-      throw new Error(
+      throw new FlowmarkAstroError(
         "Flowmark embedded templates require a non-empty context={...} attribute.",
+        code,
+        openStart,
+        code,
       );
     }
 
     const closeStart = findMatchingTemplateClose(code, openEnd + 1);
     if (closeStart === -1) {
-      throw new Error("Flowmark embedded template is missing </template>.");
+      throw new FlowmarkAstroError(
+        "Flowmark embedded template is missing </template>.",
+        code,
+        openStart,
+        code,
+      );
     }
     const closeTagEnd = findTagEnd(code, closeStart);
     if (closeTagEnd === -1) {
-      throw new Error("Flowmark embedded template has an invalid closing tag.");
+      throw new FlowmarkAstroError(
+        "Flowmark embedded template has an invalid closing tag.",
+        code,
+        closeStart,
+        code,
+      );
     }
 
     templates.push({
@@ -252,7 +301,7 @@ function findMatchingTemplateClose(code: string, start: number): number {
     const tagStart = code.indexOf("<", cursor);
     if (tagStart === -1) return -1;
 
-    if (code.startsWith("<!--", tagStart)) {
+    if (startsWithIgnoreCase(code, "<!--", tagStart)) {
       const commentEnd = code.indexOf("-->", tagStart + 4);
       if (commentEnd === -1) return -1;
       cursor = commentEnd + 3;
@@ -261,18 +310,22 @@ function findMatchingTemplateClose(code: string, start: number): number {
 
     const rawTextTag = ["script", "style"].find(
       (name) =>
-        code.startsWith(`<${name}`, tagStart) &&
+        startsWithIgnoreCase(code, `<${name}`, tagStart) &&
         isTagNameBoundary(code[tagStart + name.length + 1]),
     );
     if (rawTextTag !== undefined) {
-      const closeStart = code.indexOf(`</${rawTextTag}>`, tagStart + 1);
+      const closeStart = findCaseInsensitive(
+        code,
+        `</${rawTextTag}>`,
+        tagStart + 1,
+      );
       if (closeStart === -1) return -1;
       cursor = closeStart + rawTextTag.length + 3;
       continue;
     }
 
     if (
-      code.startsWith("<template", tagStart) &&
+      startsWithIgnoreCase(code, "<template", tagStart) &&
       isTagNameBoundary(code[tagStart + "<template".length])
     ) {
       const tagEnd = findTagEnd(code, tagStart);
@@ -283,7 +336,7 @@ function findMatchingTemplateClose(code: string, start: number): number {
     }
 
     if (
-      code.startsWith("</template", tagStart) &&
+      startsWithIgnoreCase(code, "</template", tagStart) &&
       isTagNameBoundary(code[tagStart + "</template".length])
     ) {
       const tagEnd = findTagEnd(code, tagStart);
@@ -366,6 +419,46 @@ function countNewlines(value: string, start: number, end: number): number {
     if (value[index] === "\n") count += 1;
   }
   return count;
+}
+
+function lineAndColumn(
+  source: string,
+  offset: number,
+): { line: number; column: number } {
+  let line = 1;
+  let column = 1;
+  for (let index = 0; index < offset && index < source.length; index += 1) {
+    if (source[index] === "\n") {
+      line += 1;
+      column = 1;
+    } else {
+      column += 1;
+    }
+  }
+  return { line, column };
+}
+
+function startsWithIgnoreCase(
+  value: string,
+  prefix: string,
+  start = 0,
+): boolean {
+  return (
+    value.slice(start, start + prefix.length).toLowerCase() ===
+    prefix.toLowerCase()
+  );
+}
+
+function findCaseInsensitive(value: string, search: string, start = 0): number {
+  const lowerSearch = search.toLowerCase();
+  for (let index = start; index <= value.length - search.length; index += 1) {
+    if (
+      value.slice(index, index + search.length).toLowerCase() === lowerSearch
+    ) {
+      return index;
+    }
+  }
+  return -1;
 }
 
 function stripQuery(id: string): string {

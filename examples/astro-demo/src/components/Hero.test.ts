@@ -3,14 +3,13 @@ import { describe, expect, it } from "vitest";
 import Hero from "./Hero.astro";
 
 describe("Hero", () => {
-  it("renders title, tagline, badge, and CTAs", async () => {
+  it("renders title, tagline, and CTAs", async () => {
     const container = await AstroContainer.create();
     const html = await container.renderToString(Hero, {
       props: {
         context: {
           title: "Flowmark",
           tagline: "HTML-like templates with modern control flow.",
-          badge: "Framework-agnostic templates",
           ctaPrimary: { text: "Get started", href: "#getting-started" },
           ctaSecondary: { text: "View on GitHub", href: "https://github.com" },
         },
@@ -19,7 +18,6 @@ describe("Hero", () => {
 
     expect(html).toContain("Flowmark");
     expect(html).toContain("HTML-like templates with modern control flow.");
-    expect(html).toContain("Framework-agnostic templates");
     expect(html).toContain("Get started");
     expect(html).toContain('#getting-started"');
     expect(html).toContain("View on GitHub");
@@ -33,7 +31,6 @@ describe("Hero", () => {
         context: {
           title: "Flowmark",
           tagline: "Test tagline",
-          badge: "Badge",
           ctaPrimary: { text: "Primary", href: "#primary" },
         },
       },

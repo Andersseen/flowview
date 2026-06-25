@@ -14,8 +14,7 @@ const { context = heroContext } = Astro.props;
   <header class="hero-panel">
     <div class="page-frame grid gap-8 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
       <div class="max-w-3xl">
-        <and-badge variant="outline">{{ context.badge }}</and-badge>
-        <h1 class="mt-5 text-4xl font-black tracking-normal text-foreground sm:text-6xl">
+        <h1 class="text-4xl font-black tracking-normal text-foreground sm:text-6xl">
           {{ context.title }}
         </h1>
         <p class="mt-4 max-w-2xl text-lg text-muted-foreground sm:text-xl">

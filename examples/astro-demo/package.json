@@ -15,10 +15,13 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@andersseen/icon": "^0.0.3",
     "@andersseen/layout": "^0.0.1",
     "@andersseen/motion": "^0.1.1",
     "@andersseen/web-components": "^0.0.8",
     "@flowmark/astro": "workspace:*",
+    "@flowmark/astro-events": "workspace:*",
+    "@flowmark/dom": "workspace:*",
     "@flowmark/runtime": "workspace:*",
     "astro": "^5.7.10"
   },

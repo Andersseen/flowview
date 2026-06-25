@@ -158,4 +158,23 @@ const context = { title: "Hello" };
       ),
     ).rejects.toThrow("missing </template>");
   });
+
+  it("accepts case-insensitive template closing tags", async () => {
+    const result = await transformAstro(
+      `<template flowmark context={context}><p>{{ context.title }}</p></TEMPLATE>`,
+    );
+
+    expect(result).toContain(
+      "<Fragment set:html={__flowmarkRender0(context)} />",
+    );
+  });
+
+  it("throws a located error when context is missing", async () => {
+    await expect(
+      transformAstro("<template flowmark><p>Missing context</p></template>"),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining("context={...}"),
+      loc: expect.objectContaining({ line: 1, column: expect.any(Number) }),
+    });
+  });
 });

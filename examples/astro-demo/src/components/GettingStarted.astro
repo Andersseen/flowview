@@ -18,9 +18,9 @@ const { context = gettingStartedContext } = Astro.props;
       </h2>
       <p class="mt-2 text-muted-foreground">{{ context.description }}</p>
     </div>
-    <div class="mt-10 grid gap-6 lg:grid-cols-3">
+    <div class="mt-10 grid gap-6 lg:grid-cols-2">
       @for (step of context.steps; track step.label) {
-        <div class="grid gap-3">
+        <div class="{{ `grid h-full grid-rows-[auto_auto_1fr] gap-3 ${step.className}` }}">
           <div class="flex items-center gap-3">
             <span class="grid size-8 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
               {{ context.steps.indexOf(step) + 1 }}
@@ -28,7 +28,7 @@ const { context = gettingStartedContext } = Astro.props;
             <h3 class="text-lg font-bold text-foreground">{{ step.label }}</h3>
           </div>
           <p class="text-muted-foreground">{{ step.description }}</p>
-          <and-card variant="outline" class="block h-full overflow-hidden">
+          <and-card variant="outline" class="block h-full min-h-0 overflow-hidden">
             <and-card-header>
               <div class="flex items-center justify-between gap-3">
                 <and-card-title>{{ step.label }}</and-card-title>

@@ -116,8 +116,9 @@ Values interpolated from `context` are escaped by default through
 `@flowmark/runtime`.
 
 HTML escaping is safe for normal text and quoted HTML attribute values. Flowmark
-rejects interpolation in unquoted attributes. Escaping is not URL, CSS, or
-JavaScript sanitization. Do not interpolate untrusted values into
+rejects interpolation in unquoted attributes and rejects mixed text plus
+interpolation inside a single quoted attribute value. Escaping is not URL, CSS,
+or JavaScript sanitization. Do not interpolate untrusted values into
 `<script>` or `<style>` content, event-handler attributes, or URL-bearing
 attributes without validation appropriate to that context.
 
@@ -194,6 +195,59 @@ declaration to their `tsconfig.json`:
     "types": ["@flowmark/vite/client"]
   }
 }
+```
+
+## Use With Hono or Plain Node.js
+
+Flowmark generates a plain `render(context)` function, so it works with any
+server runtime. Add `@flowmark/vite` to your Vite build, import the compiled
+`.flow` file, and call `render` inside the request handler.
+
+### Hono
+
+```ts
+import { Hono } from "hono";
+import { render } from "./page.flow";
+
+const app = new Hono();
+
+app.get("/", (context) => {
+  const html = render({
+    title: "Hello from Flowmark",
+    items: ["a", "b", "c"],
+  });
+  return context.html(html);
+});
+
+export default app;
+```
+
+### Plain Node.js
+
+```ts
+import { createServer } from "node:http";
+import { render } from "./page.flow";
+
+createServer((_, response) => {
+  const html = render({ title: "Hello" });
+  response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  response.end(html);
+}).listen(3000);
+```
+
+### Cloudflare Workers
+
+```ts
+import { render } from "./page.flow";
+
+export default {
+  async fetch() {
+    const html = render({ title: "Hello from Flowmark" });
+    return new Response(html, {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  },
+};
 ```
 
 ## Test

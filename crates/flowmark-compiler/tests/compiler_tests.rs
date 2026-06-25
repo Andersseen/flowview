@@ -606,3 +606,57 @@ fn ast_serializes_to_json() {
     assert!(json.contains("\"type\":\"Interpolation\""));
     assert!(json.contains("\"expression\":\"context.name\""));
 }
+
+#[test]
+fn dynamic_attribute_expression_is_validated() {
+    let errors = expect_error(r#"<div class="{{ context. }}"></div>"#);
+    assert!(
+        errors
+            .iter()
+            .any(|m| m.contains("Invalid JavaScript expression")),
+        "expected invalid JS expression for dynamic attribute, got {errors:?}"
+    );
+}
+
+#[test]
+fn dynamic_attribute_expression_valid_parses() {
+    let output = compile_source(r#"<div class="{{ context.css }}"></div>"#);
+    assert!(output.contains("renderValue(context.css)"));
+}
+
+#[test]
+fn mixed_interpolation_in_quoted_attribute_is_rejected() {
+    let errors = expect_error(r#"<div class="btn {{ context.active }}"></div>"#);
+    assert!(
+        errors
+            .iter()
+            .any(|m| m.contains("must span the entire attribute value")),
+        "expected mixed-attribute error, got {errors:?}"
+    );
+}
+
+#[test]
+fn html_closing_tags_are_case_insensitive() {
+    // The compiler normalizes tag names to lower case, but accepts any ASCII
+    // casing for opening and closing tags.
+    let output = compile_source("<DIV>text</DIV>");
+    assert!(output.contains("<div>text</div>"));
+
+    let output = compile_source("<div>text</DIV>");
+    assert!(output.contains("<div>text</div>"));
+}
+
+#[test]
+fn doctype_is_preserved() {
+    let output = compile_source("<!DOCTYPE html><html></html>");
+    assert!(output.contains("<!DOCTYPE html>"));
+    assert!(output.contains("<html></html>"));
+}
+
+#[test]
+fn raw_text_elements_are_case_insensitive() {
+    let source = r#"<SCRIPT>const x = "@if";</SCRIPT><STYLE>.a { color: red; }</STYLE>"#;
+    let output = compile_source(source);
+    assert!(output.contains(r#"const x = "@if";"#));
+    assert!(output.contains(".a { color: red; }"));
+}

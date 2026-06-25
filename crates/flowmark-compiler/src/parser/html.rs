@@ -13,6 +13,10 @@ pub fn parse_html_segment(cursor: &mut Cursor) -> Result<Vec<Node>, Vec<Diagnost
         return Ok(vec![Node::Text(consume_html_comment(cursor))]);
     }
 
+    if cursor.starts_with_ignore_ascii_case("<!doctype") {
+        return Ok(vec![Node::Text(consume_doctype(cursor))]);
+    }
+
     if let Some(tag_name) = raw_text_tag_name(cursor) {
         return Ok(vec![Node::Text(consume_raw_text_element(cursor, tag_name))]);
     }
@@ -150,6 +154,12 @@ fn parse_attribute(cursor: &mut Cursor) -> Result<Attribute, Vec<Diagnostic>> {
     let value = parse_attribute_value(cursor, &name, &start_mark)?;
 
     if let Some(expression) = extract_dynamic_expression(&value.value) {
+        let expression_start = value.content_start
+            + value.value.find("{{").unwrap_or(0)
+            + 2
+            + leading_whitespace_after(&value.value, "{{");
+        javascript::validate_expression(cursor.source(), &expression, expression_start)?;
+
         return Ok(Attribute::Dynamic(DynamicAttribute {
             name,
             expression,
@@ -158,6 +168,17 @@ fn parse_attribute(cursor: &mut Cursor) -> Result<Attribute, Vec<Diagnostic>> {
                 end: cursor.position(),
             },
         }));
+    }
+
+    if value.has_interpolation_marker {
+        let marker_offset = value.value.find("{{").unwrap_or(0);
+        return Err(vec![Diagnostic::from_source(
+            "Interpolations inside quoted attributes must span the entire attribute value; use a single {{ expression }} or escape the braces",
+            cursor.source(),
+            value.content_start + marker_offset,
+            value.content_start + marker_offset + 2,
+        )
+        .with_diagnostic_code(DiagnosticCode::InvalidAttribute)]);
     }
 
     Ok(Attribute::Plain(PlainAttribute {
@@ -189,6 +210,16 @@ fn extract_dynamic_expression(value: &str) -> Option<String> {
     }
 
     Some(inner.to_string())
+}
+
+/// Number of whitespace bytes between the first occurrence of `marker` in
+/// `value` and the following non-whitespace character.
+fn leading_whitespace_after(value: &str, marker: &str) -> usize {
+    let Some(start) = value.find(marker) else {
+        return 0;
+    };
+    let after = &value[start + marker.len()..];
+    after.len() - after.trim_start().len()
 }
 
 /// Lightweight balance check for parentheses, brackets and braces, ignoring
@@ -251,6 +282,10 @@ fn parse_attribute_name(cursor: &mut Cursor) -> Result<String, Vec<Diagnostic>> 
 struct AttributeValue {
     value: String,
     quote: char,
+    /// Byte offset in the original source where the quoted value content starts
+    /// (immediately after the opening quote).
+    content_start: usize,
+    has_interpolation_marker: bool,
 }
 
 fn parse_attribute_value(
@@ -271,7 +306,9 @@ fn parse_attribute_value(
         }
     };
 
+    let content_start = cursor.position();
     let mut value = String::new();
+    let mut has_interpolation_marker = false;
 
     while let Some(ch) = cursor.current() {
         if is_escaped_syntax(cursor) {
@@ -280,9 +317,18 @@ fn parse_attribute_value(
             continue;
         }
 
+        if cursor.starts_with("{{") {
+            has_interpolation_marker = true;
+        }
+
         if ch == quote {
             cursor.advance();
-            return Ok(AttributeValue { value, quote });
+            return Ok(AttributeValue {
+                value,
+                quote,
+                content_start,
+                has_interpolation_marker,
+            });
         }
 
         value.push(ch);
@@ -332,7 +378,14 @@ fn parse_unquoted_attribute_value(
         .to_position(cursor.position())]);
     }
 
-    Ok(AttributeValue { value, quote: '"' })
+    let content_start = cursor.position() - value.len();
+    let has_interpolation_marker = value.contains("{{");
+    Ok(AttributeValue {
+        value,
+        quote: '"',
+        content_start,
+        has_interpolation_marker,
+    })
 }
 
 fn parse_element_children(
@@ -340,9 +393,10 @@ fn parse_element_children(
     tag_name: &str,
 ) -> Result<Vec<Node>, Vec<Diagnostic>> {
     let _start = cursor.position();
-    let children = parse_nodes(cursor, &[&format!("</{}", tag_name)])?;
+    let closing = format!("</{}", tag_name);
+    let children = parse_nodes(cursor, &[&closing])?;
 
-    if !cursor.starts_with(&format!("</{}", tag_name)) {
+    if !cursor.starts_with_ignore_ascii_case(&closing) {
         return Err(vec![Diagnostic::at_cursor(
             format!("Expected closing tag '</{}>'", tag_name),
             &cursor.snapshot(),
@@ -351,7 +405,7 @@ fn parse_element_children(
         .to_position(cursor.position())]);
     }
 
-    cursor.advance_by(2 + tag_name.len());
+    cursor.advance_by(closing.len());
 
     // The closing tag may contain whitespace and an optional `>`.
     while let Some(ch) = cursor.current() {
@@ -396,6 +450,24 @@ fn consume_html_comment(cursor: &mut Cursor) -> TextNode {
     }
     if cursor.starts_with("-->") {
         cursor.advance_by(3);
+    }
+
+    TextNode {
+        value: cursor.slice(start, cursor.position()).to_owned(),
+        span: Span {
+            start,
+            end: cursor.position(),
+        },
+    }
+}
+
+fn consume_doctype(cursor: &mut Cursor) -> TextNode {
+    let start = cursor.position();
+    while !cursor.is_eof() && cursor.current() != Some('>') {
+        cursor.advance();
+    }
+    if cursor.current() == Some('>') {
+        cursor.advance();
     }
 
     TextNode {

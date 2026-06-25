@@ -52,6 +52,12 @@ impl<'a> Cursor<'a> {
         self.source[self.position..].starts_with(prefix)
     }
 
+    pub fn starts_with_ignore_ascii_case(&self, prefix: &str) -> bool {
+        self.source[self.position..]
+            .get(..prefix.len())
+            .is_some_and(|candidate| candidate.eq_ignore_ascii_case(prefix))
+    }
+
     pub fn advance(&mut self) -> Option<char> {
         let ch = self.current()?;
         let len = ch.len_utf8();
