@@ -88,7 +88,7 @@ describe("compileEvents", () => {
       expect(error).toBeInstanceOf(FlowmarkDomError);
       const diagnostic = (error as FlowmarkDomError).diagnostics[0];
       expect(diagnostic?.message).toContain(
-        'FlowMark event handler "save" was used in the template',
+        'Flowmark event handler "save" was used in the template',
       );
     }
   });

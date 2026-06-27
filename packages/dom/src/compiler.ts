@@ -48,7 +48,7 @@ export function compileEvents(
   for (const func of frontmatter.functions) {
     if (functionsByName.has(func.name)) {
       diagnostics.push({
-        message: `FlowMark event handler "${func.name}" is declared more than once in frontmatter.`,
+        message: `Flowmark event handler "${func.name}" is declared more than once in frontmatter.`,
         severity: "error",
         filename: request.filename,
         ...locate(request.frontmatter, func.offset),
@@ -78,7 +78,7 @@ export function compileEvents(
     const func = functionsByName.get(call.name);
     if (func === undefined) {
       diagnostics.push({
-        message: `FlowMark event handler "${call.name}" was used in the template but was not found in frontmatter.`,
+        message: `Flowmark event handler "${call.name}" was used in the template but was not found in frontmatter.`,
         severity: "error",
         filename: request.filename,
         ...locate(request.template, binding.start),
@@ -115,7 +115,7 @@ export function compileEvents(
     const captures = analyzeCaptures(func);
     if (captures.length > 0) {
       diagnostics.push({
-        message: `FlowMark cannot move "${func.name}" to the client because it captures ${captures.map((name: string) => `"${name}"`).join(", ")}.`,
+        message: `Flowmark cannot move "${func.name}" to the client because it captures ${captures.map((name: string) => `"${name}"`).join(", ")}.`,
         severity: "error",
         filename: request.filename,
         ...locate(request.frontmatter, func.offset),
@@ -125,7 +125,7 @@ export function compileEvents(
 
   if (diagnostics.some((d) => d.severity === "error")) {
     throw new FlowmarkDomError(
-      `FlowMark DOM events compilation failed for ${request.filename}`,
+      `Flowmark Events compilation failed for ${request.filename}`,
       diagnostics,
     );
   }
@@ -155,7 +155,7 @@ function validateArguments(args: HandlerArgument[]): { error?: string } {
         typeof value !== "boolean" &&
         value !== null
       ) {
-        return { error: `FlowMark event argument cannot be serialized.` };
+        return { error: `Flowmark event argument cannot be serialized.` };
       }
     }
   }

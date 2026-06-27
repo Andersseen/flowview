@@ -46,6 +46,7 @@ reliable.
 - A tiny TypeScript runtime package: `@flowmark/runtime`
 - A Vite plugin: `@flowmark/vite`
 - An Astro integration: `@flowmark/astro`
+- A separate events compiler: Flowmark Events (`@flowmark/dom`, `@flowmark/astro-events`)
 - A framework-agnostic template experiment
 - A monorepo with a working Astro demo
 
@@ -56,7 +57,7 @@ Flowmark does not provide:
 - Components
 - Hydration
 - Signals
-- Events
+- DOM events in the HTML compiler (browser events are handled by the separate Flowmark Events compiler)
 - Directives
 - Dependency injection
 - A virtual DOM
@@ -272,6 +273,13 @@ The Astro demo also has a Playwright suite:
 pnpm --filter @flowmark/astro-demo exec playwright install chromium
 pnpm run test:e2e:demo
 ```
+
+## Flowmark Events
+
+Flowmark Events is the separate compiler and Astro integration for Angular-style
+event bindings such as `(click)="save($event)"`. It is not part of the core HTML
+compiler. The implementation packages are currently named `@flowmark/dom` and
+`@flowmark/astro-events`.
 
 ## Run The Astro Demo
 

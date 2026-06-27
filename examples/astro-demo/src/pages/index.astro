@@ -8,7 +8,7 @@ import eventsExample from "../snippets/home-events.astro.txt?raw";
 
 <Layout title={site.title} description={site.description} siteUrl={site.url}>
   <section
-    class="grid min-h-[calc(100vh-76px)] items-center border-b border-border bg-card py-14 md:py-20"
+    class="grid items-center border-b border-border bg-card py-14 md:min-h-[calc(100vh-76px)] md:py-20"
   >
     <div
       class="page-frame grid gap-10 md:grid-cols-[0.95fr_1.05fr] md:items-center"
@@ -42,7 +42,7 @@ import eventsExample from "../snippets/home-events.astro.txt?raw";
             href="/events"
             class="inline-flex items-center rounded-md border border-border bg-background px-4 py-2 text-sm font-bold text-foreground"
           >
-            Event compiler
+            Events compiler
           </a>
         </div>
         <dl class="grid gap-3 sm:grid-cols-3">
@@ -102,7 +102,7 @@ import eventsExample from "../snippets/home-events.astro.txt?raw";
             theme="dark"
             height="170px"
             font-size="13"
-            class="overflow-hidden rounded-md border border-border"
+            class="h-[140px] overflow-hidden rounded-md border border-border md:h-[170px]"
           ></vertex-editor-lite>
         </section>
 
@@ -119,7 +119,7 @@ import eventsExample from "../snippets/home-events.astro.txt?raw";
             theme="dark"
             height="210px"
             font-size="13"
-            class="overflow-hidden rounded-md border border-border"
+            class="h-[170px] overflow-hidden rounded-md border border-border md:h-[210px]"
           ></vertex-editor-lite>
         </section>
 

@@ -164,7 +164,7 @@ function parseCallShape(source: string): {
   const nameStart = index;
   if (!isIdentifierStart(source[index])) {
     throw new Error(
-      `FlowMark event handler must be a function call, got "${source}".`,
+      `Flowmark event handler must be a function call, got "${source}".`,
     );
   }
   index = readIdentifier(source, index);
@@ -173,7 +173,7 @@ function parseCallShape(source: string): {
 
   if (source[index] !== "(") {
     throw new Error(
-      `FlowMark event handler "${name}" must be called with parentheses.`,
+      `Flowmark event handler "${name}" must be called with parentheses.`,
     );
   }
   index += 1;
@@ -197,7 +197,7 @@ function parseCallShape(source: string): {
 
   if (parenDepth !== 0) {
     throw new Error(
-      `FlowMark event handler "${name}" has unbalanced parentheses.`,
+      `Flowmark event handler "${name}" has unbalanced parentheses.`,
     );
   }
 
@@ -225,7 +225,7 @@ function parseArgumentList(
       index += 1;
     } else if (index < argsSource.length) {
       throw new Error(
-        `FlowMark event handler arguments must be separated by commas, got "${argsSource.slice(index)}".`,
+        `Flowmark event handler arguments must be separated by commas, got "${argsSource.slice(index)}".`,
       );
     }
   }
@@ -247,13 +247,13 @@ function parseArgument(
 
   if (char === "`") {
     throw new Error(
-      `FlowMark event handler argument template literals are not supported at ${offset}.`,
+      `Flowmark event handler argument template literals are not supported at ${offset}.`,
     );
   }
 
   if (char === "[" || char === "{" || char === "(") {
     throw new Error(
-      `FlowMark event handler argument must be a simple literal or $event/$el at ${offset}.`,
+      `Flowmark event handler argument must be a simple literal or $event/$el at ${offset}.`,
     );
   }
 
@@ -270,12 +270,12 @@ function parseArgument(
     if (identifier === "$event") return { type: "event" };
     if (identifier === "$el") return { type: "element" };
     throw new Error(
-      `FlowMark event handler argument "${identifier}" is not supported at ${offset}.`,
+      `Flowmark event handler argument "${identifier}" is not supported at ${offset}.`,
     );
   }
 
   throw new Error(
-    `FlowMark event handler argument is invalid at ${offset}: "${source[start]}".`,
+    `Flowmark event handler argument is invalid at ${offset}: "${source[start]}".`,
   );
 }
 
@@ -359,13 +359,13 @@ function parseParameterList(
 
     if (source[index] === "{" || source[index] === "[") {
       throw new Error(
-        `FlowMark event handler destructured parameters are not supported.`,
+        `Flowmark event handler destructured parameters are not supported.`,
       );
     }
 
     if (!isIdentifierStart(source[index])) {
       throw new Error(
-        `FlowMark event handler parameter list is invalid at ${index}.`,
+        `Flowmark event handler parameter list is invalid at ${index}.`,
       );
     }
 
@@ -387,7 +387,7 @@ function parseParameterList(
       index += 1;
     } else if (source[index] !== ")") {
       throw new Error(
-        `FlowMark event handler parameter list is invalid at ${index}.`,
+        `Flowmark event handler parameter list is invalid at ${index}.`,
       );
     }
   }

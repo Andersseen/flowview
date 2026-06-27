@@ -13,7 +13,7 @@ test("renders the Flowmark landing page", async ({ page }) => {
     page.getByRole("link", { name: "Control flow compiler" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Event compiler" }),
+    page.getByRole("link", { name: "Events compiler" }),
   ).toBeVisible();
 });
 

@@ -121,7 +121,7 @@ const title = "Hello";
 <button (click)="save()">Save</button>`),
     ).rejects.toMatchObject({
       message: expect.stringContaining(
-        'FlowMark event handler "save" was used in the template',
+        'Flowmark event handler "save" was used in the template',
       ),
       loc: expect.objectContaining({ line: expect.any(Number) }),
     });

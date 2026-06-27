@@ -7,7 +7,7 @@ const FLOW_ARGS_ATTR = "data-flow-args";
 const FLOW_EVENT_MARKER = "__flow";
 
 /**
- * Scan the document for FlowMark event markers and attach native listeners.
+ * Scan the document for Flowmark Events markers and attach native listeners.
  */
 export function bindFlowEvents(handlers: FlowEventHandlers): void {
   if (typeof document === "undefined") return;
