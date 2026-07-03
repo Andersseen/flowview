@@ -96,7 +96,11 @@ function isRawTextTagStart(
   return next === undefined || /[\s>]/.test(next);
 }
 
-function skipRawTextElement(html: string, start: number, tagName: string): number {
+function skipRawTextElement(
+  html: string,
+  start: number,
+  tagName: string,
+): number {
   const tagOpenEnd = html.indexOf(">", start + tagName.length + 1);
   if (tagOpenEnd === -1) return html.length;
 
@@ -134,10 +138,7 @@ function parseTagForEvents(html: string, start: number): TagParseResult {
 
     const attrStartInContent = index;
     const nameStart = index;
-    while (
-      index < content.length &&
-      !/[\s=/>]/.test(content[index]!)
-    ) {
+    while (index < content.length && !/[\s=/>]/.test(content[index]!)) {
       index += 1;
     }
     const name = content.slice(nameStart, index);
@@ -659,7 +660,6 @@ function isReferenceIdentifier(node: ts.Identifier): boolean {
 
   return true;
 }
-
 
 function skipWhitespace(source: string, start: number): number {
   let index = start;

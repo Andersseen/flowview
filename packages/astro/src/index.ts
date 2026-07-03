@@ -230,13 +230,27 @@ function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
     const contextAttribute = node.attributes.find(
       (attribute) => attribute.name === "context",
     );
-    const contextExpression =
-      contextAttribute?.kind === "expression"
-        ? contextAttribute.value.trim()
+    const flowmarkExpression =
+      flowmarkAttribute.kind === "expression"
+        ? flowmarkAttribute.value.trim()
         : "";
+    const contextExpression =
+      flowmarkExpression !== ""
+        ? flowmarkExpression
+        : contextAttribute?.kind === "expression"
+          ? contextAttribute.value.trim()
+          : "";
     if (!contextExpression) {
       throw new FlowmarkAstroError(
-        "Flowmark embedded templates require a non-empty context={...} attribute.",
+        "Flowmark embedded templates require a context expression: flowmark={...} or context={...}.",
+        code,
+        openStart,
+        code,
+      );
+    }
+    if (flowmarkExpression !== "" && contextAttribute?.kind === "expression") {
+      throw new FlowmarkAstroError(
+        "Flowmark embedded templates must not combine flowmark={...} with context={...}; use one of them.",
         code,
         openStart,
         code,

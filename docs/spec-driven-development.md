@@ -75,8 +75,8 @@ No framework assumptions.
 ```
 
 The normative language specification lives in
-[`docs/flowmark-spec.md`](./flowmark-spec.md). That file defines *what* the
-compiler must do; this file defines *how we work* and *what to improve next*.
+[`docs/flowmark-spec.md`](./flowmark-spec.md). That file defines _what_ the
+compiler must do; this file defines _how we work_ and _what to improve next_.
 If the two ever conflict about language behavior, `flowmark-spec.md` wins.
 
 ---
@@ -104,7 +104,7 @@ flowmark/
 │   ├── vite/                     # @flowmark/vite: .flow imports; spawns the
 │   │                             # `flowmark` CLI (workspace target/ or PATH)
 │   ├── astro/                    # @flowmark/astro: inline
-│   │                             # <template flowmark is:raw context={...}>
+│   │                             # <template flowmark={...} is:raw>
 │   │                             # regions in .astro (uses official Astro
 │   │                             # parser; emits source maps)
 │   ├── dom/                      # @flowmark/dom: Events compiler core
@@ -222,7 +222,7 @@ What keeps it from serious production use today (§8 addresses these):
    repo, nothing works without manually building the Rust CLI.
 2. **No source maps from the Rust compiler.** `.flow` → JS has no mapping,
    so stack traces and devtools point at generated code. (The Astro
-   pre-transform maps the *slicing*, not the generated render function.)
+   pre-transform maps the _slicing_, not the generated render function.)
 3. **Events capture analysis is allowlist-based.** `parser.ts` decides
    "captured vs. global" using hard-coded `KNOWN_GLOBALS`/reserved-word
    sets over identifiers found in the body. Unknown browser globals
@@ -281,7 +281,7 @@ not require a local Rust toolchain.
 
 **Steps:** decision doc → build pipeline for the artifact → plugin
 resolution order (explicit option > bundled artifact > workspace target/ >
-PATH) → integration test that runs in a temp dir *outside* the workspace →
+PATH) → integration test that runs in a temp dir _outside_ the workspace →
 CI job that exercises the packaged flow on Linux/macOS/Windows.
 
 **Exit checks:** a fresh Vite project outside this repo, with no Rust
@@ -319,7 +319,7 @@ ship broken client code. Correctness of diagnostics is a core promise.
 `packages/dom/src/parser.ts`) for real lexical scope analysis: an
 identifier is a capture **iff** it resolves to a frontmatter binding
 outside the handler and is not a declared parameter/local. Unknown
-identifiers that don't resolve to frontmatter bindings are *not* errors
+identifiers that don't resolve to frontmatter bindings are _not_ errors
 (they are browser globals at runtime) — at most a warning.
 
 **Steps:** write failing tests first: `IntersectionObserver`, `crypto`,
@@ -373,7 +373,7 @@ comment; TS: `describe`/`it` naming). Add a checker script
 regressions from a committed baseline.
 
 **Exit checks:** the script runs in CI; the initial report is committed;
-every *new* spec sentence added later must land with an ID and a test.
+every _new_ spec sentence added later must land with an ID and a test.
 
 ### WS6 — Release engineering
 
@@ -420,19 +420,19 @@ positions for both `.flow` and embedded templates.
 
 ## 10. Validation commands
 
-| Scope | Command |
-| --- | --- |
-| Rust: format | `cargo fmt --all -- --check` |
-| Rust: lint | `cargo clippy --workspace --all-targets -- -D warnings` |
-| Rust: tests | `cargo test --workspace` |
-| JS: all package tests | `pnpm -r --if-present test` |
-| JS: types | `pnpm run typecheck` |
-| Runtime only | `pnpm --filter @flowmark/runtime test` |
-| Vite plugin | `pnpm --filter @flowmark/vite test` |
-| Astro integration | `pnpm --filter @flowmark/astro test` |
-| Events core | `pnpm --filter @flowmark/dom test` |
-| Events Astro | `pnpm --filter @flowmark/astro-events test` |
-| Demo gate | `pnpm --filter @flowmark/astro-demo run check` |
+| Scope                 | Command                                                 |
+| --------------------- | ------------------------------------------------------- |
+| Rust: format          | `cargo fmt --all -- --check`                            |
+| Rust: lint            | `cargo clippy --workspace --all-targets -- -D warnings` |
+| Rust: tests           | `cargo test --workspace`                                |
+| JS: all package tests | `pnpm -r --if-present test`                             |
+| JS: types             | `pnpm run typecheck`                                    |
+| Runtime only          | `pnpm --filter @flowmark/runtime test`                  |
+| Vite plugin           | `pnpm --filter @flowmark/vite test`                     |
+| Astro integration     | `pnpm --filter @flowmark/astro test`                    |
+| Events core           | `pnpm --filter @flowmark/dom test`                      |
+| Events Astro          | `pnpm --filter @flowmark/astro-events test`             |
+| Demo gate             | `pnpm --filter @flowmark/astro-demo run check`          |
 
 **Full gate (run before declaring any task done):**
 

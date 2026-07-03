@@ -2,7 +2,7 @@
  * Centralized data layer for the Flowmark landing page.
  *
  * Each exported `*Context` object is designed to be passed to a
- * `<template flowmark is:raw context={context}>` region. See the
+ * `<template flowmark={context} is:raw>` region. See the
  * component files in `src/components/` for concrete usage.
  */
 

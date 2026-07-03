@@ -20,7 +20,7 @@ describe("compileFlowmark", () => {
       compilerPath,
     });
 
-    expect(code).toContain("output += '<p';")
+    expect(code).toContain("output += '<p';");
     expect(code).toContain("output += '>';");
     expect(code).toContain("output += 'Hello ';");
     expect(code).toContain("renderValue(context.name)");

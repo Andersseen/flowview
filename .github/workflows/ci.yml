@@ -67,6 +67,9 @@ jobs:
       - name: Test Astro integration
         run: pnpm run test:astro
 
+      - name: Test Prettier plugin
+        run: pnpm run test:prettier
+
       - name: Build DOM events package
         run: pnpm run build:dom
 

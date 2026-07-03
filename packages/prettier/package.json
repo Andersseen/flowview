@@ -1,0 +1,34 @@
+{
+  "name": "@flowmark/prettier",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "prettier-plugin-astro": "^0.14.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "prettier": "^3.5.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.0.0"
+  },
+  "peerDependencies": {
+    "prettier": "^3.0.0"
+  }
+}

@@ -60,7 +60,9 @@ export function compileEvents(
 
   const handlers = new Map<string, FrontmatterFunction>();
   const processedBindings: ProcessedBinding[] = [];
-  const unsupportedHandlers = new Set(findUnsupportedHandlerNames(request.frontmatter));
+  const unsupportedHandlers = new Set(
+    findUnsupportedHandlerNames(request.frontmatter),
+  );
 
   for (const binding of bindings) {
     let call: ReturnType<typeof parseHandlerExpression>;

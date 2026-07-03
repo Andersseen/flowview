@@ -123,22 +123,17 @@ const serializedNavItems = JSON.stringify(navItems);
               class="theme-icon-light"
               size="18"
               aria-hidden="true"
-              style="display: block;"
-            ></and-icon>
+              style="display: block;"></and-icon>
             <and-icon
               name="moon"
               class="theme-icon-dark"
               size="18"
               aria-hidden="true"
-              style="display: none;"
-            ></and-icon>
+              style="display: none;"></and-icon>
           </and-button>
         </div>
 
-        <div
-          slot="mobile-nav"
-          class="flex flex-col gap-3 p-4"
-        >
+        <div slot="mobile-nav" class="flex flex-col gap-3 p-4">
           <a
             href="https://github.com/andersseen/flowmark"
             target="_blank"
@@ -161,20 +156,17 @@ const serializedNavItems = JSON.stringify(navItems);
               class="theme-icon-light"
               size="18"
               aria-hidden="true"
-              style="display: block;"
-            ></and-icon>
+              style="display: block;"></and-icon>
             <and-icon
               name="moon"
               class="theme-icon-dark"
               size="18"
               aria-hidden="true"
-              style="display: none;"
-            ></and-icon>
+              style="display: none;"></and-icon>
             <span class="theme-label-light">Light theme</span>
-            <span
-              class="theme-label-dark"
-              style="display: none;"
-            >Dark theme</span>
+            <span class="theme-label-dark" style="display: none;"
+              >Dark theme</span
+            >
           </and-button>
         </div>
       </and-navbar>
@@ -200,16 +192,24 @@ const serializedNavItems = JSON.stringify(navItems);
 
           document
             .querySelectorAll(".theme-icon-light")
-            .forEach((icon) => (icon.style.display = isDark ? "none" : "block"));
+            .forEach(
+              (icon) => (icon.style.display = isDark ? "none" : "block"),
+            );
           document
             .querySelectorAll(".theme-icon-dark")
-            .forEach((icon) => (icon.style.display = isDark ? "block" : "none"));
+            .forEach(
+              (icon) => (icon.style.display = isDark ? "block" : "none"),
+            );
           document
             .querySelectorAll(".theme-label-light")
-            .forEach((label) => (label.style.display = isDark ? "none" : "block"));
+            .forEach(
+              (label) => (label.style.display = isDark ? "none" : "block"),
+            );
           document
             .querySelectorAll(".theme-label-dark")
-            .forEach((label) => (label.style.display = isDark ? "block" : "none"));
+            .forEach(
+              (label) => (label.style.display = isDark ? "block" : "none"),
+            );
         }
 
         const currentMode =

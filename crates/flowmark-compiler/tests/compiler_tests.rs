@@ -242,7 +242,10 @@ fn track_expression_emits_warning() {
     assert_eq!(warnings.len(), 1);
     assert!(warnings[0].message.contains("track"));
     assert_eq!(warnings[0].code.as_deref(), Some("FM0015"));
-    assert_eq!(warnings[0].severity, flowmark_compiler::DiagnosticSeverity::Warning);
+    assert_eq!(
+        warnings[0].severity,
+        flowmark_compiler::DiagnosticSeverity::Warning
+    );
 }
 
 #[test]
@@ -259,7 +262,13 @@ fn empty_track_syntax() {
 
 #[test]
 fn rejects_invalid_or_internal_loop_bindings() {
-    for binding in ["item-name", "output", "context", "__flowmark_items0", "class"] {
+    for binding in [
+        "item-name",
+        "output",
+        "context",
+        "__flowmark_items0",
+        "class",
+    ] {
         let source = format!("@for ({binding} of context.items) {{ <p></p> }}");
         let errors = expect_error(&source);
         assert!(errors.iter().any(|message| message.contains("binding")));

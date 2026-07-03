@@ -12,7 +12,7 @@
     "directory": "packages/vscode-flowmark"
   },
   "scripts": {
-    "dev": "code --new-window --extensionDevelopmentPath=. ../../examples/astro-demo",
+    "dev": "code --new-window --extensionDevelopmentPath=\"$PWD\" ../../examples/astro-demo",
     "test": "node ./test/grammar.test.mjs",
     "package": "mkdir -p dist && vsce package --no-dependencies --out dist/flowmark-language-support.vsix",
     "package:pre-release": "mkdir -p dist && vsce package --no-dependencies --pre-release --out dist/flowmark-language-support.vsix"

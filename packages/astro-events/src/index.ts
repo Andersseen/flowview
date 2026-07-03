@@ -220,10 +220,7 @@ function translateDiagnostics(
 
   return diagnostics.map((diagnostic) => ({
     ...diagnostic,
-    line:
-      diagnostic.line === 1
-        ? baseLine
-        : baseLine + diagnostic.line - 1,
+    line: diagnostic.line === 1 ? baseLine : baseLine + diagnostic.line - 1,
     column:
       diagnostic.line === 1
         ? baseColumn + diagnostic.column - 1

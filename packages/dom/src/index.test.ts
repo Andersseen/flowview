@@ -162,9 +162,7 @@ describe("compileEvents", () => {
       template: `<!-- <button (click)="save()">Save</button> -->`,
     });
 
-    expect(result.html).toBe(
-      `<!-- <button (click)="save()">Save</button> -->`,
-    );
+    expect(result.html).toBe(`<!-- <button (click)="save()">Save</button> -->`);
     expect(result.clientModule).toBe("");
   });
 
@@ -191,7 +189,7 @@ describe("compileEvents", () => {
     expect(result.html).toContain('data-flow-on-click="save"');
     expect(result.html).toContain('id="btn"');
     expect(result.html).toContain('class="primary"');
-    expect(result.html).toContain('disabled');
+    expect(result.html).toContain("disabled");
     expect(result.clientModule).toContain("function save()");
   });
 

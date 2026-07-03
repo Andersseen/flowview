@@ -4,7 +4,6 @@ const context = {
 };
 ---
 
-<!-- prettier-ignore -->
-<template flowmark is:raw context={context}>
+<template flowmark={context} is:raw>
   <p id="inline">Hello {{ context.name }}</p>
 </template>

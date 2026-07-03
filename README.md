@@ -33,7 +33,7 @@ Flowmark is experimental and pre-stable. The public shape is intentionally
 small, but syntax and generated output may still change before a stable release.
 
 The current milestone is the inline Astro authoring path: Flowmark control flow
-inside `<template flowmark is:raw context={...}>` regions in normal `.astro`
+inside `<template flowmark={...} is:raw>` regions in normal `.astro`
 files.
 Standalone `.flow` imports remain supported, but broader Vite and server-runtime
 usage is a later milestone after the Astro integration and core syntax are
@@ -47,6 +47,7 @@ reliable.
 - A Vite plugin: `@flowmark/vite`
 - An Astro integration: `@flowmark/astro`
 - A separate events compiler: Flowmark Events (`@flowmark/dom`, `@flowmark/astro-events`)
+- A Prettier plugin: `@flowmark/prettier` (formats `.astro` files while preserving Flowmark regions)
 - A framework-agnostic template experiment
 - A monorepo with a working Astro demo
 
@@ -293,7 +294,7 @@ It uses Astro, Tailwind CSS 4, `@andersseen/web-components`, and the local
 the editor-compatible `<template flowmark is:raw>` wrapper:
 
 ```text
-<template flowmark is:raw context={context}>
+<template flowmark={context} is:raw>
   <main>
     <h1>{{ context.title }}</h1>
     @if (context.featured) {

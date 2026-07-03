@@ -9,8 +9,7 @@ export interface Props {
 const { context = footerContext } = Astro.props;
 ---
 
-<!-- prettier-ignore -->
-<template flowmark is:raw context={context}>
+<template flowmark={context} is:raw>
   <footer class="border-t border-border bg-card">
     <div class="page-frame flex flex-col gap-6 py-10 sm:flex-row sm:items-center sm:justify-between">
       <div>

@@ -9,8 +9,7 @@ export interface Props {
 const { context = syntaxContext } = Astro.props;
 ---
 
-<!-- prettier-ignore -->
-<template flowmark is:raw context={context}>
+<template flowmark={context} is:raw>
   <section class="page-frame py-16" aria-labelledby="syntax-heading">
     <div class="text-center">
       <h2 id="syntax-heading" class="text-3xl font-bold text-foreground">
