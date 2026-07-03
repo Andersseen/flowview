@@ -127,6 +127,19 @@ const title = "Hello";
     });
   });
 
+  it("reports missing handler locations relative to the original Astro file", async () => {
+    await expect(
+      transformAstro(`---
+---
+<button (click)="save()">Save</button>`),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining(
+        'Flowmark event handler "save" was used in the template',
+      ),
+      loc: { line: 3, column: 9 },
+    });
+  });
+
   it("reports a captured server value as a located error", async () => {
     await expect(
       transformAstro(`---

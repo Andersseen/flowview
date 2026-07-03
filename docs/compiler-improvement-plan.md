@@ -19,28 +19,28 @@ Nota: `packages/dom/src/runtime/index.ts` e `index.test.ts` tienen cambios sin c
 
 Objetivo: que el compilador de eventos no se rompa con HTML real y que los errores apunten al archivo correcto.
 
-### A1. Commitear deduplicación de listeners existente
+### A1. Commitear deduplicación de listeners existente ✅
 - Archivos: `packages/dom/src/runtime/index.ts`, `packages/dom/src/runtime/index.test.ts`
-- Estado: ya implementado, sin commit.
-- Check: `pnpm --filter @flowmark/dom test` sigue pasando.
+- Estado: completado.
+- Check: `pnpm --filter @flowmark/dom test` pasa.
 
-### A2. Corregir diagnósticos page-relative en `@flowmark/astro-events`
+### A2. Corregir diagnósticos page-relative en `@flowmark/astro-events` ✅
 - Archivo: `packages/astro-events/src/index.ts`
 - Problema: `compileEvents` recibe `templateSource = code.slice(templateStart)`, así que `locate()` da líneas/columnas relativas al template cortado.
-- Solución: pasar un offset base a `compileEvents` o ajustar las posiciones antes de mostrar el error.
-- Check: añadir test con un `.astro` que tenga frontmatter de varias líneas y un error de evento; el `loc` debe apuntar a la línea real del archivo.
+- Solución: añadir `translateDiagnostics` que recibe el offset del template en el archivo original y ajusta línea/columna antes de relanzar el error.
+- Check: test añadido verificando `loc: { line: 3, column: 9 }` para un error en la línea 3 del archivo Astro.
 
-### A3. Rechazar basura al final de expresiones handler
+### A3. Rechazar basura al final de expresiones handler ✅
 - Archivo: `packages/dom/src/parser.ts`, `parseCallShape`
 - Problema: `save() + 1` parsea como `save()` sin error.
-- Solución: después de parsear los paréntesis, verificar que solo quede whitespace hasta el final de la cadena.
-- Check: test con handler inválido `save()foo`, `save() + 1`, etc.
+- Solución: después del `)` de cierre, saltar whitespace y verificar que `index === source.length`.
+- Check: tests añadidos para `save() + 1` y `save()foo`.
 
-### A4. Endurecer descubrimiento de atributos de evento
+### A4. Endurecer descubrimiento de atributos de evento ✅
 - Archivo: `packages/dom/src/parser.ts`, `findEventBindings`
 - Problema: `EVENT_ATTR_RE` es frágil (comentarios, comillas anidadas, espacios).
-- Solución: reemplazar regex por un pequeño scanner HTML-aware; o, en la ruta Astro, usar el AST de `@astrojs/compiler`.
-- Check: tests con eventos dentro de comentarios HTML, atributos con comillas simples/dobles, y elementos anidados.
+- Solución: reemplazar regex por un scanner HTML-aware que salta comentarios, `<script>`/`<style>`, y parsea atributos respetando comillas.
+- Check: tests añadidos para comentarios, script tags, atributos mixtos, comillas simples y texto plano.
 
 ---
 

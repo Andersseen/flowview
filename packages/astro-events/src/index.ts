@@ -4,6 +4,7 @@ import {
   compileEvents,
   FlowmarkDomError,
   type CompileEventsResult,
+  type FlowmarkDomDiagnostic,
 } from "@flowmark/dom";
 import type { AstroIntegration } from "astro";
 import type { Plugin } from "vite";
@@ -138,7 +139,12 @@ function transformAstroSource(
     });
   } catch (error) {
     if (error instanceof FlowmarkDomError) {
-      throw error;
+      const translated = translateDiagnostics(
+        error.diagnostics,
+        code,
+        templateStart,
+      );
+      throw new FlowmarkDomError(error.message, translated);
     }
     throw new FlowmarkAstroEventsError(
       error instanceof Error ? error.message : String(error),
@@ -201,6 +207,26 @@ function lineAndColumn(
     }
   }
   return { line, column };
+}
+
+function translateDiagnostics(
+  diagnostics: FlowmarkDomDiagnostic[],
+  source: string,
+  offset: number,
+): FlowmarkDomDiagnostic[] {
+  const { line: baseLine, column: baseColumn } = lineAndColumn(source, offset);
+
+  return diagnostics.map((diagnostic) => ({
+    ...diagnostic,
+    line:
+      diagnostic.line === 1
+        ? baseLine
+        : baseLine + diagnostic.line - 1,
+    column:
+      diagnostic.line === 1
+        ? baseColumn + diagnostic.column - 1
+        : diagnostic.column,
+  }));
 }
 
 function stripQuery(id: string): string {

@@ -32,7 +32,6 @@ export interface ParsedFrontmatter {
 }
 
 const EVENT_NAME_RE = /^[\w-]+$/;
-const EVENT_ATTR_RE = /\s\(([\w-]+)\)\s*=\s*(["'])(.*?)\2/g;
 const FUNCTION_DECL_RE = /function\s+([a-zA-Z_$][\w$]*)/g;
 const IDENTIFIER_RE = /[a-zA-Z_$][\w$]*/g;
 
@@ -117,31 +116,216 @@ const KNOWN_GLOBALS = new Set([
 
 export function findEventBindings(html: string): EventBinding[] {
   const bindings: EventBinding[] = [];
-  EVENT_ATTR_RE.lastIndex = 0;
-  let match: RegExpExecArray | null;
+  let index = 0;
 
-  while ((match = EVENT_ATTR_RE.exec(html)) !== null) {
-    const eventName = match[1]!;
-    const quote = match[2]!;
-    const expression = match[3]!;
-    const attributeStart = match.index;
-    const attributeEnd = match.index + match[0].length;
-
-    if (!EVENT_NAME_RE.test(eventName)) {
+  while (index < html.length) {
+    if (html.slice(index, index + 4) === "<!--") {
+      index = skipHtmlComment(html, index);
       continue;
     }
 
-    bindings.push({
-      eventName,
-      expression,
-      start: match.index + match[0].indexOf("("),
-      end: attributeEnd,
-      attributeStart,
-      attributeEnd,
-    });
+    if (isRawTextTagStart(html, index, "script")) {
+      index = skipRawTextElement(html, index, "script");
+      continue;
+    }
+
+    if (isRawTextTagStart(html, index, "style")) {
+      index = skipRawTextElement(html, index, "style");
+      continue;
+    }
+
+    if (html[index] === "<") {
+      const result = parseTagForEvents(html, index);
+      bindings.push(...result.bindings);
+      index = result.end;
+      continue;
+    }
+
+    index += 1;
   }
 
   return bindings;
+}
+
+function skipHtmlComment(html: string, start: number): number {
+  const end = html.indexOf("-->", start + 4);
+  return end === -1 ? html.length : end + 3;
+}
+
+function isRawTextTagStart(
+  html: string,
+  start: number,
+  tagName: string,
+): boolean {
+  const open = `<${tagName}`;
+  const slice = html.slice(start, start + open.length).toLowerCase();
+  if (slice !== open) return false;
+  const next = html[start + open.length];
+  return next === undefined || /[\s>]/.test(next);
+}
+
+function skipRawTextElement(html: string, start: number, tagName: string): number {
+  const tagOpenEnd = html.indexOf(">", start + tagName.length + 1);
+  if (tagOpenEnd === -1) return html.length;
+
+  const close = `</${tagName}>`;
+  const closeIndex = html.toLowerCase().indexOf(close, tagOpenEnd + 1);
+  return closeIndex === -1 ? html.length : closeIndex + close.length;
+}
+
+interface TagParseResult {
+  bindings: EventBinding[];
+  end: number;
+}
+
+function parseTagForEvents(html: string, start: number): TagParseResult {
+  const tagEnd = findTagEnd(html, start);
+  if (tagEnd === -1) {
+    return { bindings: [], end: html.length };
+  }
+
+  const content = html.slice(start + 1, tagEnd);
+  const bindings: EventBinding[] = [];
+  let index = 0;
+
+  // Skip tag name.
+  while (index < content.length && !/[\s>]/.test(content[index]!)) {
+    index += 1;
+  }
+
+  while (index < content.length) {
+    index = skipWhitespaceInString(content, index);
+    if (index >= content.length) break;
+
+    const char = content[index];
+    if (char === "/" || char === ">") break;
+
+    const attrStartInContent = index;
+    const nameStart = index;
+    while (
+      index < content.length &&
+      !/[\s=/>]/.test(content[index]!)
+    ) {
+      index += 1;
+    }
+    const name = content.slice(nameStart, index);
+    const attrStartOffset = start + 1 + attrStartInContent;
+
+    index = skipWhitespaceInString(content, index);
+
+    let expression = "";
+    let valueEndInContent = index;
+
+    if (content[index] === "=") {
+      index += 1;
+      index = skipWhitespaceInString(content, index);
+      const valueResult = parseAttributeValue(content, index);
+      expression = valueResult.value;
+      valueEndInContent = valueResult.end;
+      index = valueResult.end;
+    }
+
+    const eventName = extractEventName(name);
+    if (eventName !== undefined && expression !== "") {
+      const attributeStart = attrStartOffset - 1;
+      const attributeEnd = start + 1 + valueEndInContent;
+      bindings.push({
+        eventName,
+        expression,
+        start: start + 1 + nameStart,
+        end: attributeEnd,
+        attributeStart,
+        attributeEnd,
+      });
+    }
+
+    index = skipWhitespaceInString(content, index);
+  }
+
+  return { bindings, end: tagEnd + 1 };
+}
+
+function findTagEnd(html: string, start: number): number {
+  let index = start + 1;
+  let inString: string | undefined;
+
+  while (index < html.length) {
+    const char = html[index];
+
+    if (inString !== undefined) {
+      if (char === "\\") {
+        index += 2;
+        continue;
+      }
+      if (char === inString) {
+        inString = undefined;
+      }
+      index += 1;
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === "`") {
+      inString = char;
+      index += 1;
+      continue;
+    }
+
+    if (char === ">") {
+      return index;
+    }
+
+    index += 1;
+  }
+
+  return -1;
+}
+
+function skipWhitespaceInString(content: string, start: number): number {
+  let index = start;
+  while (index < content.length && /\s/.test(content[index]!)) {
+    index += 1;
+  }
+  return index;
+}
+
+function parseAttributeValue(
+  content: string,
+  start: number,
+): { value: string; end: number } {
+  const quote = content[start];
+  if (quote === '"' || quote === "'" || quote === "`") {
+    let index = start + 1;
+    let value = "";
+    while (index < content.length) {
+      const char = content[index];
+      if (char === "\\") {
+        value += content[index + 1] ?? char;
+        index += 2;
+        continue;
+      }
+      if (char === quote) {
+        return { value, end: index + 1 };
+      }
+      value += char;
+      index += 1;
+    }
+    return { value, end: index };
+  }
+
+  let index = start;
+  let value = "";
+  while (index < content.length && !/[\s>]/.test(content[index]!)) {
+    value += content[index];
+    index += 1;
+  }
+  return { value, end: index };
+}
+
+function extractEventName(name: string): string | undefined {
+  if (!name.startsWith("(") || !name.endsWith(")")) return undefined;
+  const inner = name.slice(1, -1);
+  if (!EVENT_NAME_RE.test(inner)) return undefined;
+  return inner;
 }
 
 export function parseHandlerExpression(expression: string): HandlerCall {
@@ -202,6 +386,15 @@ function parseCallShape(source: string): {
   }
 
   const argsSource = source.slice(argsStart, index);
+  index += 1; // skip closing )
+  index = skipWhitespace(source, index);
+
+  if (index !== source.length) {
+    throw new Error(
+      `Flowmark event handler "${name}" has unexpected trailing content: "${source.slice(index)}".`,
+    );
+  }
+
   return { name, argsSource, argsStart };
 }
 

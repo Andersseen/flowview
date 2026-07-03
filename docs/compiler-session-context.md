@@ -5,14 +5,13 @@
 
 ## Fecha de última actualización
 
-2026-07-03
+2026-07-03 (Fase A completada)
 
 ## Estado del repo
 
 - Rama actual: `main` (según `git status`)
 - Archivos sin commit:
-  - `packages/dom/src/runtime/index.ts` — deduplicación de listeners (`FLOW_BOUND_ATTR`, `bindFlowEventsIn`)
-  - `packages/dom/src/runtime/index.test.ts` — tests de deduplicación
+  - Ninguno de la Fase A; pendiente commit grupal.
 - Tests baseline pasan:
   - `cargo test --workspace` ✅
   - `pnpm --filter @flowmark/dom test` ✅
@@ -73,15 +72,15 @@ Archivos clave:
 
 ## Problemas conocidos (copia resumida)
 
-### Eventos
+### Eventos (resueltos en Fase A)
 
-1. Descubrimiento regex (`EVENT_ATTR_RE`) es frágil.
-2. `parseCallShape` no rechaza trailing junk (`save() + 1`).
-3. Frontmatter solo soporta `function name() {}`.
-4. `analyzeCaptures` es heurístico y falla con TS moderno.
-5. Diagnósticos en Astro apuntan al template cortado, no al archivo original.
-6. `astro-events` devuelve `map: null`.
-7. Runtime ya tiene deduplicación sin commit.
+1. ~~Descubrimiento regex (`EVENT_ATTR_RE`) es frágil.~~ ✅ Reemplazado por scanner HTML-aware.
+2. ~~`parseCallShape` no rechaza trailing junk (`save() + 1`).~~ ✅ Ahora se rechaza contenido inesperado tras el cierre del call.
+3. Frontmatter solo soporta `function name() {}`. ⏳ Pendiente Fase B.
+4. `analyzeCaptures` es heurístico y falla con TS moderno. ⏳ Pendiente Fase B.
+5. ~~Diagnósticos en Astro apuntan al template cortado, no al archivo original.~~ ✅ Ajustados con `translateDiagnostics`.
+6. `astro-events` devuelve `map: null`. ⏳ Pendiente Fase D.
+7. ~~Runtime ya tiene deduplicación sin commit.~~ ✅ Commiteado.
 
 ### Rust
 
@@ -98,6 +97,7 @@ Archivos clave:
 | 2026-07-03 | No agregar nuevas features al lenguaje | Enfocarse en robustez de compiladores existentes |
 | 2026-07-03 | Fases A→D en ese orden | Mayor impacto DX primero (eventos), luego Rust, luego integración |
 | 2026-07-03 | Commitear deduplicación de listeners como primer paso | Ya está implementada; evita perder trabajo |
+| 2026-07-03 | Scanner HTML-aware en lugar de regex | Más robusto y mantiene el paquete sin dependencias nuevas |
 
 ## Comandos útiles para cada sesión
 

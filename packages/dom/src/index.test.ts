@@ -134,4 +134,84 @@ describe("compileEvents", () => {
       }),
     ).toThrow(FlowmarkDomError);
   });
+
+  it("throws for trailing content after a valid handler call", () => {
+    expect(() =>
+      compileEvents({
+        filename: "test.astro",
+        frontmatter: `\nfunction save() {}\n`,
+        template: `\n<button (click)="save() + 1">Save</button>\n`,
+      }),
+    ).toThrow(FlowmarkDomError);
+  });
+
+  it("throws for trailing identifiers after a valid handler call", () => {
+    expect(() =>
+      compileEvents({
+        filename: "test.astro",
+        frontmatter: `\nfunction save() {}\n`,
+        template: `\n<button (click)="save()foo">Save</button>\n`,
+      }),
+    ).toThrow(FlowmarkDomError);
+  });
+
+  it("ignores event-like attributes inside HTML comments", () => {
+    const result = compileEvents({
+      filename: "test.astro",
+      frontmatter: "",
+      template: `<!-- <button (click)="save()">Save</button> -->`,
+    });
+
+    expect(result.html).toBe(
+      `<!-- <button (click)="save()">Save</button> -->`,
+    );
+    expect(result.clientModule).toBe("");
+  });
+
+  it("ignores event-like attributes inside script tags", () => {
+    const result = compileEvents({
+      filename: "test.astro",
+      frontmatter: "",
+      template: `<script>const el = '<button (click)="save()">Save</button>';</script>`,
+    });
+
+    expect(result.html).toBe(
+      `<script>const el = '<button (click)="save()">Save</button>';</script>`,
+    );
+    expect(result.clientModule).toBe("");
+  });
+
+  it("handles mixed attributes including non-event bindings", () => {
+    const result = compileEvents({
+      filename: "test.astro",
+      frontmatter: `\nfunction save() {}\n`,
+      template: `<button id="btn" class="primary" (click)="save()" disabled>Save</button>`,
+    });
+
+    expect(result.html).toContain('data-flow-on-click="save"');
+    expect(result.html).toContain('id="btn"');
+    expect(result.html).toContain('class="primary"');
+    expect(result.html).toContain('disabled');
+    expect(result.clientModule).toContain("function save()");
+  });
+
+  it("handles event attributes with single quotes", () => {
+    const result = compileEvents({
+      filename: "test.astro",
+      frontmatter: `\nfunction save() {}\n`,
+      template: `<button (click)='save()'>Save</button>`,
+    });
+
+    expect(result.html).toContain('data-flow-on-click="save"');
+  });
+
+  it("does not treat text content as event attributes", () => {
+    const result = compileEvents({
+      filename: "test.astro",
+      frontmatter: "",
+      template: `<p>Use (click)="save()" syntax.</p>`,
+    });
+
+    expect(result.clientModule).toBe("");
+  });
 });
