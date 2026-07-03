@@ -5,6 +5,7 @@ export interface FlowEventHandlers {
 const FLOW_EVENT_PREFIX = "data-flow-on-";
 const FLOW_ARGS_ATTR = "data-flow-args";
 const FLOW_EVENT_MARKER = "__flow";
+const FLOW_BOUND_ATTR = "data-flow-bound";
 
 /**
  * Scan the document for Flowmark Events markers and attach native listeners.
@@ -39,6 +40,8 @@ function bindFlowEventsNow(
 }
 
 function bindElement(element: HTMLElement, handlers: FlowEventHandlers): void {
+  if (element.hasAttribute(FLOW_BOUND_ATTR)) return;
+
   for (const attribute of Array.from(element.attributes)) {
     if (!attribute.name.startsWith(FLOW_EVENT_PREFIX)) continue;
 
@@ -58,6 +61,8 @@ function bindElement(element: HTMLElement, handlers: FlowEventHandlers): void {
       handler(...resolvedArgs);
     });
   }
+
+  element.setAttribute(FLOW_BOUND_ATTR, "true");
 }
 
 function readArgs(element: HTMLElement): unknown[] {
