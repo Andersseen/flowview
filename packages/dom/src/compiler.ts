@@ -7,6 +7,7 @@ import {
   analyzeCaptures,
   extractFrontmatterFunctions,
   findEventBindings,
+  findUnsupportedHandlerNames,
   parseHandlerExpression,
   type EventBinding,
   type FrontmatterFunction,
@@ -48,7 +49,7 @@ export function compileEvents(
   for (const func of frontmatter.functions) {
     if (functionsByName.has(func.name)) {
       diagnostics.push({
-        message: `FlowMark event handler "${func.name}" is declared more than once in frontmatter.`,
+        message: `Flowmark event handler "${func.name}" is declared more than once in frontmatter.`,
         severity: "error",
         filename: request.filename,
         ...locate(request.frontmatter, func.offset),
@@ -59,6 +60,7 @@ export function compileEvents(
 
   const handlers = new Map<string, FrontmatterFunction>();
   const processedBindings: ProcessedBinding[] = [];
+  const unsupportedHandlers = new Set(findUnsupportedHandlerNames(request.frontmatter));
 
   for (const binding of bindings) {
     let call: ReturnType<typeof parseHandlerExpression>;
@@ -77,8 +79,12 @@ export function compileEvents(
 
     const func = functionsByName.get(call.name);
     if (func === undefined) {
+      const isUnsupported = unsupportedHandlers.has(call.name);
+      const message = isUnsupported
+        ? `Flowmark event handler "${call.name}" must be declared as a function (\`function ${call.name}(...) { ... }\`). Arrow functions and function expressions are not supported yet.`
+        : `Flowmark event handler "${call.name}" was used in the template but was not found in frontmatter.`;
       diagnostics.push({
-        message: `FlowMark event handler "${call.name}" was used in the template but was not found in frontmatter.`,
+        message,
         severity: "error",
         filename: request.filename,
         ...locate(request.template, binding.start),
@@ -115,7 +121,7 @@ export function compileEvents(
     const captures = analyzeCaptures(func);
     if (captures.length > 0) {
       diagnostics.push({
-        message: `FlowMark cannot move "${func.name}" to the client because it captures ${captures.map((name: string) => `"${name}"`).join(", ")}.`,
+        message: `Flowmark cannot move "${func.name}" to the client because it captures ${captures.map((name: string) => `"${name}"`).join(", ")}.`,
         severity: "error",
         filename: request.filename,
         ...locate(request.frontmatter, func.offset),
@@ -125,7 +131,7 @@ export function compileEvents(
 
   if (diagnostics.some((d) => d.severity === "error")) {
     throw new FlowmarkDomError(
-      `FlowMark DOM events compilation failed for ${request.filename}`,
+      `Flowmark Events compilation failed for ${request.filename}`,
       diagnostics,
     );
   }
@@ -155,7 +161,7 @@ function validateArguments(args: HandlerArgument[]): { error?: string } {
         typeof value !== "boolean" &&
         value !== null
       ) {
-        return { error: `FlowMark event argument cannot be serialized.` };
+        return { error: `Flowmark event argument cannot be serialized.` };
       }
     }
   }
@@ -223,7 +229,8 @@ function generateClientModule(
 
 function generateClientFunction(func: FrontmatterFunction): string {
   const params = func.parameters.join(", ");
-  return `function ${func.name}(${params}) {${func.body}}`;
+  const asyncKeyword = func.isAsync ? "async " : "";
+  return `${asyncKeyword}function ${func.name}(${params}) {${func.body}}`;
 }
 
 export { findEventBindings, extractFrontmatterFunctions };

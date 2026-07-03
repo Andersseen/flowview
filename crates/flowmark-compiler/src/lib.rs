@@ -4,9 +4,10 @@ pub mod cursor;
 pub mod diagnostics;
 mod javascript;
 pub mod parser;
+mod validation;
 
 pub use cursor::CursorPosition;
-use diagnostics::Diagnostic;
+pub use diagnostics::Diagnostic;
 pub use diagnostics::{DiagnosticCode, DiagnosticFormatter, DiagnosticSeverity};
 
 /// Options that control code generation.
@@ -34,13 +35,15 @@ impl CompileOptions {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompileOutput {
     pub code: String,
+    pub warnings: Vec<Diagnostic>,
 }
 
 /// Compile a Flowmark template into a JavaScript render function.
 pub fn compile(source: &str, options: CompileOptions) -> Result<CompileOutput, Vec<Diagnostic>> {
     let root = parser::parse(source)?;
+    let warnings = validation::validate(&root, source);
     let code = codegen::generate(&root, &options);
-    Ok(CompileOutput { code })
+    Ok(CompileOutput { code, warnings })
 }
 
 /// Parse a Flowmark template into its AST without generating code.

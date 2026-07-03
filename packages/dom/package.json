@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "sideEffects": false,
-  "description": "FlowMark DOM Events compiler and runtime.",
+  "description": "Flowmark Events compiler and runtime.",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -23,11 +23,13 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "typescript": "^5.9.0"
+  },
   "devDependencies": {
     "@types/node": "^26.0.0",
     "jsdom": "^26.0.0",
     "tsup": "^8.5.0",
-    "typescript": "^5.9.0",
     "vitest": "^3.0.0"
   }
 }

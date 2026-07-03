@@ -1,9 +1,11 @@
 import { parse } from "@astrojs/compiler/sync";
 import type { Node as AstroNode } from "@astrojs/compiler/types";
+import MagicString, { type SourceMap } from "magic-string";
 import {
   compileEvents,
   FlowmarkDomError,
   type CompileEventsResult,
+  type FlowmarkDomDiagnostic,
 } from "@flowmark/dom";
 import type { AstroIntegration } from "astro";
 import type { Plugin } from "vite";
@@ -110,7 +112,7 @@ function flowmarkEventsVitePlugin(options: FlowmarkAstroEventsOptions): Plugin {
 
 interface TransformResult {
   code: string;
-  map: null;
+  map: SourceMap | null;
 }
 
 function transformAstroSource(
@@ -138,7 +140,12 @@ function transformAstroSource(
     });
   } catch (error) {
     if (error instanceof FlowmarkDomError) {
-      throw error;
+      const translated = translateDiagnostics(
+        error.diagnostics,
+        code,
+        templateStart,
+      );
+      throw new FlowmarkDomError(error.message, translated);
     }
     throw new FlowmarkAstroEventsError(
       error instanceof Error ? error.message : String(error),
@@ -153,12 +160,13 @@ function transformAstroSource(
   }
 
   const safeModule = result.clientModule.replace(/<\/script>/gi, "<\\/script>");
-  const script = `<script>\n${safeModule}\n</script>`;
-  const transformedCode = `${code.slice(0, templateStart)}\n${script}\n${result.html}`;
+  const script = `<script>\n${safeModule}\n</script>\n`;
+  const s = new MagicString(code);
+  s.overwrite(templateStart, code.length, `\n${script}${result.html}`);
 
   return {
-    code: transformedCode,
-    map: null,
+    code: s.toString(),
+    map: s.generateMap({ source: filename, includeContent: true }),
   };
 }
 
@@ -201,6 +209,26 @@ function lineAndColumn(
     }
   }
   return { line, column };
+}
+
+function translateDiagnostics(
+  diagnostics: FlowmarkDomDiagnostic[],
+  source: string,
+  offset: number,
+): FlowmarkDomDiagnostic[] {
+  const { line: baseLine, column: baseColumn } = lineAndColumn(source, offset);
+
+  return diagnostics.map((diagnostic) => ({
+    ...diagnostic,
+    line:
+      diagnostic.line === 1
+        ? baseLine
+        : baseLine + diagnostic.line - 1,
+    column:
+      diagnostic.line === 1
+        ? baseColumn + diagnostic.column - 1
+        : diagnostic.column,
+  }));
 }
 
 function stripQuery(id: string): string {

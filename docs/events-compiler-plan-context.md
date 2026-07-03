@@ -1,5 +1,10 @@
 # Flowmark Events Compiler Plan Context
 
+> **Note:** A more up-to-date, consolidated improvement plan now lives in
+> [`compiler-improvement-plan.md`](./compiler-improvement-plan.md) and
+> [`compiler-session-context.md`](./compiler-session-context.md).
+> This file is kept for historical reference.
+
 ## Purpose
 
 This file is temporary execution context for improving the Flowmark demo app and the events compiler across multiple sessions.

@@ -109,6 +109,9 @@ importers:
       '@flowmark/dom':
         specifier: workspace:*
         version: link:../dom
+      magic-string:
+        specifier: ^0.30.0
+        version: 0.30.21
     devDependencies:
       '@types/node':
         specifier: ^26.0.0
@@ -130,6 +133,10 @@ importers:
         version: 3.2.6(@types/debug@4.1.13)(@types/node@26.0.0)(jiti@2.7.0)(jsdom@26.1.0)(lightningcss@1.32.0)(yaml@2.9.0)
 
   packages/dom:
+    dependencies:
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
     devDependencies:
       '@types/node':
         specifier: ^26.0.0
@@ -140,9 +147,6 @@ importers:
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.15)(typescript@5.9.3)(yaml@2.9.0)
-      typescript:
-        specifier: ^5.9.0
-        version: 5.9.3
       vitest:
         specifier: ^3.0.0
         version: 3.2.6(@types/debug@4.1.13)(@types/node@26.0.0)(jiti@2.7.0)(jsdom@26.1.0)(lightningcss@1.32.0)(yaml@2.9.0)

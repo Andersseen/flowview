@@ -258,7 +258,7 @@ fn generate_for_block(
     indent: usize,
     ctx: &mut CodegenContext,
 ) {
-    let items_name = ctx.next_temp("items");
+    let items_name = ctx.next_temp("flowmark_items");
 
     output.push_str(&format!(
         "{}const {} = Array.from(({}) ?? []);\n",
@@ -302,7 +302,7 @@ fn generate_switch_block(
     indent: usize,
     ctx: &mut CodegenContext,
 ) {
-    let switch_name = ctx.next_temp("switch");
+    let switch_name = ctx.next_temp("flowmark_switch");
 
     output.push_str(&format!(
         "{}const {} = {};\n",
@@ -317,9 +317,7 @@ fn generate_switch_block(
         switch_name
     ));
 
-    let last_case_index = switch_block.cases.len().saturating_sub(1);
-
-    for (index, case) in switch_block.cases.iter().enumerate() {
+    for case in &switch_block.cases {
         output.push_str(&format!(
             "{}case {}:\n",
             ctx.spaces(indent + 2),
@@ -330,10 +328,7 @@ fn generate_switch_block(
             generate_node(child, output, indent + 4, ctx);
         }
 
-        let is_last = index == last_case_index && switch_block.default.is_none();
-        if !is_last {
-            output.push_str(&format!("{}break;\n", ctx.spaces(indent + 4)));
-        }
+        output.push_str(&format!("{}break;\n", ctx.spaces(indent + 4)));
     }
 
     if let Some(default_children) = &switch_block.default {

@@ -108,12 +108,13 @@ function flowmarkAstroPlugin(options: FlowmarkAstroOptions): Plugin {
         throw new Error(`Missing Flowmark virtual module: ${publicId}`);
       }
 
-      return compileFlowmark(template.source, {
+      const { code } = await compileFlowmark(template.source, {
         filename: template.filename,
         lineOffset: template.lineOffset,
         runtimeImport,
         compilerPath,
       });
+      return code;
     },
 
     transform(code, id) {

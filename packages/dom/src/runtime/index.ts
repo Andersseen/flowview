@@ -5,40 +5,69 @@ export interface FlowEventHandlers {
 const FLOW_EVENT_PREFIX = "data-flow-on-";
 const FLOW_ARGS_ATTR = "data-flow-args";
 const FLOW_EVENT_MARKER = "__flow";
+const FLOW_BOUND_ATTR = "data-flow-bound";
 
 /**
- * Scan the document for FlowMark event markers and attach native listeners.
+ * Scan the document for Flowmark Events markers and attach native listeners.
+ * Returns an `unbind` function that removes the attached listeners.
  */
-export function bindFlowEvents(handlers: FlowEventHandlers): void {
-  if (typeof document === "undefined") return;
-  if (document.readyState === "loading") {
-    document.addEventListener(
-      "DOMContentLoaded",
-      () => bindFlowEventsNow(document, handlers),
-      { once: true },
-    );
-    return;
+export function bindFlowEvents(handlers: FlowEventHandlers): () => void {
+  if (typeof document === "undefined") {
+    return () => {};
   }
 
-  bindFlowEventsNow(document, handlers);
+  if (document.readyState === "loading") {
+    let unbind: (() => void) | undefined;
+    document.addEventListener(
+      "DOMContentLoaded",
+      () => {
+        unbind = bindFlowEventsNow(document, handlers);
+      },
+      { once: true },
+    );
+    return () => {
+      unbind?.();
+    };
+  }
+
+  return bindFlowEventsNow(document, handlers);
 }
 
 function bindFlowEventsNow(
   root: ParentNode,
   handlers: FlowEventHandlers,
-): void {
+): () => void {
+  const unbinders: (() => void)[] = [];
+
   for (const element of Array.from(root.querySelectorAll("*"))) {
-    if (
-      Array.from((element as HTMLElement).attributes).some((attribute) =>
-        attribute.name.startsWith(FLOW_EVENT_PREFIX),
-      )
-    ) {
-      bindElement(element as HTMLElement, handlers);
+    if (hasFlowEventAttribute(element as HTMLElement)) {
+      unbinders.push(bindElement(element as HTMLElement, handlers));
     }
   }
+
+  return () => {
+    for (const unbind of unbinders) {
+      unbind();
+    }
+  };
 }
 
-function bindElement(element: HTMLElement, handlers: FlowEventHandlers): void {
+function hasFlowEventAttribute(element: HTMLElement): boolean {
+  return Array.from(element.attributes).some((attribute) =>
+    attribute.name.startsWith(FLOW_EVENT_PREFIX),
+  );
+}
+
+function bindElement(
+  element: HTMLElement,
+  handlers: FlowEventHandlers,
+): () => void {
+  if (element.hasAttribute(FLOW_BOUND_ATTR)) {
+    return () => {};
+  }
+
+  const listeners: { eventName: string; listener: EventListener }[] = [];
+
   for (const attribute of Array.from(element.attributes)) {
     if (!attribute.name.startsWith(FLOW_EVENT_PREFIX)) continue;
 
@@ -53,11 +82,22 @@ function bindElement(element: HTMLElement, handlers: FlowEventHandlers): void {
     }
 
     const args = readArgs(element);
-    element.addEventListener(eventName, (event: Event) => {
+    const listener = (event: Event) => {
       const resolvedArgs = args.map((arg) => resolveArg(arg, event, element));
       handler(...resolvedArgs);
-    });
+    };
+    element.addEventListener(eventName, listener);
+    listeners.push({ eventName, listener });
   }
+
+  element.setAttribute(FLOW_BOUND_ATTR, "true");
+
+  return () => {
+    for (const { eventName, listener } of listeners) {
+      element.removeEventListener(eventName, listener);
+    }
+    element.removeAttribute(FLOW_BOUND_ATTR);
+  };
 }
 
 function readArgs(element: HTMLElement): unknown[] {
@@ -90,11 +130,14 @@ function isFlowMarker(arg: unknown, marker: string): boolean {
 
 /**
  * Bind events scoped to a specific root element. Useful for partial updates.
+ * Returns an `unbind` function that removes the attached listeners.
  */
 export function bindFlowEventsIn(
   root: ParentNode,
   handlers: FlowEventHandlers,
-): void {
-  if (typeof document === "undefined") return;
-  bindFlowEventsNow(root, handlers);
+): () => void {
+  if (typeof document === "undefined") {
+    return () => {};
+  }
+  return bindFlowEventsNow(root, handlers);
 }

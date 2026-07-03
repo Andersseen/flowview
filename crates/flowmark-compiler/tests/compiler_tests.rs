@@ -15,6 +15,12 @@ fn expect_error(source: &str) -> Vec<String> {
         .collect()
 }
 
+fn expect_warnings(source: &str) -> Vec<flowmark_compiler::Diagnostic> {
+    compile(source, CompileOptions::new("@flowmark/runtime"))
+        .unwrap()
+        .warnings
+}
+
 #[test]
 fn plain_text() {
     let output = compile_source("Hello, world!");
@@ -123,8 +129,8 @@ fn r#for() {
     let source =
         "@for (product of context.products; track product.id) { <p>{{ product.name }}</p> }";
     let output = compile_source(source);
-    assert!(output.contains("const __items0 = Array.from((context.products) ?? []);"));
-    assert!(output.contains("for (const product of __items0) {"));
+    assert!(output.contains("const __flowmark_items0 = Array.from((context.products) ?? []);"));
+    assert!(output.contains("for (const product of __flowmark_items0) {"));
     assert!(output.contains("renderValue(product.name)"));
 }
 
@@ -132,8 +138,8 @@ fn r#for() {
 fn for_without_track() {
     let source = "@for (product of context.products) { <p>{{ product.name }}</p> }";
     let output = compile_source(source);
-    assert!(output.contains("const __items0 = Array.from((context.products) ?? []);"));
-    assert!(output.contains("for (const product of __items0) {"));
+    assert!(output.contains("const __flowmark_items0 = Array.from((context.products) ?? []);"));
+    assert!(output.contains("for (const product of __flowmark_items0) {"));
     assert!(output.contains("renderValue(product.name)"));
 }
 
@@ -141,9 +147,9 @@ fn for_without_track() {
 fn for_empty() {
     let source = "@for (item of context.items; track item.id) { <p>{{ item.name }}</p> } @empty { <p>Empty</p> }";
     let output = compile_source(source);
-    assert!(output.contains("if (__items0.length === 0) {"));
+    assert!(output.contains("if (__flowmark_items0.length === 0) {"));
     assert!(output.contains("<p>Empty</p>"));
-    assert!(output.contains("for (const item of __items0) {"));
+    assert!(output.contains("for (const item of __flowmark_items0) {"));
 }
 
 #[test]
@@ -151,15 +157,15 @@ fn for_with_set() {
     let source = "@for (item of context.items) { <p>{{ item }}</p> }";
     let output = compile_source(source);
     assert!(output.contains("Array.from((context.items) ?? [])"));
-    assert!(output.contains("for (const item of __items0) {"));
+    assert!(output.contains("for (const item of __flowmark_items0) {"));
 }
 
 #[test]
 fn nested_for() {
     let source = "@for (row of context.rows; track row.id) { @for (cell of row.cells; track cell.id) { <span>{{ cell.value }}</span> } }";
     let output = compile_source(source);
-    assert!(output.contains("const __items0 = Array.from((context.rows) ?? []);"));
-    assert!(output.contains("const __items1 = Array.from((row.cells) ?? []);"));
+    assert!(output.contains("const __flowmark_items0 = Array.from((context.rows) ?? []);"));
+    assert!(output.contains("const __flowmark_items1 = Array.from((row.cells) ?? []);"));
     assert_eq!(output.matches("for (const ").count(), 2);
 }
 
@@ -167,8 +173,8 @@ fn nested_for() {
 fn switch_default() {
     let source = "@switch (context.status) { @default { <p>Unknown</p> } }";
     let output = compile_source(source);
-    assert!(output.contains("const __switch0 = context.status;"));
-    assert!(output.contains("switch (__switch"));
+    assert!(output.contains("const __flowmark_switch0 = context.status;"));
+    assert!(output.contains("switch (__flowmark_switch"));
     assert!(output.contains("default:"));
     assert!(!output.contains("break;"));
 }
@@ -179,7 +185,7 @@ fn multiple_switch_cases() {
     let output = compile_source(source);
     assert!(output.contains("case 'a':"));
     assert!(output.contains("case 'b':"));
-    assert_eq!(output.matches("break;").count(), 1);
+    assert_eq!(output.matches("break;").count(), 2);
 }
 
 #[test]
@@ -203,7 +209,7 @@ fn blocks_nested_inside_switch_cases() {
 fn interpolation_inside_loop() {
     let source = "@for (item of context.items; track item.id) { <p>{{ item.value }}</p> }";
     let output = compile_source(source);
-    assert!(output.contains("for (const item of __items0) {"));
+    assert!(output.contains("for (const item of __flowmark_items0) {"));
     assert!(output.contains("renderValue(item.value)"));
 }
 
@@ -212,8 +218,8 @@ fn nested_control_flow_blocks() {
     let source = "@if (context.show) { @for (item of context.items; track item.id) { @switch (item.kind) { @case ('a') { <p>A</p> } } } }";
     let output = compile_source(source);
     assert!(output.contains("if (context.show) {"));
-    assert!(output.contains("for (const item of __items0) {"));
-    assert!(output.contains("switch (__switch"));
+    assert!(output.contains("for (const item of __flowmark_items0) {"));
+    assert!(output.contains("switch (__flowmark_switch"));
 }
 
 #[test]
@@ -226,8 +232,17 @@ fn optional_track_expression() {
 fn track_expression_is_accepted_but_not_emitted() {
     let output =
         compile_source("@for (item of context.items; track item.id) { <p>{{ item.name }}</p> }");
-    assert!(output.contains("for (const item of __items0) {"));
+    assert!(output.contains("for (const item of __flowmark_items0) {"));
     assert!(!output.contains("item.id"));
+}
+
+#[test]
+fn track_expression_emits_warning() {
+    let warnings = expect_warnings("@for (item of context.items; track item.id) { <p></p> }");
+    assert_eq!(warnings.len(), 1);
+    assert!(warnings[0].message.contains("track"));
+    assert_eq!(warnings[0].code.as_deref(), Some("FM0015"));
+    assert_eq!(warnings[0].severity, flowmark_compiler::DiagnosticSeverity::Warning);
 }
 
 #[test]
@@ -244,7 +259,7 @@ fn empty_track_syntax() {
 
 #[test]
 fn rejects_invalid_or_internal_loop_bindings() {
-    for binding in ["item-name", "output", "context", "__items0", "class"] {
+    for binding in ["item-name", "output", "context", "__flowmark_items0", "class"] {
         let source = format!("@for ({binding} of context.items) {{ <p></p> }}");
         let errors = expect_error(&source);
         assert!(errors.iter().any(|message| message.contains("binding")));

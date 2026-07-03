@@ -28,6 +28,7 @@ pub enum DiagnosticCode {
     InvalidAttribute,
     InvalidHtml,
     ReservedBinding,
+    TrackIgnored,
 }
 
 impl DiagnosticCode {
@@ -47,6 +48,7 @@ impl DiagnosticCode {
             Self::InvalidAttribute => "FM0012",
             Self::InvalidHtml => "FM0013",
             Self::ReservedBinding => "FM0014",
+            Self::TrackIgnored => "FM0015",
         }
     }
 }

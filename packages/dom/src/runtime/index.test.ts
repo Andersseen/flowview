@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bindFlowEvents } from "./index.js";
+import { bindFlowEvents, bindFlowEventsIn } from "./index.js";
 
 function setDocument(html: string): void {
   document.body.innerHTML = html;
@@ -101,5 +101,144 @@ describe("bindFlowEvents", () => {
     input.value = "hello";
     input.dispatchEvent(new Event("input", { bubbles: true }));
     expect(values).toEqual(["hello"]);
+  });
+
+  it("does not register duplicate listeners when called twice", () => {
+    setDocument(`<button data-flow-on-click="save">Save</button>`);
+    const calls: unknown[] = [];
+    const handlers = {
+      save: () => {
+        calls.push("saved");
+      },
+    };
+
+    bindFlowEvents(handlers);
+    bindFlowEvents(handlers);
+
+    const button = document.querySelector("button") as HTMLButtonElement;
+    button.click();
+    expect(calls).toEqual(["saved"]);
+  });
+
+  it("returns an unbind function that removes listeners", () => {
+    setDocument(`<button data-flow-on-click="save">Save</button>`);
+    const calls: unknown[] = [];
+    const handlers = {
+      save: () => {
+        calls.push("saved");
+      },
+    };
+
+    const unbind = bindFlowEvents(handlers);
+    const button = document.querySelector("button") as HTMLButtonElement;
+    button.click();
+    expect(calls).toEqual(["saved"]);
+
+    unbind();
+    button.click();
+    expect(calls).toEqual(["saved"]);
+  });
+
+  it("allows rebinding after unbind", () => {
+    setDocument(`<button data-flow-on-click="save">Save</button>`);
+    const calls: unknown[] = [];
+    const handlers = {
+      save: () => {
+        calls.push("saved");
+      },
+    };
+
+    const unbind = bindFlowEvents(handlers);
+    const button = document.querySelector("button") as HTMLButtonElement;
+    button.click();
+    expect(calls).toEqual(["saved"]);
+
+    unbind();
+    bindFlowEvents(handlers);
+    button.click();
+    expect(calls).toEqual(["saved", "saved"]);
+  });
+});
+
+describe("bindFlowEventsIn", () => {
+  it("binds events scoped to a root element", () => {
+    setDocument(`
+      <div id="root">
+        <button data-flow-on-click="save">Save</button>
+      </div>
+      <button data-flow-on-click="save">Outside</button>
+    `);
+    const calls: unknown[] = [];
+    const root = document.querySelector("#root") as HTMLElement;
+
+    bindFlowEventsIn(root, {
+      save: () => {
+        calls.push("saved");
+      },
+    });
+
+    (document.querySelector("button") as HTMLButtonElement).click();
+    expect(calls).toEqual(["saved"]);
+  });
+
+  it("does not duplicate listeners when the same root is processed twice", () => {
+    setDocument(`
+      <div id="root">
+        <button data-flow-on-click="save">Save</button>
+      </div>
+    `);
+    const calls: unknown[] = [];
+    const handlers = {
+      save: () => {
+        calls.push("saved");
+      },
+    };
+    const root = document.querySelector("#root") as HTMLElement;
+
+    bindFlowEventsIn(root, handlers);
+    bindFlowEventsIn(root, handlers);
+
+    root.querySelector("button")!.click();
+    expect(calls).toEqual(["saved"]);
+  });
+
+  it("does not duplicate listeners for elements already bound by bindFlowEvents", () => {
+    setDocument(`<button data-flow-on-click="save">Save</button>`);
+    const calls: unknown[] = [];
+    const handlers = {
+      save: () => {
+        calls.push("saved");
+      },
+    };
+
+    bindFlowEvents(handlers);
+    bindFlowEventsIn(document.body, handlers);
+
+    const button = document.querySelector("button") as HTMLButtonElement;
+    button.click();
+    expect(calls).toEqual(["saved"]);
+  });
+
+  it("returns an unbind function scoped to the root element", () => {
+    setDocument(`
+      <div id="root">
+        <button data-flow-on-click="save">Save</button>
+      </div>
+    `);
+    const calls: unknown[] = [];
+    const handlers = {
+      save: () => {
+        calls.push("saved");
+      },
+    };
+    const root = document.querySelector("#root") as HTMLElement;
+
+    const unbind = bindFlowEventsIn(root, handlers);
+    root.querySelector("button")!.click();
+    expect(calls).toEqual(["saved"]);
+
+    unbind();
+    root.querySelector("button")!.click();
+    expect(calls).toEqual(["saved"]);
   });
 });

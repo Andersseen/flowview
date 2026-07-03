@@ -22,7 +22,10 @@ const serializedNavItems = JSON.stringify(navItems);
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <meta name="description" content={description} />
     <meta
       name="theme-color"
@@ -80,6 +83,8 @@ const serializedNavItems = JSON.stringify(navItems);
         position="sticky"
         active-mode="route"
         item-variant="filled"
+        mobile-breakpoint="768"
+        minimal-breakpoint="768"
         aria-nav-label="Flowmark navigation"
       >
         <a
@@ -92,7 +97,7 @@ const serializedNavItems = JSON.stringify(navItems);
           >
             F
           </span>
-          Flowmark
+          <span class="hidden sm:inline">Flowmark</span>
         </a>
 
         <div slot="end" class="flex items-center gap-1">
@@ -106,30 +111,71 @@ const serializedNavItems = JSON.stringify(navItems);
             <and-icon name="github" size="20" aria-hidden="true"></and-icon>
           </a>
 
-          <div
-            class="inline-flex items-center rounded-md border border-border bg-background p-0.5"
-            role="group"
-            aria-label="Theme switcher"
+          <and-button
+            type="button"
+            class="theme-toggle"
+            size="icon"
+            variant="ghost"
+            aria-label="Toggle theme"
           >
-            <and-button
-              type="button"
-              id="theme-light"
-              size="icon"
-              variant="default"
-              aria-label="Switch to light theme"
-            >
-              <and-icon name="sun" size="16" aria-hidden="true"></and-icon>
-            </and-button>
-            <and-button
-              type="button"
-              id="theme-dark"
-              size="icon"
-              variant="outline"
-              aria-label="Switch to dark theme"
-            >
-              <and-icon name="moon" size="16" aria-hidden="true"></and-icon>
-            </and-button>
-          </div>
+            <and-icon
+              name="sun"
+              class="theme-icon-light"
+              size="18"
+              aria-hidden="true"
+              style="display: block;"
+            ></and-icon>
+            <and-icon
+              name="moon"
+              class="theme-icon-dark"
+              size="18"
+              aria-hidden="true"
+              style="display: none;"
+            ></and-icon>
+          </and-button>
+        </div>
+
+        <div
+          slot="mobile-nav"
+          class="flex flex-col gap-3 p-4"
+        >
+          <a
+            href="https://github.com/andersseen/flowmark"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            <and-icon name="github" size="18" aria-hidden="true"></and-icon>
+            GitHub
+          </a>
+
+          <and-button
+            type="button"
+            class="theme-toggle w-full justify-start"
+            size="sm"
+            variant="ghost"
+            aria-label="Toggle theme"
+          >
+            <and-icon
+              name="sun"
+              class="theme-icon-light"
+              size="18"
+              aria-hidden="true"
+              style="display: block;"
+            ></and-icon>
+            <and-icon
+              name="moon"
+              class="theme-icon-dark"
+              size="18"
+              aria-hidden="true"
+              style="display: none;"
+            ></and-icon>
+            <span class="theme-label-light">Light theme</span>
+            <span
+              class="theme-label-dark"
+              style="display: none;"
+            >Dark theme</span>
+          </and-button>
         </div>
       </and-navbar>
 
@@ -140,38 +186,45 @@ const serializedNavItems = JSON.stringify(navItems);
 
     <script is:inline>
       (function () {
-        const lightButton = document.getElementById("theme-light");
-        const darkButton = document.getElementById("theme-dark");
-        if (!lightButton || !darkButton) return;
-
         function applyMode(mode) {
-          document.documentElement.setAttribute("data-mode", mode);
           const isDark = mode === "dark";
-          lightButton.setAttribute("variant", isDark ? "outline" : "default");
-          darkButton.setAttribute("variant", isDark ? "default" : "outline");
-          lightButton.setAttribute(
-            "aria-label",
-            isDark ? "Switch to light theme" : "Light theme active",
-          );
-          darkButton.setAttribute(
-            "aria-label",
-            isDark ? "Dark theme active" : "Switch to dark theme",
-          );
+          document.documentElement.setAttribute("data-mode", mode);
+
+          document.querySelectorAll(".theme-toggle").forEach((button) => {
+            button.setAttribute("variant", "ghost");
+            button.setAttribute(
+              "aria-label",
+              isDark ? "Switch to light theme" : "Switch to dark theme",
+            );
+          });
+
+          document
+            .querySelectorAll(".theme-icon-light")
+            .forEach((icon) => (icon.style.display = isDark ? "none" : "block"));
+          document
+            .querySelectorAll(".theme-icon-dark")
+            .forEach((icon) => (icon.style.display = isDark ? "block" : "none"));
+          document
+            .querySelectorAll(".theme-label-light")
+            .forEach((label) => (label.style.display = isDark ? "none" : "block"));
+          document
+            .querySelectorAll(".theme-label-dark")
+            .forEach((label) => (label.style.display = isDark ? "block" : "none"));
         }
-
-        lightButton.addEventListener("click", function () {
-          localStorage.setItem("flowmark-theme", "light");
-          applyMode("light");
-        });
-
-        darkButton.addEventListener("click", function () {
-          localStorage.setItem("flowmark-theme", "dark");
-          applyMode("dark");
-        });
 
         const currentMode =
           document.documentElement.getAttribute("data-mode") || "light";
         applyMode(currentMode);
+
+        document.querySelectorAll(".theme-toggle").forEach((button) => {
+          button.addEventListener("click", function () {
+            const current =
+              document.documentElement.getAttribute("data-mode") || "light";
+            const next = current === "dark" ? "light" : "dark";
+            localStorage.setItem("flowmark-theme", next);
+            applyMode(next);
+          });
+        });
       })();
     </script>
   </body>

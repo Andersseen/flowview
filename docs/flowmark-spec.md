@@ -1,24 +1,24 @@
-# FlowMark HTML Compiler v1 Specification
+# Flowmark HTML Compiler v1 Specification
 
 ## Purpose
 
-FlowMark HTML is a small compiler that turns HTML-like templates into plain
+Flowmark HTML is a small compiler that turns HTML-like templates into plain
 JavaScript render functions. It is framework-agnostic, server-first, safe by
 default, and keeps its runtime scope tiny.
 
-FlowMark HTML is **not** a UI framework. It does not own components, client
+Flowmark HTML is **not** a UI framework. It does not own components, client
 hydration, events, state management, routing, signals, dependency injection, or
 a virtual DOM.
 
 ## Product Definition
 
-FlowMark HTML v1 provides a reliable authoring format for HTML-like templates
+Flowmark HTML v1 provides a reliable authoring format for HTML-like templates
 with modern control-flow syntax.
 
 Supported usage:
 
 - Standalone `.flow` files.
-- Embedded FlowMark regions inside Astro files.
+- Embedded Flowmark regions inside Astro files.
 - Vite-based build pipelines.
 - Server-side rendering in Node.js, Hono, Cloudflare Workers, and Astro.
 - Static generation workflows.
@@ -30,7 +30,7 @@ and stable integration boundaries.
 
 The following stay out of the HTML compiler v1:
 
-- DOM events.
+- DOM events (Flowmark Events).
 - Client-side behavior.
 - Hydration.
 - Components.
@@ -41,7 +41,7 @@ The following stay out of the HTML compiler v1:
 - User-submitted template execution.
 - Runtime compilation as the default production path.
 
-DOM events belong to a separate compiler and package.
+DOM events belong to a separate compiler and package: Flowmark Events.
 
 ## Language Surface
 
@@ -123,7 +123,7 @@ Runtime behavior for v1:
 
 ## Security Model
 
-FlowMark templates must be treated as trusted source code.
+Flowmark templates must be treated as trusted source code.
 
 The compiler preserves expressions as JavaScript source and emits them into
 generated modules. This means templates must not come from users unless the host
@@ -151,7 +151,7 @@ Required behavior:
 - Preserve static attributes.
 - Support quoted attributes.
 - Reject interpolation in unquoted attributes.
-- Avoid detecting FlowMark control syntax inside:
+- Avoid detecting Flowmark control syntax inside:
   - HTML comments.
   - `<script>`.
   - `<style>`.
@@ -236,7 +236,7 @@ Required behavior:
 - Support embedded `<template flowmark is:raw context={...}>` regions.
 - Preserve Astro frontmatter.
 - Preserve surrounding Astro markup.
-- Compile embedded templates before Astro treats FlowMark syntax as normal Astro
+- Compile embedded templates before Astro treats Flowmark syntax as normal Astro
   markup.
 - Accept `is:raw` as the recommended editor-compatible form.
 - Produce correct line offsets for embedded diagnostics.
@@ -246,7 +246,7 @@ Required behavior:
 
 ## Server Usage with Hono or Plain Node.js
 
-Because FlowMark generates a plain `render(context)` function, it can be used
+Because Flowmark generates a plain `render(context)` function, it can be used
 from any server runtime. Import a `.flow` file through the Vite plugin (or
 compile it with the CLI) and call `render(context)` inside a request handler.
 
@@ -260,7 +260,7 @@ const app = new Hono();
 
 app.get("/", (context) => {
   const html = render({
-    title: "Hello from FlowMark",
+    title: "Hello from Flowmark",
     items: ["a", "b", "c"],
   });
   return context.html(html);
@@ -289,7 +289,7 @@ import { render } from "./page.flow";
 
 export default {
   async fetch() {
-    const html = render({ title: "Hello from FlowMark" });
+    const html = render({ title: "Hello from Flowmark" });
     return new Response(html, {
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
@@ -324,7 +324,7 @@ Every supported behavior has at least one test at the lowest useful layer:
 
 ## Release Readiness
 
-FlowMark HTML v1 is ready when:
+Flowmark HTML v1 is ready when:
 
 - The language surface is frozen.
 - Runtime exports are stable.
@@ -340,7 +340,7 @@ FlowMark HTML v1 is ready when:
 
 ## Long-Term Direction
 
-The v1 goal is not to make FlowMark large. The v1 goal is to make the small
+The v1 goal is not to make Flowmark large. The v1 goal is to make the small
 thing trustworthy:
 
 ```txt

@@ -67,6 +67,9 @@ jobs:
       - name: Test Astro integration
         run: pnpm run test:astro
 
+      - name: Build DOM events package
+        run: pnpm run build:dom
+
       - name: Check TypeScript types
         run: pnpm run typecheck
 

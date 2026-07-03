@@ -111,6 +111,14 @@ fn compile_file(
 
     match compile(&source, options) {
         Ok(output) => {
+            if !output.warnings.is_empty() {
+                let formatter = DiagnosticFormatter::new(&output.warnings, diagnostic_name, line_offset);
+                match diagnostic_format {
+                    DiagnosticFormat::Human => eprint!("{}", formatter.format_human()),
+                    DiagnosticFormat::Json => eprintln!("{}", formatter.format_json()),
+                }
+            }
+
             if let Some(out_path) = out {
                 if let Err(error) = fs::write(out_path, output.code) {
                     eprintln!("Failed to write {}: {}", out_path, error);

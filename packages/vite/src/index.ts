@@ -38,7 +38,12 @@ export class FlowmarkCompileError extends Error {
   }
 }
 
-const compileCache = new Map<string, Promise<string>>();
+interface FlowmarkCompileResult {
+  code: string;
+  warnings: FlowmarkDiagnostic[];
+}
+
+const compileCache = new Map<string, Promise<FlowmarkCompileResult>>();
 
 export default function flowmark(options: FlowmarkViteOptions = {}): Plugin {
   const runtimeImport = options.runtimeImport ?? "@flowmark/runtime";
@@ -64,12 +69,18 @@ export default function flowmark(options: FlowmarkViteOptions = {}): Plugin {
       if (!filename.endsWith(".flow")) return null;
 
       try {
+        const { code: compiled, warnings } = await compileFlowmark(code, {
+          filename,
+          runtimeImport,
+          compilerPath,
+        });
+
+        for (const warning of warnings) {
+          this.warn(formatDiagnosticWithLocation(warning, filename));
+        }
+
         return {
-          code: await compileFlowmark(code, {
-            filename,
-            runtimeImport,
-            compilerPath,
-          }),
+          code: compiled,
           map: null,
         };
       } catch (error) {
@@ -109,7 +120,7 @@ export default function flowmark(options: FlowmarkViteOptions = {}): Plugin {
 export function compileFlowmark(
   source: string,
   request: FlowmarkCompileRequest,
-): Promise<string> {
+): Promise<FlowmarkCompileResult> {
   const compilerPath = resolveCompilerPath(request.compilerPath);
   const normalizedRequest = { ...request, compilerPath };
   const cacheKey = createHash("sha256")
@@ -132,7 +143,7 @@ function runCompiler(
   source: string,
   request: Required<Pick<FlowmarkCompileRequest, "compilerPath">> &
     FlowmarkCompileRequest,
-): Promise<string> {
+): Promise<FlowmarkCompileResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       request.compilerPath,
@@ -181,7 +192,8 @@ function runCompiler(
       if (settled) return;
       settled = true;
       if (exitCode === 0) {
-        resolve(stdout);
+        const warnings = parseDiagnostics(stderr);
+        resolve({ code: stdout, warnings });
         return;
       }
 
@@ -227,6 +239,14 @@ function parseDiagnostics(stderr: string): FlowmarkDiagnostic[] {
 function formatDiagnostic(diagnostic: FlowmarkDiagnostic): string {
   const code = diagnostic.code ? ` [${diagnostic.code}]` : "";
   return `${diagnostic.message}${code}`;
+}
+
+function formatDiagnosticWithLocation(
+  diagnostic: FlowmarkDiagnostic,
+  filename: string,
+): string {
+  const code = diagnostic.code ? ` [${diagnostic.code}]` : "";
+  return `${filename}:${diagnostic.line}:${diagnostic.column}: ${diagnostic.message}${code}`;
 }
 
 /** Resolve the compiler automatically for normal usage and monorepo development. */

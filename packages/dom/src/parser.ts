@@ -1,3 +1,4 @@
+import ts from "typescript";
 import { locate, type FlowmarkDomDiagnostic } from "./diagnostics.js";
 
 export interface EventBinding {
@@ -25,6 +26,7 @@ export interface FrontmatterFunction {
   source: string;
   body: string;
   offset: number;
+  isAsync: boolean;
 }
 
 export interface ParsedFrontmatter {
@@ -32,8 +34,11 @@ export interface ParsedFrontmatter {
 }
 
 const EVENT_NAME_RE = /^[\w-]+$/;
-const EVENT_ATTR_RE = /\s\(([\w-]+)\)\s*=\s*(["'])(.*?)\2/g;
-const FUNCTION_DECL_RE = /function\s+([a-zA-Z_$][\w$]*)/g;
+const FUNCTION_DECL_RE = /(?:export\s+)?(?:async\s+)?function\s+([a-zA-Z_$][\w$]*)/g;
+const ARROW_HANDLER_RE =
+  /(?:export\s+)?(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[a-zA-Z_$][\w$]*)\s*=>/g;
+const FUNCTION_EXPR_HANDLER_RE =
+  /(?:export\s+)?(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*(?:async\s*)?function\s*\(/g;
 const IDENTIFIER_RE = /[a-zA-Z_$][\w$]*/g;
 
 const RESERVED_WORDS = new Set([
@@ -117,31 +122,216 @@ const KNOWN_GLOBALS = new Set([
 
 export function findEventBindings(html: string): EventBinding[] {
   const bindings: EventBinding[] = [];
-  EVENT_ATTR_RE.lastIndex = 0;
-  let match: RegExpExecArray | null;
+  let index = 0;
 
-  while ((match = EVENT_ATTR_RE.exec(html)) !== null) {
-    const eventName = match[1]!;
-    const quote = match[2]!;
-    const expression = match[3]!;
-    const attributeStart = match.index;
-    const attributeEnd = match.index + match[0].length;
-
-    if (!EVENT_NAME_RE.test(eventName)) {
+  while (index < html.length) {
+    if (html.slice(index, index + 4) === "<!--") {
+      index = skipHtmlComment(html, index);
       continue;
     }
 
-    bindings.push({
-      eventName,
-      expression,
-      start: match.index + match[0].indexOf("("),
-      end: attributeEnd,
-      attributeStart,
-      attributeEnd,
-    });
+    if (isRawTextTagStart(html, index, "script")) {
+      index = skipRawTextElement(html, index, "script");
+      continue;
+    }
+
+    if (isRawTextTagStart(html, index, "style")) {
+      index = skipRawTextElement(html, index, "style");
+      continue;
+    }
+
+    if (html[index] === "<") {
+      const result = parseTagForEvents(html, index);
+      bindings.push(...result.bindings);
+      index = result.end;
+      continue;
+    }
+
+    index += 1;
   }
 
   return bindings;
+}
+
+function skipHtmlComment(html: string, start: number): number {
+  const end = html.indexOf("-->", start + 4);
+  return end === -1 ? html.length : end + 3;
+}
+
+function isRawTextTagStart(
+  html: string,
+  start: number,
+  tagName: string,
+): boolean {
+  const open = `<${tagName}`;
+  const slice = html.slice(start, start + open.length).toLowerCase();
+  if (slice !== open) return false;
+  const next = html[start + open.length];
+  return next === undefined || /[\s>]/.test(next);
+}
+
+function skipRawTextElement(html: string, start: number, tagName: string): number {
+  const tagOpenEnd = html.indexOf(">", start + tagName.length + 1);
+  if (tagOpenEnd === -1) return html.length;
+
+  const close = `</${tagName}>`;
+  const closeIndex = html.toLowerCase().indexOf(close, tagOpenEnd + 1);
+  return closeIndex === -1 ? html.length : closeIndex + close.length;
+}
+
+interface TagParseResult {
+  bindings: EventBinding[];
+  end: number;
+}
+
+function parseTagForEvents(html: string, start: number): TagParseResult {
+  const tagEnd = findTagEnd(html, start);
+  if (tagEnd === -1) {
+    return { bindings: [], end: html.length };
+  }
+
+  const content = html.slice(start + 1, tagEnd);
+  const bindings: EventBinding[] = [];
+  let index = 0;
+
+  // Skip tag name.
+  while (index < content.length && !/[\s>]/.test(content[index]!)) {
+    index += 1;
+  }
+
+  while (index < content.length) {
+    index = skipWhitespaceInString(content, index);
+    if (index >= content.length) break;
+
+    const char = content[index];
+    if (char === "/" || char === ">") break;
+
+    const attrStartInContent = index;
+    const nameStart = index;
+    while (
+      index < content.length &&
+      !/[\s=/>]/.test(content[index]!)
+    ) {
+      index += 1;
+    }
+    const name = content.slice(nameStart, index);
+    const attrStartOffset = start + 1 + attrStartInContent;
+
+    index = skipWhitespaceInString(content, index);
+
+    let expression = "";
+    let valueEndInContent = index;
+
+    if (content[index] === "=") {
+      index += 1;
+      index = skipWhitespaceInString(content, index);
+      const valueResult = parseAttributeValue(content, index);
+      expression = valueResult.value;
+      valueEndInContent = valueResult.end;
+      index = valueResult.end;
+    }
+
+    const eventName = extractEventName(name);
+    if (eventName !== undefined && expression !== "") {
+      const attributeStart = attrStartOffset - 1;
+      const attributeEnd = start + 1 + valueEndInContent;
+      bindings.push({
+        eventName,
+        expression,
+        start: start + 1 + nameStart,
+        end: attributeEnd,
+        attributeStart,
+        attributeEnd,
+      });
+    }
+
+    index = skipWhitespaceInString(content, index);
+  }
+
+  return { bindings, end: tagEnd + 1 };
+}
+
+function findTagEnd(html: string, start: number): number {
+  let index = start + 1;
+  let inString: string | undefined;
+
+  while (index < html.length) {
+    const char = html[index];
+
+    if (inString !== undefined) {
+      if (char === "\\") {
+        index += 2;
+        continue;
+      }
+      if (char === inString) {
+        inString = undefined;
+      }
+      index += 1;
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === "`") {
+      inString = char;
+      index += 1;
+      continue;
+    }
+
+    if (char === ">") {
+      return index;
+    }
+
+    index += 1;
+  }
+
+  return -1;
+}
+
+function skipWhitespaceInString(content: string, start: number): number {
+  let index = start;
+  while (index < content.length && /\s/.test(content[index]!)) {
+    index += 1;
+  }
+  return index;
+}
+
+function parseAttributeValue(
+  content: string,
+  start: number,
+): { value: string; end: number } {
+  const quote = content[start];
+  if (quote === '"' || quote === "'" || quote === "`") {
+    let index = start + 1;
+    let value = "";
+    while (index < content.length) {
+      const char = content[index];
+      if (char === "\\") {
+        value += content[index + 1] ?? char;
+        index += 2;
+        continue;
+      }
+      if (char === quote) {
+        return { value, end: index + 1 };
+      }
+      value += char;
+      index += 1;
+    }
+    return { value, end: index };
+  }
+
+  let index = start;
+  let value = "";
+  while (index < content.length && !/[\s>]/.test(content[index]!)) {
+    value += content[index];
+    index += 1;
+  }
+  return { value, end: index };
+}
+
+function extractEventName(name: string): string | undefined {
+  if (!name.startsWith("(") || !name.endsWith(")")) return undefined;
+  const inner = name.slice(1, -1);
+  if (!EVENT_NAME_RE.test(inner)) return undefined;
+  return inner;
 }
 
 export function parseHandlerExpression(expression: string): HandlerCall {
@@ -164,7 +354,7 @@ function parseCallShape(source: string): {
   const nameStart = index;
   if (!isIdentifierStart(source[index])) {
     throw new Error(
-      `FlowMark event handler must be a function call, got "${source}".`,
+      `Flowmark event handler must be a function call, got "${source}".`,
     );
   }
   index = readIdentifier(source, index);
@@ -173,7 +363,7 @@ function parseCallShape(source: string): {
 
   if (source[index] !== "(") {
     throw new Error(
-      `FlowMark event handler "${name}" must be called with parentheses.`,
+      `Flowmark event handler "${name}" must be called with parentheses.`,
     );
   }
   index += 1;
@@ -197,11 +387,20 @@ function parseCallShape(source: string): {
 
   if (parenDepth !== 0) {
     throw new Error(
-      `FlowMark event handler "${name}" has unbalanced parentheses.`,
+      `Flowmark event handler "${name}" has unbalanced parentheses.`,
     );
   }
 
   const argsSource = source.slice(argsStart, index);
+  index += 1; // skip closing )
+  index = skipWhitespace(source, index);
+
+  if (index !== source.length) {
+    throw new Error(
+      `Flowmark event handler "${name}" has unexpected trailing content: "${source.slice(index)}".`,
+    );
+  }
+
   return { name, argsSource, argsStart };
 }
 
@@ -225,7 +424,7 @@ function parseArgumentList(
       index += 1;
     } else if (index < argsSource.length) {
       throw new Error(
-        `FlowMark event handler arguments must be separated by commas, got "${argsSource.slice(index)}".`,
+        `Flowmark event handler arguments must be separated by commas, got "${argsSource.slice(index)}".`,
       );
     }
   }
@@ -247,13 +446,13 @@ function parseArgument(
 
   if (char === "`") {
     throw new Error(
-      `FlowMark event handler argument template literals are not supported at ${offset}.`,
+      `Flowmark event handler argument template literals are not supported at ${offset}.`,
     );
   }
 
   if (char === "[" || char === "{" || char === "(") {
     throw new Error(
-      `FlowMark event handler argument must be a simple literal or $event/$el at ${offset}.`,
+      `Flowmark event handler argument must be a simple literal or $event/$el at ${offset}.`,
     );
   }
 
@@ -270,12 +469,12 @@ function parseArgument(
     if (identifier === "$event") return { type: "event" };
     if (identifier === "$el") return { type: "element" };
     throw new Error(
-      `FlowMark event handler argument "${identifier}" is not supported at ${offset}.`,
+      `Flowmark event handler argument "${identifier}" is not supported at ${offset}.`,
     );
   }
 
   throw new Error(
-    `FlowMark event handler argument is invalid at ${offset}: "${source[start]}".`,
+    `Flowmark event handler argument is invalid at ${offset}: "${source[start]}".`,
   );
 }
 
@@ -325,6 +524,7 @@ export function extractFrontmatterFunctions(
 
     const source = frontmatter.slice(start, bodyEnd + 1);
     const body = frontmatter.slice(bodyStart + 1, bodyEnd);
+    const isAsync = /\basync\b/.test(match[0]);
 
     functions.push({
       name,
@@ -332,10 +532,28 @@ export function extractFrontmatterFunctions(
       source,
       body,
       offset: start,
+      isAsync,
     });
   }
 
   return { functions };
+}
+
+export function findUnsupportedHandlerNames(frontmatter: string): string[] {
+  const names = new Set<string>();
+
+  ARROW_HANDLER_RE.lastIndex = 0;
+  FUNCTION_EXPR_HANDLER_RE.lastIndex = 0;
+
+  let match: RegExpExecArray | null;
+  while ((match = ARROW_HANDLER_RE.exec(frontmatter)) !== null) {
+    names.add(match[1]!);
+  }
+  while ((match = FUNCTION_EXPR_HANDLER_RE.exec(frontmatter)) !== null) {
+    names.add(match[1]!);
+  }
+
+  return Array.from(names);
 }
 
 function parseParameterList(
@@ -359,13 +577,13 @@ function parseParameterList(
 
     if (source[index] === "{" || source[index] === "[") {
       throw new Error(
-        `FlowMark event handler destructured parameters are not supported.`,
+        `Flowmark event handler destructured parameters are not supported.`,
       );
     }
 
     if (!isIdentifierStart(source[index])) {
       throw new Error(
-        `FlowMark event handler parameter list is invalid at ${index}.`,
+        `Flowmark event handler parameter list is invalid at ${index}.`,
       );
     }
 
@@ -387,7 +605,7 @@ function parseParameterList(
       index += 1;
     } else if (source[index] !== ")") {
       throw new Error(
-        `FlowMark event handler parameter list is invalid at ${index}.`,
+        `Flowmark event handler parameter list is invalid at ${index}.`,
       );
     }
   }
@@ -447,191 +665,164 @@ function findMatchingBrace(source: string, openIndex: number): number {
 }
 
 export function analyzeCaptures(func: FrontmatterFunction): string[] {
-  const locals = new Set(func.parameters);
-  const localDeclarations = findLocalDeclarations(func.body);
-  localDeclarations.forEach((name) => locals.add(name));
+  const sourceFile = ts.createSourceFile(
+    "handler.ts",
+    func.source,
+    ts.ScriptTarget.Latest,
+    true,
+  );
 
-  const captures = new Set<string>();
-  const tokens = tokenizeIdentifiers(func.body);
-
-  for (const { name, index, isPropertyAccess, isDeclaration } of tokens) {
-    if (locals.has(name)) continue;
-    if (RESERVED_WORDS.has(name)) continue;
-    if (KNOWN_GLOBALS.has(name)) continue;
-    if (isPropertyAccess) continue;
-    if (isDeclaration) continue;
-
-    captures.add(name);
+  const functionDecl = findFunctionDeclaration(sourceFile);
+  if (functionDecl === undefined) {
+    return [];
   }
 
+  const options: ts.CompilerOptions = { target: ts.ScriptTarget.Latest };
+  const host = ts.createCompilerHost(options);
+  const originalGetSourceFile = host.getSourceFile;
+  host.getSourceFile = (fileName, languageVersion, ...args) => {
+    if (fileName === "handler.ts") return sourceFile;
+    return originalGetSourceFile(fileName, languageVersion, ...args);
+  };
+
+  const program = ts.createProgram(["handler.ts"], options, host);
+  const checker = program.getTypeChecker();
+  const captures = new Set<string>();
+
+  function visit(node: ts.Node) {
+    if (ts.isIdentifier(node) && isReferenceIdentifier(node)) {
+      const name = node.text;
+      if (RESERVED_WORDS.has(name) || KNOWN_GLOBALS.has(name)) {
+        return;
+      }
+
+      const symbol = checker.getSymbolAtLocation(node);
+      if (symbol === undefined) {
+        captures.add(name);
+        return;
+      }
+
+      const declarations = symbol.getDeclarations();
+      if (declarations === undefined || declarations.length === 0) {
+        captures.add(name);
+        return;
+      }
+
+      const allLocal = declarations.every(
+        (decl) => decl.getSourceFile() === sourceFile,
+      );
+      if (!allLocal) {
+        captures.add(name);
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(functionDecl);
   return Array.from(captures);
 }
 
-interface IdentifierToken {
-  name: string;
-  index: number;
-  isPropertyAccess: boolean;
-  isDeclaration: boolean;
-}
+function findFunctionDeclaration(
+  sourceFile: ts.SourceFile,
+): ts.FunctionDeclaration | ts.FunctionExpression | undefined {
+  let found: ts.FunctionDeclaration | ts.FunctionExpression | undefined;
 
-function tokenizeIdentifiers(source: string): IdentifierToken[] {
-  const tokens: IdentifierToken[] = [];
-  let index = 0;
-
-  while (index < source.length) {
-    index = skipWhitespace(source, index);
-    if (index >= source.length) break;
-
-    const char = source[index];
-
-    if (char === "/" && source[index + 1] === "/") {
-      index = skipLineComment(source, index);
-      continue;
+  function visit(node: ts.Node) {
+    if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)) {
+      found = node;
+      return;
     }
-
-    if (char === "/" && source[index + 1] === "*") {
-      index = skipBlockComment(source, index);
-      continue;
-    }
-
-    if (char === '"' || char === "'" || char === "`") {
-      index = skipString(source, index, char);
-      continue;
-    }
-
-    if (isDigit(char)) {
-      index = skipNumber(source, index);
-      continue;
-    }
-
-    if (isIdentifierStart(char)) {
-      const start = index;
-      index = readIdentifier(source, index);
-      const name = source.slice(start, index);
-      const isPropertyAccess = isDotBefore(source, start);
-      const isDeclaration = isDeclarationContext(source, start);
-      tokens.push({ name, index: start, isPropertyAccess, isDeclaration });
-      continue;
-    }
-
-    index += 1;
+    ts.forEachChild(node, visit);
   }
 
-  return tokens;
+  visit(sourceFile);
+  return found;
 }
 
-function skipLineComment(source: string, start: number): number {
-  const end = source.indexOf("\n", start);
-  return end === -1 ? source.length : end + 1;
-}
+function isReferenceIdentifier(node: ts.Identifier): boolean {
+  const parent = node.parent;
+  if (parent === undefined) return true;
 
-function skipBlockComment(source: string, start: number): number {
-  const end = source.indexOf("*/", start + 2);
-  return end === -1 ? source.length : end + 2;
-}
-
-function skipNumber(source: string, start: number): number {
-  let index = start;
-  if (source[index] === "-") index += 1;
-  while (index < source.length && isDigit(source[index])) index += 1;
-  if (source[index] === ".") {
-    index += 1;
-    while (index < source.length && isDigit(source[index])) index += 1;
+  if (ts.isPropertyAccessExpression(parent) && parent.name === node) {
+    return false;
   }
-  return index;
-}
-
-function isDotBefore(source: string, index: number): boolean {
-  let cursor = index - 1;
-  while (cursor >= 0 && /\s/.test(source[cursor])) {
-    cursor -= 1;
+  if (ts.isPropertyAssignment(parent) && parent.name === node) {
+    return false;
   }
-  return source[cursor] === ".";
-}
-
-function isDeclarationContext(source: string, index: number): boolean {
-  const before = source.slice(0, index).trimEnd();
-  if (/\b(const|let|var|function)\s*$/.test(before)) return true;
-  // Object property shorthand keys are not declarations in this context.
-  return false;
-}
-
-function findLocalDeclarations(body: string): string[] {
-  const names: string[] = [];
-  let index = 0;
-
-  while (index < body.length) {
-    index = skipWhitespace(body, index);
-    if (index >= body.length) break;
-
-    const char = body[index];
-
-    if (char === "/" && body[index + 1] === "/") {
-      index = skipLineComment(body, index);
-      continue;
-    }
-
-    if (char === "/" && body[index + 1] === "*") {
-      index = skipBlockComment(body, index);
-      continue;
-    }
-
-    if (char === '"' || char === "'" || char === "`") {
-      index = skipString(body, index, char);
-      continue;
-    }
-
-    if (isIdentifierStart(char)) {
-      const start = index;
-      index = readIdentifier(body, index);
-      const name = body.slice(start, index);
-
-      if (name === "const" || name === "let" || name === "var") {
-        index = skipWhitespace(body, index);
-        while (index < body.length) {
-          index = skipWhitespace(body, index);
-          if (!isIdentifierStart(body[index])) break;
-          const declStart = index;
-          index = readIdentifier(body, index);
-          const declName = body.slice(declStart, index);
-          names.push(declName);
-
-          index = skipWhitespace(body, index);
-          if (body[index] === ":") {
-            index += 1;
-            index = skipType(body, index);
-          } else if (body[index] === "=") {
-            index += 1;
-            index = skipExpression(body, index);
-          }
-
-          index = skipWhitespace(body, index);
-          if (body[index] === ",") {
-            index += 1;
-          } else {
-            break;
-          }
-        }
-        continue;
-      }
-
-      if (name === "function") {
-        index = skipWhitespace(body, index);
-        if (isIdentifierStart(body[index])) {
-          const declStart = index;
-          index = readIdentifier(body, index);
-          names.push(body.slice(declStart, index));
-        }
-      }
-
-      continue;
-    }
-
-    index += 1;
+  if (ts.isPropertySignature(parent) && parent.name === node) {
+    return false;
+  }
+  if (ts.isQualifiedName(parent)) {
+    return false;
+  }
+  if (
+    ts.isTypeReferenceNode(parent) ||
+    ts.isTypeQueryNode(parent) ||
+    ts.isTypeAliasDeclaration(parent) ||
+    ts.isInterfaceDeclaration(parent) ||
+    ts.isClassDeclaration(parent) ||
+    ts.isEnumDeclaration(parent) ||
+    ts.isModuleDeclaration(parent)
+  ) {
+    return false;
+  }
+  if (ts.isImportClause(parent) && parent.name === node) {
+    return false;
+  }
+  if (ts.isImportSpecifier(parent) && parent.name === node) {
+    return false;
+  }
+  if (
+    ts.isExportSpecifier(parent) &&
+    (parent.name === node || parent.propertyName === node)
+  ) {
+    return false;
+  }
+  if (
+    (ts.isFunctionDeclaration(parent) ||
+      ts.isFunctionExpression(parent) ||
+      ts.isMethodDeclaration(parent)) &&
+    parent.name === node
+  ) {
+    return false;
+  }
+  if (ts.isParameter(parent) && parent.name === node) {
+    return false;
+  }
+  if (ts.isVariableDeclaration(parent) && parent.name === node) {
+    return false;
+  }
+  if (ts.isBindingElement(parent) && parent.name === node) {
+    return false;
+  }
+  if (ts.isJsxAttribute(parent) && parent.name === node) {
+    return false;
+  }
+  if (
+    (ts.isJsxOpeningElement(parent) ||
+      ts.isJsxClosingElement(parent) ||
+      ts.isJsxSelfClosingElement(parent)) &&
+    parent.tagName === node
+  ) {
+    return false;
+  }
+  if (ts.isLabeledStatement(parent) && parent.label === node) {
+    return false;
+  }
+  if (
+    (ts.isBreakStatement(parent) || ts.isContinueStatement(parent)) &&
+    parent.label === node
+  ) {
+    return false;
+  }
+  if (ts.isMetaProperty(parent)) {
+    return false;
   }
 
-  return names;
+  return true;
 }
+
 
 function skipWhitespace(source: string, start: number): number {
   let index = start;

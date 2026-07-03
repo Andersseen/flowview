@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "sideEffects": false,
-  "description": "FlowMark DOM Events integration for Astro.",
+  "description": "Flowmark Events integration for Astro.",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@astrojs/compiler": "^2.13.1",
-    "@flowmark/dom": "workspace:*"
+    "@flowmark/dom": "workspace:*",
+    "magic-string": "^0.30.0"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
