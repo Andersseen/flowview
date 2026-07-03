@@ -5,7 +5,7 @@
 
 ## Fecha de última actualización
 
-2026-07-03 (Fase A completada)
+2026-07-03 (Fases A y B completadas)
 
 ## Estado del repo
 
@@ -76,8 +76,8 @@ Archivos clave:
 
 1. ~~Descubrimiento regex (`EVENT_ATTR_RE`) es frágil.~~ ✅ Reemplazado por scanner HTML-aware.
 2. ~~`parseCallShape` no rechaza trailing junk (`save() + 1`).~~ ✅ Ahora se rechaza contenido inesperado tras el cierre del call.
-3. Frontmatter solo soporta `function name() {}`. ⏳ Pendiente Fase B.
-4. `analyzeCaptures` es heurístico y falla con TS moderno. ⏳ Pendiente Fase B.
+3. ~~Frontmatter solo soporta `function name() {}`.~~ ✅ Ahora soporta `export`, `async` y `export async`.
+4. ~~`analyzeCaptures` es heurístico y falla con TS moderno.~~ ✅ Reemplazado por TypeScript type checker.
 5. ~~Diagnósticos en Astro apuntan al template cortado, no al archivo original.~~ ✅ Ajustados con `translateDiagnostics`.
 6. `astro-events` devuelve `map: null`. ⏳ Pendiente Fase D.
 7. ~~Runtime ya tiene deduplicación sin commit.~~ ✅ Commiteado.
@@ -98,6 +98,7 @@ Archivos clave:
 | 2026-07-03 | Fases A→D en ese orden | Mayor impacto DX primero (eventos), luego Rust, luego integración |
 | 2026-07-03 | Commitear deduplicación de listeners como primer paso | Ya está implementada; evita perder trabajo |
 | 2026-07-03 | Scanner HTML-aware en lugar de regex | Más robusto y mantiene el paquete sin dependencias nuevas |
+| 2026-07-03 | Añadir `typescript` como dependencia de `@flowmark/dom` | Necesario para análisis real de captures en handlers |
 
 ## Comandos útiles para cada sesión
 
@@ -126,6 +127,6 @@ pnpm run dev
 
 ## Notas abiertas
 
-- Revisar si `oxc_parser` puede usarse también en el lado TypeScript para `analyzeCaptures` sin agregar una nueva dependencia pesada.
 - Evaluar si `MagicString` ya está disponible en `packages/astro-events` o hay que agregarlo.
 - Confirmar si el prefijo `__flowmark_` para temporales no colisiona con nada existente.
+- Considerar si el tiempo de test (~3s por crear programas TS) es aceptable o si se debe cachear el checker.

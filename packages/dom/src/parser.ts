@@ -1,3 +1,4 @@
+import ts from "typescript";
 import { locate, type FlowmarkDomDiagnostic } from "./diagnostics.js";
 
 export interface EventBinding {
@@ -25,6 +26,7 @@ export interface FrontmatterFunction {
   source: string;
   body: string;
   offset: number;
+  isAsync: boolean;
 }
 
 export interface ParsedFrontmatter {
@@ -32,7 +34,11 @@ export interface ParsedFrontmatter {
 }
 
 const EVENT_NAME_RE = /^[\w-]+$/;
-const FUNCTION_DECL_RE = /function\s+([a-zA-Z_$][\w$]*)/g;
+const FUNCTION_DECL_RE = /(?:export\s+)?(?:async\s+)?function\s+([a-zA-Z_$][\w$]*)/g;
+const ARROW_HANDLER_RE =
+  /(?:export\s+)?(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[a-zA-Z_$][\w$]*)\s*=>/g;
+const FUNCTION_EXPR_HANDLER_RE =
+  /(?:export\s+)?(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*(?:async\s*)?function\s*\(/g;
 const IDENTIFIER_RE = /[a-zA-Z_$][\w$]*/g;
 
 const RESERVED_WORDS = new Set([
@@ -518,6 +524,7 @@ export function extractFrontmatterFunctions(
 
     const source = frontmatter.slice(start, bodyEnd + 1);
     const body = frontmatter.slice(bodyStart + 1, bodyEnd);
+    const isAsync = /\basync\b/.test(match[0]);
 
     functions.push({
       name,
@@ -525,10 +532,28 @@ export function extractFrontmatterFunctions(
       source,
       body,
       offset: start,
+      isAsync,
     });
   }
 
   return { functions };
+}
+
+export function findUnsupportedHandlerNames(frontmatter: string): string[] {
+  const names = new Set<string>();
+
+  ARROW_HANDLER_RE.lastIndex = 0;
+  FUNCTION_EXPR_HANDLER_RE.lastIndex = 0;
+
+  let match: RegExpExecArray | null;
+  while ((match = ARROW_HANDLER_RE.exec(frontmatter)) !== null) {
+    names.add(match[1]!);
+  }
+  while ((match = FUNCTION_EXPR_HANDLER_RE.exec(frontmatter)) !== null) {
+    names.add(match[1]!);
+  }
+
+  return Array.from(names);
 }
 
 function parseParameterList(
@@ -640,191 +665,164 @@ function findMatchingBrace(source: string, openIndex: number): number {
 }
 
 export function analyzeCaptures(func: FrontmatterFunction): string[] {
-  const locals = new Set(func.parameters);
-  const localDeclarations = findLocalDeclarations(func.body);
-  localDeclarations.forEach((name) => locals.add(name));
+  const sourceFile = ts.createSourceFile(
+    "handler.ts",
+    func.source,
+    ts.ScriptTarget.Latest,
+    true,
+  );
 
-  const captures = new Set<string>();
-  const tokens = tokenizeIdentifiers(func.body);
-
-  for (const { name, index, isPropertyAccess, isDeclaration } of tokens) {
-    if (locals.has(name)) continue;
-    if (RESERVED_WORDS.has(name)) continue;
-    if (KNOWN_GLOBALS.has(name)) continue;
-    if (isPropertyAccess) continue;
-    if (isDeclaration) continue;
-
-    captures.add(name);
+  const functionDecl = findFunctionDeclaration(sourceFile);
+  if (functionDecl === undefined) {
+    return [];
   }
 
+  const options: ts.CompilerOptions = { target: ts.ScriptTarget.Latest };
+  const host = ts.createCompilerHost(options);
+  const originalGetSourceFile = host.getSourceFile;
+  host.getSourceFile = (fileName, languageVersion, ...args) => {
+    if (fileName === "handler.ts") return sourceFile;
+    return originalGetSourceFile(fileName, languageVersion, ...args);
+  };
+
+  const program = ts.createProgram(["handler.ts"], options, host);
+  const checker = program.getTypeChecker();
+  const captures = new Set<string>();
+
+  function visit(node: ts.Node) {
+    if (ts.isIdentifier(node) && isReferenceIdentifier(node)) {
+      const name = node.text;
+      if (RESERVED_WORDS.has(name) || KNOWN_GLOBALS.has(name)) {
+        return;
+      }
+
+      const symbol = checker.getSymbolAtLocation(node);
+      if (symbol === undefined) {
+        captures.add(name);
+        return;
+      }
+
+      const declarations = symbol.getDeclarations();
+      if (declarations === undefined || declarations.length === 0) {
+        captures.add(name);
+        return;
+      }
+
+      const allLocal = declarations.every(
+        (decl) => decl.getSourceFile() === sourceFile,
+      );
+      if (!allLocal) {
+        captures.add(name);
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(functionDecl);
   return Array.from(captures);
 }
 
-interface IdentifierToken {
-  name: string;
-  index: number;
-  isPropertyAccess: boolean;
-  isDeclaration: boolean;
-}
+function findFunctionDeclaration(
+  sourceFile: ts.SourceFile,
+): ts.FunctionDeclaration | ts.FunctionExpression | undefined {
+  let found: ts.FunctionDeclaration | ts.FunctionExpression | undefined;
 
-function tokenizeIdentifiers(source: string): IdentifierToken[] {
-  const tokens: IdentifierToken[] = [];
-  let index = 0;
-
-  while (index < source.length) {
-    index = skipWhitespace(source, index);
-    if (index >= source.length) break;
-
-    const char = source[index];
-
-    if (char === "/" && source[index + 1] === "/") {
-      index = skipLineComment(source, index);
-      continue;
+  function visit(node: ts.Node) {
+    if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)) {
+      found = node;
+      return;
     }
-
-    if (char === "/" && source[index + 1] === "*") {
-      index = skipBlockComment(source, index);
-      continue;
-    }
-
-    if (char === '"' || char === "'" || char === "`") {
-      index = skipString(source, index, char);
-      continue;
-    }
-
-    if (isDigit(char)) {
-      index = skipNumber(source, index);
-      continue;
-    }
-
-    if (isIdentifierStart(char)) {
-      const start = index;
-      index = readIdentifier(source, index);
-      const name = source.slice(start, index);
-      const isPropertyAccess = isDotBefore(source, start);
-      const isDeclaration = isDeclarationContext(source, start);
-      tokens.push({ name, index: start, isPropertyAccess, isDeclaration });
-      continue;
-    }
-
-    index += 1;
+    ts.forEachChild(node, visit);
   }
 
-  return tokens;
+  visit(sourceFile);
+  return found;
 }
 
-function skipLineComment(source: string, start: number): number {
-  const end = source.indexOf("\n", start);
-  return end === -1 ? source.length : end + 1;
-}
+function isReferenceIdentifier(node: ts.Identifier): boolean {
+  const parent = node.parent;
+  if (parent === undefined) return true;
 
-function skipBlockComment(source: string, start: number): number {
-  const end = source.indexOf("*/", start + 2);
-  return end === -1 ? source.length : end + 2;
-}
-
-function skipNumber(source: string, start: number): number {
-  let index = start;
-  if (source[index] === "-") index += 1;
-  while (index < source.length && isDigit(source[index])) index += 1;
-  if (source[index] === ".") {
-    index += 1;
-    while (index < source.length && isDigit(source[index])) index += 1;
+  if (ts.isPropertyAccessExpression(parent) && parent.name === node) {
+    return false;
   }
-  return index;
-}
-
-function isDotBefore(source: string, index: number): boolean {
-  let cursor = index - 1;
-  while (cursor >= 0 && /\s/.test(source[cursor])) {
-    cursor -= 1;
+  if (ts.isPropertyAssignment(parent) && parent.name === node) {
+    return false;
   }
-  return source[cursor] === ".";
-}
-
-function isDeclarationContext(source: string, index: number): boolean {
-  const before = source.slice(0, index).trimEnd();
-  if (/\b(const|let|var|function)\s*$/.test(before)) return true;
-  // Object property shorthand keys are not declarations in this context.
-  return false;
-}
-
-function findLocalDeclarations(body: string): string[] {
-  const names: string[] = [];
-  let index = 0;
-
-  while (index < body.length) {
-    index = skipWhitespace(body, index);
-    if (index >= body.length) break;
-
-    const char = body[index];
-
-    if (char === "/" && body[index + 1] === "/") {
-      index = skipLineComment(body, index);
-      continue;
-    }
-
-    if (char === "/" && body[index + 1] === "*") {
-      index = skipBlockComment(body, index);
-      continue;
-    }
-
-    if (char === '"' || char === "'" || char === "`") {
-      index = skipString(body, index, char);
-      continue;
-    }
-
-    if (isIdentifierStart(char)) {
-      const start = index;
-      index = readIdentifier(body, index);
-      const name = body.slice(start, index);
-
-      if (name === "const" || name === "let" || name === "var") {
-        index = skipWhitespace(body, index);
-        while (index < body.length) {
-          index = skipWhitespace(body, index);
-          if (!isIdentifierStart(body[index])) break;
-          const declStart = index;
-          index = readIdentifier(body, index);
-          const declName = body.slice(declStart, index);
-          names.push(declName);
-
-          index = skipWhitespace(body, index);
-          if (body[index] === ":") {
-            index += 1;
-            index = skipType(body, index);
-          } else if (body[index] === "=") {
-            index += 1;
-            index = skipExpression(body, index);
-          }
-
-          index = skipWhitespace(body, index);
-          if (body[index] === ",") {
-            index += 1;
-          } else {
-            break;
-          }
-        }
-        continue;
-      }
-
-      if (name === "function") {
-        index = skipWhitespace(body, index);
-        if (isIdentifierStart(body[index])) {
-          const declStart = index;
-          index = readIdentifier(body, index);
-          names.push(body.slice(declStart, index));
-        }
-      }
-
-      continue;
-    }
-
-    index += 1;
+  if (ts.isPropertySignature(parent) && parent.name === node) {
+    return false;
+  }
+  if (ts.isQualifiedName(parent)) {
+    return false;
+  }
+  if (
+    ts.isTypeReferenceNode(parent) ||
+    ts.isTypeQueryNode(parent) ||
+    ts.isTypeAliasDeclaration(parent) ||
+    ts.isInterfaceDeclaration(parent) ||
+    ts.isClassDeclaration(parent) ||
+    ts.isEnumDeclaration(parent) ||
+    ts.isModuleDeclaration(parent)
+  ) {
+    return false;
+  }
+  if (ts.isImportClause(parent) && parent.name === node) {
+    return false;
+  }
+  if (ts.isImportSpecifier(parent) && parent.name === node) {
+    return false;
+  }
+  if (
+    ts.isExportSpecifier(parent) &&
+    (parent.name === node || parent.propertyName === node)
+  ) {
+    return false;
+  }
+  if (
+    (ts.isFunctionDeclaration(parent) ||
+      ts.isFunctionExpression(parent) ||
+      ts.isMethodDeclaration(parent)) &&
+    parent.name === node
+  ) {
+    return false;
+  }
+  if (ts.isParameter(parent) && parent.name === node) {
+    return false;
+  }
+  if (ts.isVariableDeclaration(parent) && parent.name === node) {
+    return false;
+  }
+  if (ts.isBindingElement(parent) && parent.name === node) {
+    return false;
+  }
+  if (ts.isJsxAttribute(parent) && parent.name === node) {
+    return false;
+  }
+  if (
+    (ts.isJsxOpeningElement(parent) ||
+      ts.isJsxClosingElement(parent) ||
+      ts.isJsxSelfClosingElement(parent)) &&
+    parent.tagName === node
+  ) {
+    return false;
+  }
+  if (ts.isLabeledStatement(parent) && parent.label === node) {
+    return false;
+  }
+  if (
+    (ts.isBreakStatement(parent) || ts.isContinueStatement(parent)) &&
+    parent.label === node
+  ) {
+    return false;
+  }
+  if (ts.isMetaProperty(parent)) {
+    return false;
   }
 
-  return names;
+  return true;
 }
+
 
 function skipWhitespace(source: string, start: number): number {
   let index = start;

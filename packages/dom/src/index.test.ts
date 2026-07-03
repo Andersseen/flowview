@@ -214,4 +214,129 @@ describe("compileEvents", () => {
 
     expect(result.clientModule).toBe("");
   });
+
+  it("supports exported frontmatter handlers", () => {
+    const result = compileEvents({
+      filename: "test.astro",
+      frontmatter: `\nexport function save() {\n  console.log("saved");\n}\n`,
+      template: `\n<button (click)="save()">Save</button>\n`,
+    });
+
+    expect(result.clientModule).toContain("function save()");
+    expect(result.clientModule).not.toContain("export");
+    expect(result.clientModule).toContain('console.log("saved")');
+  });
+
+  it("supports async frontmatter handlers", () => {
+    const result = compileEvents({
+      filename: "test.astro",
+      frontmatter: `\nasync function save() {\n  await fetch("/api");\n}\n`,
+      template: `\n<button (click)="save()">Save</button>\n`,
+    });
+
+    expect(result.clientModule).toContain("async function save()");
+    expect(result.clientModule).toContain('await fetch("/api")');
+  });
+
+  it("supports exported async frontmatter handlers", () => {
+    const result = compileEvents({
+      filename: "test.astro",
+      frontmatter: `\nexport async function save() {\n  await fetch("/api");\n}\n`,
+      template: `\n<button (click)="save()">Save</button>\n`,
+    });
+
+    expect(result.clientModule).toContain("async function save()");
+    expect(result.clientModule).not.toContain("export");
+  });
+
+  it("reports a helpful diagnostic for arrow function handlers", () => {
+    let caught: FlowmarkDomError | undefined;
+    try {
+      compileEvents({
+        filename: "test.astro",
+        frontmatter: `\nconst save = () => {\n  console.log("saved");\n};\n`,
+        template: `\n<button (click)="save()">Save</button>\n`,
+      });
+    } catch (error) {
+      caught = error as FlowmarkDomError;
+    }
+
+    expect(caught).toBeInstanceOf(FlowmarkDomError);
+    expect(caught?.diagnostics[0]?.message).toContain(
+      "must be declared as a function",
+    );
+  });
+
+  it("reports a helpful diagnostic for function expression handlers", () => {
+    let caught: FlowmarkDomError | undefined;
+    try {
+      compileEvents({
+        filename: "test.astro",
+        frontmatter: `\nconst save = function() {\n  console.log("saved");\n};\n`,
+        template: `\n<button (click)="save()">Save</button>\n`,
+      });
+    } catch (error) {
+      caught = error as FlowmarkDomError;
+    }
+
+    expect(caught).toBeInstanceOf(FlowmarkDomError);
+    expect(caught?.diagnostics[0]?.message).toContain(
+      "must be declared as a function",
+    );
+  });
+
+  it("allows property access and known globals in handlers", () => {
+    const result = compileEvents({
+      filename: "test.astro",
+      frontmatter: `\nfunction save() {\n  console.log("saved");\n  fetch("/api");\n}\n`,
+      template: `\n<button (click)="save()">Save</button>\n`,
+    });
+
+    expect(result.clientModule).toContain("function save()");
+    expect(result.clientModule).toContain('console.log("saved")');
+    expect(result.clientModule).toContain('fetch("/api")');
+  });
+
+  it("allows typed parameters without treating types as captures", () => {
+    const result = compileEvents({
+      filename: "test.astro",
+      frontmatter: `\nfunction save(id: string) {\n  console.log(id);\n}\n`,
+      template: `\n<button (click)="save('1')">Save</button>\n`,
+    });
+
+    expect(result.clientModule).toContain("function save(id)");
+    expect(result.clientModule).toContain("console.log(id)");
+  });
+
+  it("throws for captures through optional chaining", () => {
+    let caught: FlowmarkDomError | undefined;
+    try {
+      compileEvents({
+        filename: "test.astro",
+        frontmatter: `\nconst serverState = { value: 1 };\nfunction save() {\n  console.log(serverState?.value);\n}\n`,
+        template: `\n<button (click)="save()">Save</button>\n`,
+      });
+    } catch (error) {
+      caught = error as FlowmarkDomError;
+    }
+
+    expect(caught).toBeInstanceOf(FlowmarkDomError);
+    expect(caught?.diagnostics[0]?.message).toContain('captures "serverState"');
+  });
+
+  it("throws for captures inside nested functions", () => {
+    let caught: FlowmarkDomError | undefined;
+    try {
+      compileEvents({
+        filename: "test.astro",
+        frontmatter: `\nconst prefix = "item:";\nfunction save() {\n  const helper = () => prefix + "x";\n  console.log(helper());\n}\n`,
+        template: `\n<button (click)="save()">Save</button>\n`,
+      });
+    } catch (error) {
+      caught = error as FlowmarkDomError;
+    }
+
+    expect(caught).toBeInstanceOf(FlowmarkDomError);
+    expect(caught?.diagnostics[0]?.message).toContain('captures "prefix"');
+  });
 });

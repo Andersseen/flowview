@@ -7,6 +7,7 @@ import {
   analyzeCaptures,
   extractFrontmatterFunctions,
   findEventBindings,
+  findUnsupportedHandlerNames,
   parseHandlerExpression,
   type EventBinding,
   type FrontmatterFunction,
@@ -59,6 +60,7 @@ export function compileEvents(
 
   const handlers = new Map<string, FrontmatterFunction>();
   const processedBindings: ProcessedBinding[] = [];
+  const unsupportedHandlers = new Set(findUnsupportedHandlerNames(request.frontmatter));
 
   for (const binding of bindings) {
     let call: ReturnType<typeof parseHandlerExpression>;
@@ -77,8 +79,12 @@ export function compileEvents(
 
     const func = functionsByName.get(call.name);
     if (func === undefined) {
+      const isUnsupported = unsupportedHandlers.has(call.name);
+      const message = isUnsupported
+        ? `Flowmark event handler "${call.name}" must be declared as a function (\`function ${call.name}(...) { ... }\`). Arrow functions and function expressions are not supported yet.`
+        : `Flowmark event handler "${call.name}" was used in the template but was not found in frontmatter.`;
       diagnostics.push({
-        message: `Flowmark event handler "${call.name}" was used in the template but was not found in frontmatter.`,
+        message,
         severity: "error",
         filename: request.filename,
         ...locate(request.template, binding.start),
@@ -223,7 +229,8 @@ function generateClientModule(
 
 function generateClientFunction(func: FrontmatterFunction): string {
   const params = func.parameters.join(", ");
-  return `function ${func.name}(${params}) {${func.body}}`;
+  const asyncKeyword = func.isAsync ? "async " : "";
+  return `${asyncKeyword}function ${func.name}(${params}) {${func.body}}`;
 }
 
 export { findEventBindings, extractFrontmatterFunctions };

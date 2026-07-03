@@ -48,23 +48,23 @@ Objetivo: que el compilador de eventos no se rompa con HTML real y que los error
 
 Objetivo: soportar formas reales de declarar handlers en Astro y evitar falsos positivos/negativos de capturas.
 
-### B1. Soportar `export` y `async` en funciones de frontmatter
-- Archivo: `packages/dom/src/parser.ts`, `extractFrontmatterFunctions`
+### B1. Soportar `export` y `async` en funciones de frontmatter ✅
+- Archivo: `packages/dom/src/parser.ts`, `extractFrontmatterFunctions`; `packages/dom/src/compiler.ts`, `generateClientFunction`
 - Problema: solo acepta `function name(...) {}`.
-- Solución: extender el regex/scanner para `export function`, `export async function`, `async function`.
-- Check: tests para `export function save()`, `async function load()`.
+- Solución: extender `FUNCTION_DECL_RE` para `(?:export\s+)?(?:async\s+)?function\s+...`; añadir `isAsync` a `FrontmatterFunction`; emitir `async function` en el cliente cuando corresponda.
+- Check: tests para `export function save()`, `async function load()`, `export async function save()`.
 
-### B2. Diagnosticar formas de handler no soportadas
-- Archivo: `packages/dom/src/compiler.ts`
+### B2. Diagnosticar formas de handler no soportadas ✅
+- Archivo: `packages/dom/src/parser.ts`, `findUnsupportedHandlerNames`; `packages/dom/src/compiler.ts`
 - Problema: arrow functions, funciones asignadas a `const`, etc., simplemente no se encuentran.
-- Solución: cuando un handler del template no se encuentre en frontmatter, verificar si hay una arrow/const con ese nombre y emitir un diagnóstico específico: "Flowmark only supports `function name(...) {}` handlers. Convert `const save = ...` to a function declaration."
-- Check: test con `const save = () => {}` usado en template.
+- Solución: detectar `const/let/var name = (...) =>` y `const/let/var name = function(...)` con regex; si el handler usado coincide, emitir diagnóstico que indique usar `function name(...) { ... }`.
+- Check: tests para `const save = () => {}` y `const save = function() {}`.
 
-### B3. Reemplazar análisis de captures heurístico por parsing real
+### B3. Reemplazar análisis de captures heurístico por parsing real ✅
 - Archivo: `packages/dom/src/parser.ts`, `analyzeCaptures`
-- Problema: el tokenizador manual no entiende destructuring, type annotations, optional chaining, template literals.
-- Solución: usar `oxc_parser` (ya dependencia del lado Rust) u otro parser JS/TS real para obtener los identificadores libres.
-- Check: tests con handlers que capturen variables locales vs. globales, con `console.log`, con destructuring, con `await`.
+- Problema: el tokenizador manual no entiende type annotations, optional chaining, nested functions, etc.
+- Solución: usar `typescript` como dependencia runtime, crear un `ts.SourceFile` + `ts.createProgram` + type checker para resolver símbolos. Un identificador es captura si no se declara dentro del propio handler y no es global conocido.
+- Check: tests para `console.log`/`fetch` (globales permitidos), type annotations (no captura), optional chaining (sí captura), nested functions (sí captura).
 
 ---
 
