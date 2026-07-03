@@ -115,6 +115,11 @@ assert.match(
   astroBegin,
   "braced context expressions may contain arrow functions",
 );
+assert.match(
+  "<template flowmark={context} is:raw>",
+  astroBegin,
+  "the short flowmark={...} wrapper must activate Flowmark highlighting",
+);
 assert.doesNotMatch(
   "<template-card flowmark>",
   astroBegin,

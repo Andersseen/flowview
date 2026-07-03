@@ -6,7 +6,7 @@ VS Code extension for [Flowmark](https://github.com/andersseen/flowmark) templat
 
 - Syntax highlighting for `.flow` files.
 - Inline Flowmark highlighting inside Astro
-  `<template flowmark is:raw context={...}>` blocks.
+  `<template flowmark={...} is:raw>` blocks.
 - Snippets for Flowmark control flow (`@if`, `@for`, `@switch`) and Astro embedding.
 
 ## Supported syntax
@@ -70,7 +70,7 @@ const context = {
 };
 ---
 
-<template flowmark is:raw context={context}>
+<template flowmark={context} is:raw>
   <h1>{{ context.title }}</h1>
   @if (context.featured) {
     <span>Featured</span>

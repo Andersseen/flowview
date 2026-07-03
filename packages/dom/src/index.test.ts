@@ -162,9 +162,7 @@ describe("compileEvents", () => {
       template: `<!-- <button (click)="save()">Save</button> -->`,
     });
 
-    expect(result.html).toBe(
-      `<!-- <button (click)="save()">Save</button> -->`,
-    );
+    expect(result.html).toBe(`<!-- <button (click)="save()">Save</button> -->`);
     expect(result.clientModule).toBe("");
   });
 
@@ -191,7 +189,7 @@ describe("compileEvents", () => {
     expect(result.html).toContain('data-flow-on-click="save"');
     expect(result.html).toContain('id="btn"');
     expect(result.html).toContain('class="primary"');
-    expect(result.html).toContain('disabled');
+    expect(result.html).toContain("disabled");
     expect(result.clientModule).toContain("function save()");
   });
 
@@ -322,6 +320,71 @@ describe("compileEvents", () => {
 
     expect(caught).toBeInstanceOf(FlowmarkDomError);
     expect(caught?.diagnostics[0]?.message).toContain('captures "serverState"');
+  });
+
+  it("allows browser globals that are not on any allowlist", () => {
+    const result = compileEvents({
+      filename: "test.astro",
+      frontmatter: `\nfunction save(el: HTMLElement) {\n  const observer = new IntersectionObserver(() => alert("seen"));\n  observer.observe(el);\n  crypto.randomUUID();\n}\n`,
+      template: `\n<button (click)="save($el)">Save</button>\n`,
+    });
+
+    expect(result.clientModule).toContain("IntersectionObserver");
+  });
+
+  it("allows locals that shadow frontmatter bindings", () => {
+    const result = compileEvents({
+      filename: "test.astro",
+      frontmatter: `\nconst prefix = "server:";\nfunction save() {\n  const prefix = "client:";\n  console.log(prefix);\n}\n`,
+      template: `\n<button (click)="save()">Save</button>\n`,
+    });
+
+    expect(result.clientModule).toContain('const prefix = "client:"');
+  });
+
+  it("ignores function-like text inside comments and strings", () => {
+    let caught: FlowmarkDomError | undefined;
+    try {
+      compileEvents({
+        filename: "test.astro",
+        frontmatter: `\n// function save() { legacy }\nconst note = "function save() {}";\n`,
+        template: `\n<button (click)="save()">Save</button>\n`,
+      });
+    } catch (error) {
+      caught = error as FlowmarkDomError;
+    }
+
+    expect(caught).toBeInstanceOf(FlowmarkDomError);
+    expect(caught?.diagnostics[0]?.message).toContain(
+      "was used in the template but was not found",
+    );
+  });
+
+  it("preserves parameter default values in the client module", () => {
+    const result = compileEvents({
+      filename: "test.astro",
+      frontmatter: `\nfunction save(mode: string = "quick") {\n  console.log(mode);\n}\n`,
+      template: `\n<button (click)="save()">Save</button>\n`,
+    });
+
+    expect(result.clientModule).toContain('function save(mode = "quick")');
+    expect(result.clientModule).not.toContain("string");
+  });
+
+  it("throws for captures of imported frontmatter values", () => {
+    let caught: FlowmarkDomError | undefined;
+    try {
+      compileEvents({
+        filename: "test.astro",
+        frontmatter: `\nimport { apiUrl } from "./config";\nfunction save() {\n  fetch(apiUrl);\n}\n`,
+        template: `\n<button (click)="save()">Save</button>\n`,
+      });
+    } catch (error) {
+      caught = error as FlowmarkDomError;
+    }
+
+    expect(caught).toBeInstanceOf(FlowmarkDomError);
+    expect(caught?.diagnostics[0]?.message).toContain('captures "apiUrl"');
   });
 
   it("throws for captures inside nested functions", () => {

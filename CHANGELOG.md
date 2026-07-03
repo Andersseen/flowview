@@ -6,6 +6,29 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+- Added `@flowmark/prettier`, a Prettier plugin that wraps
+  prettier-plugin-astro and preserves `<template flowmark …>` regions
+  byte-for-byte, removing the need for `<!-- prettier-ignore -->` comments.
+  The repo, demo, and docs now format without any ignore comments, and the
+  plugin guards against prettier-plugin-astro's module-level
+  `prettier-ignore` state leaking across files.
+- Fixed the VS Code extension development scripts to pass an absolute
+  `--extensionDevelopmentPath`, which VS Code requires.
+- Added the `<template flowmark={context} is:raw>` shorthand: the `flowmark`
+  attribute now accepts the context expression directly, `context={...}`
+  remains supported, and combining both is a compile error. Docs, demo, and
+  editor snippets use the short form.
+- Replaced the events-compiler global/reserved-word allowlists with real
+  TypeScript scope analysis: browser globals such as `IntersectionObserver`
+  are no longer false capture errors, shadowed locals are allowed, and
+  imported frontmatter values are correctly reported as captures.
+- Extracted frontmatter handler functions with the TypeScript AST instead of
+  regular expressions, so `function` text inside comments and strings is
+  ignored and parameter default values are preserved in the client module.
+- Analyzed all event handlers with a single TypeScript program per compile
+  instead of one per handler.
+- Added a spec-driven development guide (`docs/spec-driven-development.md`)
+  and removed the superseded events-compiler plan document.
 - Validated embedded JavaScript expressions with a production JavaScript parser
   before generating modules.
 - Kept control-flow markers literal inside HTML attributes, comments, scripts,

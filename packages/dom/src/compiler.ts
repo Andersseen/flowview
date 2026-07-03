@@ -4,7 +4,7 @@ import {
   type FlowmarkDomDiagnostic,
 } from "./diagnostics.js";
 import {
-  analyzeCaptures,
+  analyzeAllCaptures,
   extractFrontmatterFunctions,
   findEventBindings,
   findUnsupportedHandlerNames,
@@ -60,7 +60,9 @@ export function compileEvents(
 
   const handlers = new Map<string, FrontmatterFunction>();
   const processedBindings: ProcessedBinding[] = [];
-  const unsupportedHandlers = new Set(findUnsupportedHandlerNames(request.frontmatter));
+  const unsupportedHandlers = new Set(
+    findUnsupportedHandlerNames(request.frontmatter),
+  );
 
   for (const binding of bindings) {
     let call: ReturnType<typeof parseHandlerExpression>;
@@ -117,8 +119,12 @@ export function compileEvents(
     });
   }
 
+  const captureMap = analyzeAllCaptures(
+    request.frontmatter,
+    Array.from(handlers.values()),
+  );
   for (const func of handlers.values()) {
-    const captures = analyzeCaptures(func);
+    const captures = captureMap.get(func.name) ?? [];
     if (captures.length > 0) {
       diagnostics.push({
         message: `Flowmark cannot move "${func.name}" to the client because it captures ${captures.map((name: string) => `"${name}"`).join(", ")}.`,

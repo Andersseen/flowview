@@ -5,8 +5,7 @@ const context = {
 };
 ---
 
-<!-- prettier-ignore -->
-<template flowmark is:raw context={context}>
+<template flowmark={context} is:raw>
   <main>
     <p id="space"><span>Hello </span>{{ context.name }}</p>
     <pre id="pre">first

@@ -400,7 +400,10 @@ fn parse_element_children(
 
     if !cursor.starts_with_ignore_ascii_case(&closing) {
         return Err(vec![Diagnostic::from_source(
-            format!("Expected closing tag '</{}>' for '<{}>' opened here", tag_name, tag_name),
+            format!(
+                "Expected closing tag '</{}>' for '<{}>' opened here",
+                tag_name, tag_name
+            ),
             cursor.source(),
             tag_start,
             tag_start + tag_name.len() + 1,

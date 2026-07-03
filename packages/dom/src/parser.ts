@@ -34,91 +34,17 @@ export interface ParsedFrontmatter {
 }
 
 const EVENT_NAME_RE = /^[\w-]+$/;
-const FUNCTION_DECL_RE = /(?:export\s+)?(?:async\s+)?function\s+([a-zA-Z_$][\w$]*)/g;
-const ARROW_HANDLER_RE =
-  /(?:export\s+)?(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[a-zA-Z_$][\w$]*)\s*=>/g;
-const FUNCTION_EXPR_HANDLER_RE =
-  /(?:export\s+)?(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*(?:async\s*)?function\s*\(/g;
-const IDENTIFIER_RE = /[a-zA-Z_$][\w$]*/g;
 
-const RESERVED_WORDS = new Set([
-  "as",
-  "async",
-  "await",
-  "break",
-  "case",
-  "catch",
-  "class",
-  "const",
-  "continue",
-  "debugger",
-  "default",
-  "delete",
-  "do",
-  "else",
-  "export",
-  "extends",
-  "finally",
-  "for",
-  "from",
-  "function",
-  "if",
-  "import",
-  "in",
-  "instanceof",
-  "let",
-  "new",
-  "of",
-  "return",
-  "super",
-  "switch",
-  "this",
-  "throw",
-  "try",
-  "typeof",
-  "var",
-  "void",
-  "while",
-  "with",
-  "yield",
-]);
+const FRONTMATTER_FILENAME = "frontmatter.ts";
 
-const KNOWN_GLOBALS = new Set([
-  "console",
-  "window",
-  "document",
-  "navigator",
-  "location",
-  "history",
-  "fetch",
-  "setTimeout",
-  "clearTimeout",
-  "setInterval",
-  "clearInterval",
-  "requestAnimationFrame",
-  "cancelAnimationFrame",
-  "JSON",
-  "Math",
-  "Date",
-  "Object",
-  "Array",
-  "String",
-  "Number",
-  "Boolean",
-  "Promise",
-  "Error",
-  "Event",
-  "HTMLElement",
-  "Element",
-  "Node",
-  "Text",
-  "Comment",
-  "Document",
-  "DocumentFragment",
-  "localStorage",
-  "sessionStorage",
-  "undefined",
-]);
+function parseFrontmatterSource(frontmatter: string): ts.SourceFile {
+  return ts.createSourceFile(
+    FRONTMATTER_FILENAME,
+    frontmatter,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+}
 
 export function findEventBindings(html: string): EventBinding[] {
   const bindings: EventBinding[] = [];
@@ -170,7 +96,11 @@ function isRawTextTagStart(
   return next === undefined || /[\s>]/.test(next);
 }
 
-function skipRawTextElement(html: string, start: number, tagName: string): number {
+function skipRawTextElement(
+  html: string,
+  start: number,
+  tagName: string,
+): number {
   const tagOpenEnd = html.indexOf(">", start + tagName.length + 1);
   if (tagOpenEnd === -1) return html.length;
 
@@ -208,10 +138,7 @@ function parseTagForEvents(html: string, start: number): TagParseResult {
 
     const attrStartInContent = index;
     const nameStart = index;
-    while (
-      index < content.length &&
-      !/[\s=/>]/.test(content[index]!)
-    ) {
+    while (index < content.length && !/[\s=/>]/.test(content[index]!)) {
       index += 1;
     }
     const name = content.slice(nameStart, index);
@@ -496,42 +423,33 @@ function argEnd(source: string, start: number): number {
 export function extractFrontmatterFunctions(
   frontmatter: string,
 ): ParsedFrontmatter {
+  const sourceFile = parseFrontmatterSource(frontmatter);
   const functions: FrontmatterFunction[] = [];
-  FUNCTION_DECL_RE.lastIndex = 0;
-  let match: RegExpExecArray | null;
 
-  while ((match = FUNCTION_DECL_RE.exec(frontmatter)) !== null) {
-    const name = match[1]!;
-    const start = match.index;
-    let index = match.index + match[0].length;
+  for (const statement of sourceFile.statements) {
+    if (
+      !ts.isFunctionDeclaration(statement) ||
+      statement.name === undefined ||
+      statement.body === undefined
+    ) {
+      continue;
+    }
 
-    const { parameters, end: paramsEnd } = parseParameterList(
-      frontmatter,
-      index,
+    const parameters = statement.parameters.map((param) =>
+      renderClientParameter(param, sourceFile),
     );
-    index = paramsEnd;
-    index = skipWhitespace(frontmatter, index);
-
-    if (frontmatter[index] !== "{") {
-      continue;
-    }
-
-    const bodyStart = index;
-    const bodyEnd = findMatchingBrace(frontmatter, bodyStart);
-    if (bodyEnd === -1) {
-      continue;
-    }
-
-    const source = frontmatter.slice(start, bodyEnd + 1);
-    const body = frontmatter.slice(bodyStart + 1, bodyEnd);
-    const isAsync = /\basync\b/.test(match[0]);
+    const bodyText = statement.body.getText(sourceFile);
+    const isAsync =
+      statement.modifiers?.some(
+        (modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword,
+      ) ?? false;
 
     functions.push({
-      name,
+      name: statement.name.text,
       parameters,
-      source,
-      body,
-      offset: start,
+      source: statement.getText(sourceFile),
+      body: bodyText.slice(1, -1),
+      offset: statement.getStart(sourceFile),
       isAsync,
     });
   }
@@ -539,205 +457,125 @@ export function extractFrontmatterFunctions(
   return { functions };
 }
 
+function renderClientParameter(
+  param: ts.ParameterDeclaration,
+  sourceFile: ts.SourceFile,
+): string {
+  if (!ts.isIdentifier(param.name)) {
+    throw new Error(
+      `Flowmark event handler destructured parameters are not supported.`,
+    );
+  }
+
+  const rest = param.dotDotDotToken === undefined ? "" : "...";
+  const name = param.name.text;
+  const initializer =
+    param.initializer === undefined
+      ? ""
+      : ` = ${param.initializer.getText(sourceFile)}`;
+  return `${rest}${name}${initializer}`;
+}
+
 export function findUnsupportedHandlerNames(frontmatter: string): string[] {
+  const sourceFile = parseFrontmatterSource(frontmatter);
   const names = new Set<string>();
 
-  ARROW_HANDLER_RE.lastIndex = 0;
-  FUNCTION_EXPR_HANDLER_RE.lastIndex = 0;
-
-  let match: RegExpExecArray | null;
-  while ((match = ARROW_HANDLER_RE.exec(frontmatter)) !== null) {
-    names.add(match[1]!);
-  }
-  while ((match = FUNCTION_EXPR_HANDLER_RE.exec(frontmatter)) !== null) {
-    names.add(match[1]!);
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (
+        ts.isIdentifier(declaration.name) &&
+        declaration.initializer !== undefined &&
+        (ts.isArrowFunction(declaration.initializer) ||
+          ts.isFunctionExpression(declaration.initializer))
+      ) {
+        names.add(declaration.name.text);
+      }
+    }
   }
 
   return Array.from(names);
 }
 
-function parseParameterList(
-  source: string,
-  start: number,
-): { parameters: string[]; end: number } {
-  const parameters: string[] = [];
-  let index = skipWhitespace(source, start);
+/**
+ * Reports, per handler, the identifiers that resolve to frontmatter bindings
+ * declared outside the handler itself. Those values live on the server, so a
+ * handler that references them cannot move to the client.
+ *
+ * Identifiers that do not resolve inside the frontmatter (browser globals such
+ * as `IntersectionObserver`, `alert`, or custom elements) are allowed: they
+ * are resolved by the browser at runtime.
+ */
+export function analyzeAllCaptures(
+  frontmatter: string,
+  functions: FrontmatterFunction[],
+): Map<string, string[]> {
+  const result = new Map<string, string[]>();
+  if (functions.length === 0) return result;
 
-  if (source[index] !== "(") {
-    return { parameters, end: start };
-  }
-  index += 1;
-
-  while (index < source.length) {
-    index = skipWhitespace(source, index);
-    if (source[index] === ")") {
-      index += 1;
-      break;
-    }
-
-    if (source[index] === "{" || source[index] === "[") {
-      throw new Error(
-        `Flowmark event handler destructured parameters are not supported.`,
-      );
-    }
-
-    if (!isIdentifierStart(source[index])) {
-      throw new Error(
-        `Flowmark event handler parameter list is invalid at ${index}.`,
-      );
-    }
-
-    const { identifier, end } = readIdentifierWithEnd(source, index);
-    parameters.push(identifier);
-    index = end;
-    index = skipWhitespace(source, index);
-
-    if (source[index] === ":") {
-      index += 1;
-      index = skipType(source, index);
-    } else if (source[index] === "=") {
-      index += 1;
-      index = skipExpression(source, index);
-    }
-
-    index = skipWhitespace(source, index);
-    if (source[index] === ",") {
-      index += 1;
-    } else if (source[index] !== ")") {
-      throw new Error(
-        `Flowmark event handler parameter list is invalid at ${index}.`,
-      );
-    }
-  }
-
-  return { parameters, end: index };
-}
-
-function skipType(source: string, start: number): number {
-  let index = start;
-  while (index < source.length) {
-    const char = source[index];
-    if (char === '"' || char === "'" || char === "`") {
-      index = skipString(source, index, char);
-    } else if (char === "," || char === ")" || char === "=") {
-      break;
-    } else {
-      index += 1;
-    }
-  }
-  return index;
-}
-
-function skipExpression(source: string, start: number): number {
-  let index = start;
-  while (index < source.length) {
-    const char = source[index];
-    if (char === '"' || char === "'" || char === "`") {
-      index = skipString(source, index, char);
-    } else if (char === "," || char === ")") {
-      break;
-    } else {
-      index += 1;
-    }
-  }
-  return index;
-}
-
-function findMatchingBrace(source: string, openIndex: number): number {
-  let depth = 1;
-  let index = openIndex + 1;
-  while (index < source.length) {
-    const char = source[index];
-    if (char === '"' || char === "'" || char === "`") {
-      index = skipString(source, index, char);
-    } else if (char === "{") {
-      depth += 1;
-      index += 1;
-    } else if (char === "}") {
-      depth -= 1;
-      if (depth === 0) return index;
-      index += 1;
-    } else {
-      index += 1;
-    }
-  }
-  return -1;
-}
-
-export function analyzeCaptures(func: FrontmatterFunction): string[] {
-  const sourceFile = ts.createSourceFile(
-    "handler.ts",
-    func.source,
-    ts.ScriptTarget.Latest,
-    true,
-  );
-
-  const functionDecl = findFunctionDeclaration(sourceFile);
-  if (functionDecl === undefined) {
-    return [];
-  }
-
+  const sourceFile = parseFrontmatterSource(frontmatter);
   const options: ts.CompilerOptions = { target: ts.ScriptTarget.Latest };
   const host = ts.createCompilerHost(options);
   const originalGetSourceFile = host.getSourceFile;
   host.getSourceFile = (fileName, languageVersion, ...args) => {
-    if (fileName === "handler.ts") return sourceFile;
+    if (fileName === FRONTMATTER_FILENAME) return sourceFile;
     return originalGetSourceFile(fileName, languageVersion, ...args);
   };
 
-  const program = ts.createProgram(["handler.ts"], options, host);
+  const program = ts.createProgram([FRONTMATTER_FILENAME], options, host);
   const checker = program.getTypeChecker();
-  const captures = new Set<string>();
 
-  function visit(node: ts.Node) {
-    if (ts.isIdentifier(node) && isReferenceIdentifier(node)) {
-      const name = node.text;
-      if (RESERVED_WORDS.has(name) || KNOWN_GLOBALS.has(name)) {
-        return;
-      }
-
-      const symbol = checker.getSymbolAtLocation(node);
-      if (symbol === undefined) {
-        captures.add(name);
-        return;
-      }
-
-      const declarations = symbol.getDeclarations();
-      if (declarations === undefined || declarations.length === 0) {
-        captures.add(name);
-        return;
-      }
-
-      const allLocal = declarations.every(
-        (decl) => decl.getSourceFile() === sourceFile,
-      );
-      if (!allLocal) {
-        captures.add(name);
-      }
+  for (const func of functions) {
+    const declaration = findTopLevelFunction(sourceFile, func.name);
+    if (declaration === undefined) {
+      result.set(func.name, []);
+      continue;
     }
 
-    ts.forEachChild(node, visit);
+    const captures = new Set<string>();
+    const functionStart = declaration.getStart(sourceFile);
+    const functionEnd = declaration.getEnd();
+
+    const visit = (node: ts.Node) => {
+      if (ts.isIdentifier(node) && isReferenceIdentifier(node)) {
+        const declarations =
+          checker.getSymbolAtLocation(node)?.getDeclarations() ?? [];
+        const capturesFrontmatter = declarations.some(
+          (decl) =>
+            decl.getSourceFile() === sourceFile &&
+            !(
+              decl.getStart(sourceFile) >= functionStart &&
+              decl.getEnd() <= functionEnd
+            ),
+        );
+        if (capturesFrontmatter) {
+          captures.add(node.text);
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+
+    visit(declaration);
+    result.set(func.name, Array.from(captures));
   }
 
-  visit(functionDecl);
-  return Array.from(captures);
+  return result;
 }
 
-function findFunctionDeclaration(
+function findTopLevelFunction(
   sourceFile: ts.SourceFile,
-): ts.FunctionDeclaration | ts.FunctionExpression | undefined {
-  let found: ts.FunctionDeclaration | ts.FunctionExpression | undefined;
-
-  function visit(node: ts.Node) {
-    if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)) {
-      found = node;
-      return;
+  name: string,
+): ts.FunctionDeclaration | undefined {
+  for (const statement of sourceFile.statements) {
+    if (
+      ts.isFunctionDeclaration(statement) &&
+      statement.name !== undefined &&
+      statement.name.text === name
+    ) {
+      return statement;
     }
-    ts.forEachChild(node, visit);
   }
-
-  visit(sourceFile);
-  return found;
+  return undefined;
 }
 
 function isReferenceIdentifier(node: ts.Identifier): boolean {
@@ -822,7 +660,6 @@ function isReferenceIdentifier(node: ts.Identifier): boolean {
 
   return true;
 }
-
 
 function skipWhitespace(source: string, start: number): number {
   let index = start;

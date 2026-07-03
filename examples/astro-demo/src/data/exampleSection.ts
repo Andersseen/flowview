@@ -44,7 +44,7 @@ export const exampleSectionContext: ExampleSectionContext = {
       date: "2026-06-15",
       title: "Astro integration and inline authoring",
       summary:
-        "Embed Flowmark regions directly inside .astro files with <template flowmark is:raw>.",
+        "Embed Flowmark regions directly inside .astro files with <template flowmark={context} is:raw>.",
       kind: "feature",
     },
     {

@@ -43,8 +43,7 @@ export interface Props {
 const { context = heroContext } = Astro.props;
 ---
 
-<!-- prettier-ignore -->
-<template flowmark is:raw context={context}>
+<template flowmark={context} is:raw>
   <header>
     <h1>{{ context.title }}</h1>
     <p>{{ context.tagline }}</p>

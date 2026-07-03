@@ -26,8 +26,7 @@ export default defineConfig({
     },
     {
       label: "Write",
-      code: `<!-- prettier-ignore -->
-<template flowmark is:raw context={context}>
+      code: `<template flowmark={context} is:raw>
   @for (item of context.items; track item.id) {
     <p>{{ item.name }}</p>
   }

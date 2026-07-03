@@ -9,8 +9,7 @@ export interface Props {
 const { context = exampleSectionContext } = Astro.props;
 ---
 
-<!-- prettier-ignore -->
-<template flowmark is:raw context={context}>
+<template flowmark={context} is:raw>
   <section class="page-frame py-16" aria-labelledby="example-heading">
     <div class="text-center">
       <h2 id="example-heading" class="text-3xl font-bold text-foreground">

@@ -141,16 +141,47 @@ const context = { title: "Hello" };
     expect(result).not.toContain("Nested HTML template");
   });
 
+  it("supports the short flowmark={...} context form", async () => {
+    const result = await transformAstro(`---
+const context = { title: "Hello" };
+---
+<template flowmark={context} is:raw>
+  <h1>{{ context.title }}</h1>
+</template>`);
+
+    expect(result).toContain(
+      "<Fragment set:html={__flowmarkRender0(context)} />",
+    );
+  });
+
+  it("supports inline object expressions in the short form", async () => {
+    const result = await transformAstro(
+      `<template flowmark={{ title: "Hello" }}><h1>{{ context.title }}</h1></template>`,
+    );
+
+    expect(result).toContain(
+      '<Fragment set:html={__flowmarkRender0({ title: "Hello" })} />',
+    );
+  });
+
+  it("rejects combining flowmark={...} with context={...}", async () => {
+    await expect(
+      transformAstro(
+        "<template flowmark={a} context={b}><p>{{ context.x }}</p></template>",
+      ),
+    ).rejects.toThrow("must not combine");
+  });
+
   it("requires context and a closing template tag", async () => {
     await expect(
       transformAstro("<template flowmark><p>Missing context</p></template>"),
-    ).rejects.toThrow("require a non-empty context={...} attribute");
+    ).rejects.toThrow("require a context expression");
 
     await expect(
       transformAstro(
         "<template flowmark context={  }><p>Empty context</p></template>",
       ),
-    ).rejects.toThrow("require a non-empty context={...} attribute");
+    ).rejects.toThrow("require a context expression");
 
     await expect(
       transformAstro(

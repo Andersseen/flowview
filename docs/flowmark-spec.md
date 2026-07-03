@@ -233,7 +233,11 @@ Astro is the primary integration path for v1.
 Required behavior:
 
 - Support standalone `.flow` imports inside Astro.
-- Support embedded `<template flowmark is:raw context={...}>` regions.
+- Support embedded `<template flowmark={...} is:raw>` regions.
+- Accept `flowmark={expression}` as the shorthand context form and
+  `context={expression}` as the explicit form; reject combining both.
+- Accept regions without `is:raw` at compile time, while documenting that
+  `is:raw` is required for clean `astro check` and editor diagnostics.
 - Preserve Astro frontmatter.
 - Preserve surrounding Astro markup.
 - Compile embedded templates before Astro treats Flowmark syntax as normal Astro
@@ -303,13 +307,16 @@ v1 includes basic editor support:
 
 - `.flow` syntax highlighting.
 - Snippets for `@if`, `@for`, `@empty`, and `@switch`.
+- A Prettier plugin (`@flowmark/prettier`) that wraps prettier-plugin-astro
+  and preserves Flowmark template regions byte-for-byte, so no
+  `prettier-ignore` comments are needed.
 - Embedded highlighting for `<template flowmark is:raw>` inside `.astro`.
 - Astro snippet for the recommended wrapper form.
 
 Future support:
 
 - Diagnostics in editor.
-- Formatting.
+- Formatting inside Flowmark regions (currently preserved verbatim).
 - Go-to-definition for `.flow` imports.
 
 ## Test Strategy
