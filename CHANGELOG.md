@@ -6,6 +6,17 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+- Replaced the events-compiler global/reserved-word allowlists with real
+  TypeScript scope analysis: browser globals such as `IntersectionObserver`
+  are no longer false capture errors, shadowed locals are allowed, and
+  imported frontmatter values are correctly reported as captures.
+- Extracted frontmatter handler functions with the TypeScript AST instead of
+  regular expressions, so `function` text inside comments and strings is
+  ignored and parameter default values are preserved in the client module.
+- Analyzed all event handlers with a single TypeScript program per compile
+  instead of one per handler.
+- Added a spec-driven development guide (`docs/spec-driven-development.md`)
+  and removed the superseded events-compiler plan document.
 - Validated embedded JavaScript expressions with a production JavaScript parser
   before generating modules.
 - Kept control-flow markers literal inside HTML attributes, comments, scripts,
