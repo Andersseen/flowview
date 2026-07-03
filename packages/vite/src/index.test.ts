@@ -14,13 +14,13 @@ describe("compileFlowmark", () => {
   });
 
   it("compiles stdin without temporary files", async () => {
-    const code = await compileFlowmark("<p>Hello {{ context.name }}</p>", {
+    const { code } = await compileFlowmark("<p>Hello {{ context.name }}</p>", {
       filename: "greeting.flow",
       runtimeImport: "@flowmark/runtime",
       compilerPath,
     });
 
-    expect(code).toContain("output += '<p';");
+    expect(code).toContain("output += '<p';")
     expect(code).toContain("output += '>';");
     expect(code).toContain("output += 'Hello ';");
     expect(code).toContain("renderValue(context.name)");
@@ -46,7 +46,7 @@ describe("compileFlowmark", () => {
   });
 
   it("executes all current control-flow blocks with escaped values", async () => {
-    const code = await compileFlowmark(
+    const { code, warnings } = await compileFlowmark(
       "@if (context.visible) {<p>{{ context.label }}</p>} @else {<p>hidden</p>}@for (item of context.items; track item.id) {<span>{{ item.name }}</span>} @empty {<span>empty</span>}@switch (context.status) {@case ('ready') {<strong>ready</strong>}@default {<strong>other</strong>}}",
       {
         filename: "control-flow.flow",
@@ -54,6 +54,8 @@ describe("compileFlowmark", () => {
         compilerPath,
       },
     );
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings[0]?.message).toContain("track");
     const render = evaluateGeneratedModule(code);
 
     expect(

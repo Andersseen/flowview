@@ -5,7 +5,7 @@
 
 ## Fecha de última actualización
 
-2026-07-03 (Fases A y B completadas)
+2026-07-03 (Fases A, B y C completadas)
 
 ## Estado del repo
 
@@ -82,13 +82,13 @@ Archivos clave:
 6. `astro-events` devuelve `map: null`. ⏳ Pendiente Fase D.
 7. ~~Runtime ya tiene deduplicación sin commit.~~ ✅ Commiteado.
 
-### Rust
+### Rust (resueltos en Fase C)
 
-1. `track` se parsea pero se ignora.
-2. `@switch` puede generar fallthrough accidental.
-3. Atributos dinámicos solo aceptan interpolación completa; el mensaje de error es confuso.
-4. Diagnósticos de tags no cerrados no indican dónde se abrieron.
-5. Nombres temporales (`__items0`) dependen de reservados.
+1. ~~`track` se parsea pero se ignora.~~ ✅ Ahora emite warning `FM0015`.
+2. ~~`@switch` puede generar fallthrough accidental.~~ ✅ Ahora siempre emite `break`.
+3. ~~Atributos dinámicos solo aceptan interpolación completa; el mensaje de error es confuso.~~ ✅ Mensaje mejorado.
+4. ~~Diagnósticos de tags no cerrados no indican dónde se abrieron.~~ ✅ Span apunta al tag de apertura.
+5. ~~Nombres temporales (`__items0`) dependen de reservados.~~ ✅ Cambiados a `__flowmark_items0`.
 
 ## Decisions log
 
@@ -130,3 +130,4 @@ pnpm run dev
 - Evaluar si `MagicString` ya está disponible en `packages/astro-events` o hay que agregarlo.
 - Confirmar si el prefijo `__flowmark_` para temporales no colisiona con nada existente.
 - Considerar si el tiempo de test (~3s por crear programas TS) es aceptable o si se debe cachear el checker.
+- Los warnings de templates embebidos en Astro se descartan en el hook `load` porque Vite no expone `this.warn` allí. Evaluar si mover la compilación embebida a `transform` para poder emitir warnings.

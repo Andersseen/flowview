@@ -29,7 +29,7 @@ fn parse_element(cursor: &mut Cursor) -> Result<Node, Vec<Diagnostic>> {
     cursor.advance(); // skip <
 
     let tag_name = parse_tag_name(cursor)?;
-    let (attributes, self_closing) = parse_attributes(cursor, &tag_name)?;
+    let (attributes, self_closing) = parse_attributes(cursor, &tag_name, start)?;
 
     if self_closing {
         return Ok(Node::Element(ElementNode {
@@ -58,7 +58,7 @@ fn parse_element(cursor: &mut Cursor) -> Result<Node, Vec<Diagnostic>> {
         }));
     }
 
-    let children = parse_element_children(cursor, &tag_name)?;
+    let children = parse_element_children(cursor, &tag_name, start)?;
 
     Ok(Node::Element(ElementNode {
         tag: tag_name,
@@ -100,6 +100,7 @@ fn parse_tag_name(cursor: &mut Cursor) -> Result<String, Vec<Diagnostic>> {
 fn parse_attributes(
     cursor: &mut Cursor,
     tag_name: &str,
+    tag_start: usize,
 ) -> Result<(Vec<Attribute>, bool), Vec<Diagnostic>> {
     let mut attributes = Vec::new();
 
@@ -117,12 +118,13 @@ fn parse_attributes(
         }
 
         if cursor.is_eof() {
-            return Err(vec![Diagnostic::at_cursor(
-                format!("Unclosed tag '<{}'", tag_name),
-                &cursor.snapshot(),
+            return Err(vec![Diagnostic::from_source(
+                format!("Unclosed '<{}>' tag", tag_name),
+                cursor.source(),
+                tag_start,
+                tag_start + tag_name.len() + 1,
             )
-            .with_diagnostic_code(DiagnosticCode::InvalidHtml)
-            .to_position(cursor.position())]);
+            .with_diagnostic_code(DiagnosticCode::InvalidHtml)]);
         }
 
         attributes.push(parse_attribute(cursor)?);
@@ -173,7 +175,7 @@ fn parse_attribute(cursor: &mut Cursor) -> Result<Attribute, Vec<Diagnostic>> {
     if value.has_interpolation_marker {
         let marker_offset = value.value.find("{{").unwrap_or(0);
         return Err(vec![Diagnostic::from_source(
-            "Interpolations inside quoted attributes must span the entire attribute value; use a single {{ expression }} or escape the braces",
+            "Interpolations inside a quoted attribute must span the entire attribute value. Use attr=\"{{ expression }}\" or escape the braces with \\\\{{.",
             cursor.source(),
             value.content_start + marker_offset,
             value.content_start + marker_offset + 2,
@@ -391,18 +393,19 @@ fn parse_unquoted_attribute_value(
 fn parse_element_children(
     cursor: &mut Cursor,
     tag_name: &str,
+    tag_start: usize,
 ) -> Result<Vec<Node>, Vec<Diagnostic>> {
-    let _start = cursor.position();
     let closing = format!("</{}", tag_name);
     let children = parse_nodes(cursor, &[&closing])?;
 
     if !cursor.starts_with_ignore_ascii_case(&closing) {
-        return Err(vec![Diagnostic::at_cursor(
-            format!("Expected closing tag '</{}>'", tag_name),
-            &cursor.snapshot(),
+        return Err(vec![Diagnostic::from_source(
+            format!("Expected closing tag '</{}>' for '<{}>' opened here", tag_name, tag_name),
+            cursor.source(),
+            tag_start,
+            tag_start + tag_name.len() + 1,
         )
-        .with_diagnostic_code(DiagnosticCode::InvalidHtml)
-        .to_position(cursor.position())]);
+        .with_diagnostic_code(DiagnosticCode::InvalidHtml)]);
     }
 
     cursor.advance_by(closing.len());

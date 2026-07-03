@@ -72,35 +72,35 @@ Objetivo: soportar formas reales de declarar handlers en Astro y evitar falsos p
 
 Objetivo: pulir los casos donde el compilador Rust es silencioso o frágil.
 
-### C1. Warning cuando se usa `track` en `@for`
-- Archivo: `crates/flowmark-compiler/src/parser/blocks.rs` o `codegen.rs`
+### C1. Warning cuando se usa `track` en `@for` ✅
+- Archivo: `crates/flowmark-compiler/src/diagnostics.rs`, `crates/flowmark-compiler/src/validation.rs`, `crates/flowmark-compiler/src/lib.rs`
 - Problema: `track` se parsea pero no tiene efecto en v1.
-- Solución: emitir un warning diagnostic con código `FM0015` indicando que `track` está reservado y se ignora en v1.
-- Check: test que verifique el warning, no error.
+- Solución: añadir `DiagnosticCode::TrackIgnored` (`FM0015`), módulo `validation` que recorre el AST, y `warnings: Vec<Diagnostic>` en `CompileOutput`. CLI imprime warnings por stderr; plugin Vite emite warnings con `this.warn`.
+- Check: test Rust verifica warning con código `FM0015`; test Vite verifica warning al compilar `@for` con `track`.
 
-### C2. Endurecer emisión de `break` en `@switch`
+### C2. Endurecer emisión de `break` en `@switch` ✅
 - Archivo: `crates/flowmark-compiler/src/codegen.rs`, `generate_switch_block`
 - Problema: la lógica actual omite `break` en el último caso si no hay `default`; es frágil.
-- Solución: emitir `break` siempre que el caso tenga contenido, sin excepciones.
-- Check: tests de `@switch` con default, sin default, case vacío, último case vacío.
+- Solución: emitir `break` después de cada `case`, sin excepciones.
+- Check: test `multiple_switch_cases` actualizado a 2 `break`; todos los tests de switch pasan.
 
-### C3. Mejorar mensajes de error para atributos dinámicos parciales
+### C3. Mejorar mensajes de error para atributos dinámicos parciales ✅
 - Archivo: `crates/flowmark-compiler/src/parser/html.rs`
 - Problema: `class="x {{ y }}"` da un error confuso.
-- Solución: el mensaje debe decir: "Interpolations inside attributes must span the entire value, e.g. `attr=\"{{ expr }}\"`."
-- Check: test de snapshot del mensaje.
+- Solución: mensaje más explícito: "Interpolations inside a quoted attribute must span the entire attribute value. Use attr=\"{{ expression }}\" or escape the braces with \\{{."
+- Check: tests existentes siguen pasando.
 
-### C4. Mejorar spans de errores de tags no cerrados
+### C4. Mejorar spans de errores de tags no cerrados ✅
 - Archivo: `crates/flowmark-compiler/src/parser/html.rs`
 - Problema: "Unclosed tag" no indica dónde se abrió.
-- Solución: cuando sea posible, incluir en el diagnóstico la línea/columna del tag de apertura.
-- Check: test con `<div><span>` sin cerrar.
+- Solución: pasar `tag_start` a `parse_attributes` y `parse_element_children`; diagnosticos apuntan al inicio del tag de apertura y el mensaje indica el tag.
+- Check: tests existentes siguen pasando; spans mejorados.
 
-### C5. Revisar nombres temporales del generador
+### C5. Revisar nombres temporales del generador ✅
 - Archivo: `crates/flowmark-compiler/src/codegen.rs`
 - Problema: `__items0`, `__switch0` dependen de la lista de reservados.
-- Solución: cambiar prefijo a `__flowmark_items0`, `__flowmark_switch0`.
-- Check: tests de codegen actualizados.
+- Solución: cambiar prefijo a `__flowmark_items0`, `__flowmark_switch0`; como los identificadores que empiezan con `__` ya son rechazados, no hay riesgo de colisión.
+- Check: tests de codegen actualizados a los nuevos nombres.
 
 ---
 
