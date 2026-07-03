@@ -82,6 +82,41 @@ function save() {
     expect(transformed?.code).toContain("</script>");
   });
 
+  it("returns a source map for the transformed Astro file", async () => {
+    const transformed = await transformAstroResult(`---
+function save() {
+  console.log("saved");
+}
+---
+<button (click)="save()">Save</button>`);
+
+    expect(transformed).not.toBeNull();
+    expect(transformed?.map).not.toBeNull();
+    expect(transformed?.map).toEqual(
+      expect.objectContaining({
+        mappings: expect.any(String),
+        sources: expect.arrayContaining(["/src/pages/example.astro"]),
+      }),
+    );
+    expect((transformed?.map as { mappings: string }).mappings).toBeTruthy();
+  });
+
+  it("escapes </script> sequences inside the injected client module", async () => {
+    const transformed = await transformAstro(`---
+function save() {
+  const markup = "</script>";
+  console.log(markup);
+}
+---
+<button (click)="save()">Save</button>`);
+
+    const scriptMatch = transformed?.match(/<script>([\s\S]*?)<\/script>/);
+    expect(scriptMatch).toBeTruthy();
+    const scriptContent = scriptMatch?.[1] ?? "";
+    expect(scriptContent).not.toContain('"</script>"');
+    expect(scriptContent).toContain('"<\\/script>"');
+  });
+
   it("separates injected scripts from frontmatter", async () => {
     const transformed = await transformAstro(`---
 function save() {}

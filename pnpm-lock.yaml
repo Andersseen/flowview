@@ -109,6 +109,9 @@ importers:
       '@flowmark/dom':
         specifier: workspace:*
         version: link:../dom
+      magic-string:
+        specifier: ^0.30.0
+        version: 0.30.21
     devDependencies:
       '@types/node':
         specifier: ^26.0.0

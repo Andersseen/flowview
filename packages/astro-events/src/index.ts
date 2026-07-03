@@ -1,5 +1,6 @@
 import { parse } from "@astrojs/compiler/sync";
 import type { Node as AstroNode } from "@astrojs/compiler/types";
+import MagicString, { type SourceMap } from "magic-string";
 import {
   compileEvents,
   FlowmarkDomError,
@@ -111,7 +112,7 @@ function flowmarkEventsVitePlugin(options: FlowmarkAstroEventsOptions): Plugin {
 
 interface TransformResult {
   code: string;
-  map: null;
+  map: SourceMap | null;
 }
 
 function transformAstroSource(
@@ -159,12 +160,13 @@ function transformAstroSource(
   }
 
   const safeModule = result.clientModule.replace(/<\/script>/gi, "<\\/script>");
-  const script = `<script>\n${safeModule}\n</script>`;
-  const transformedCode = `${code.slice(0, templateStart)}\n${script}\n${result.html}`;
+  const script = `<script>\n${safeModule}\n</script>\n`;
+  const s = new MagicString(code);
+  s.overwrite(templateStart, code.length, `\n${script}${result.html}`);
 
   return {
-    code: transformedCode,
-    map: null,
+    code: s.toString(),
+    map: s.generateMap({ source: filename, includeContent: true }),
   };
 }
 

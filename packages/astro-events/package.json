@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@astrojs/compiler": "^2.13.1",
-    "@flowmark/dom": "workspace:*"
+    "@flowmark/dom": "workspace:*",
+    "magic-string": "^0.30.0"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",

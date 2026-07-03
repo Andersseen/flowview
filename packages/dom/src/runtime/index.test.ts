@@ -119,6 +119,45 @@ describe("bindFlowEvents", () => {
     button.click();
     expect(calls).toEqual(["saved"]);
   });
+
+  it("returns an unbind function that removes listeners", () => {
+    setDocument(`<button data-flow-on-click="save">Save</button>`);
+    const calls: unknown[] = [];
+    const handlers = {
+      save: () => {
+        calls.push("saved");
+      },
+    };
+
+    const unbind = bindFlowEvents(handlers);
+    const button = document.querySelector("button") as HTMLButtonElement;
+    button.click();
+    expect(calls).toEqual(["saved"]);
+
+    unbind();
+    button.click();
+    expect(calls).toEqual(["saved"]);
+  });
+
+  it("allows rebinding after unbind", () => {
+    setDocument(`<button data-flow-on-click="save">Save</button>`);
+    const calls: unknown[] = [];
+    const handlers = {
+      save: () => {
+        calls.push("saved");
+      },
+    };
+
+    const unbind = bindFlowEvents(handlers);
+    const button = document.querySelector("button") as HTMLButtonElement;
+    button.click();
+    expect(calls).toEqual(["saved"]);
+
+    unbind();
+    bindFlowEvents(handlers);
+    button.click();
+    expect(calls).toEqual(["saved", "saved"]);
+  });
 });
 
 describe("bindFlowEventsIn", () => {
@@ -177,6 +216,29 @@ describe("bindFlowEventsIn", () => {
 
     const button = document.querySelector("button") as HTMLButtonElement;
     button.click();
+    expect(calls).toEqual(["saved"]);
+  });
+
+  it("returns an unbind function scoped to the root element", () => {
+    setDocument(`
+      <div id="root">
+        <button data-flow-on-click="save">Save</button>
+      </div>
+    `);
+    const calls: unknown[] = [];
+    const handlers = {
+      save: () => {
+        calls.push("saved");
+      },
+    };
+    const root = document.querySelector("#root") as HTMLElement;
+
+    const unbind = bindFlowEventsIn(root, handlers);
+    root.querySelector("button")!.click();
+    expect(calls).toEqual(["saved"]);
+
+    unbind();
+    root.querySelector("button")!.click();
     expect(calls).toEqual(["saved"]);
   });
 });

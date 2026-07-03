@@ -5,7 +5,7 @@
 
 ## Fecha de última actualización
 
-2026-07-03 (Fases A, B y C completadas)
+2026-07-03 (Fases A, B, C y D completadas)
 
 ## Estado del repo
 
@@ -131,3 +131,5 @@ pnpm run dev
 - Confirmar si el prefijo `__flowmark_` para temporales no colisiona con nada existente.
 - Considerar si el tiempo de test (~3s por crear programas TS) es aceptable o si se debe cachear el checker.
 - Los warnings de templates embebidos en Astro se descartan en el hook `load` porque Vite no expone `this.warn` allí. Evaluar si mover la compilación embebida a `transform` para poder emitir warnings.
+- El source map de `astro-events` mapea el frontmatter 1:1 y el template de forma aproximada; el client module inyectado no tiene mapeo aún.
+- Revisar si se quiere un escape aún más robusto para `<!--`/`-->` dentro del client module inyectado.

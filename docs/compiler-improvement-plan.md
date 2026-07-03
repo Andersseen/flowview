@@ -108,11 +108,11 @@ Objetivo: pulir los casos donde el compilador Rust es silencioso o frágil.
 
 Objetivo: mejorar la experiencia en dev y permitir limpiar listeners.
 
-### D1. Source maps en `@flowmark/astro-events`
-- Archivo: `packages/astro-events/src/index.ts`
+### D1. Source maps en `@flowmark/astro-events` ✅
+- Archivo: `packages/astro-events/src/index.ts`, `packages/astro-events/package.json`
 - Problema: `map: null`.
-- Solución: usar `MagicString` para generar el código transformado y devolver un source map.
-- Check: test que verifique que el mapa no sea null y que contenga mappings.
+- Solución: añadir `magic-string` como dependencia y usar `MagicString.overwrite` + `generateMap` para producir un source map del archivo Astro transformado.
+- Check: test que verifica `map` no nulo con `mappings` y `sources`.
 
 ### D2. API de cleanup/dispose en runtime de eventos
 - Archivo: `packages/dom/src/runtime/index.ts`
