@@ -1,7 +1,10 @@
 ---
-function save(event: Event) {
-  console.log(event.type);
-}
 ---
 
 <button (click)="save($event)">Save</button>
+
+<script data-flowmark>
+  function save(event) {
+    console.log(event.type);
+  }
+</script>

@@ -2,36 +2,6 @@
 import Layout from "../layouts/Layout.astro";
 import authoringExample from "../snippets/events-author.astro.txt?raw";
 import compiledExample from "../snippets/events-compiled.html.txt?raw";
-
-function save(event: Event) {
-  const output = document.querySelector("#event-output");
-  const button = event.currentTarget;
-  if (button instanceof HTMLElement) {
-    button.textContent = "Saved";
-  }
-  if (output) {
-    output.textContent = `Saved from a ${event.type} event`;
-  }
-}
-
-function removeItem(id: string, element: HTMLElement) {
-  const output = document.querySelector("#event-output");
-  if (element instanceof HTMLElement) {
-    element.setAttribute("disabled", "true");
-    element.textContent = "Removed";
-  }
-  if (output) {
-    output.textContent = `Removed ${id} with a serialized argument`;
-  }
-}
-
-function previewInput(event: Event) {
-  const output = document.querySelector("#event-output");
-  const target = event.target;
-  if (output && target && "value" in target) {
-    output.textContent = `Input event value: ${String(target.value)}`;
-  }
-}
 ---
 
 <Layout
@@ -52,12 +22,15 @@ function previewInput(event: Event) {
       </h1>
       <p class="max-w-3xl text-lg text-muted-foreground md:text-xl">
         The events compiler brings Angular's event-binding DX to plain Astro
-        markup. Write handlers in frontmatter, use
+        markup. Write handlers in a <code
+          class="rounded-md border border-border bg-muted/45 px-1 py-0.5 text-[0.9em] text-foreground"
+          >&lt;script data-flowmark&gt;</code
+        > block, use
         <code
           class="rounded-md border border-border bg-muted/45 px-1 py-0.5 text-[0.9em] text-foreground"
           >(event)="handler()"</code
-        > in the template, and Flowmark emits the tiny client module that binds native
-        browser listeners.
+        > in the template, and Flowmark wires up native browser listeners for you
+        — no bundler tricks, no framework runtime.
       </p>
     </header>
 
@@ -109,6 +82,38 @@ function previewInput(event: Event) {
         >
           Click an action to see the compiled event handlers run.
         </p>
+
+        <script data-flowmark>
+          function save(event) {
+            const output = document.querySelector("#event-output");
+            const button = event.currentTarget;
+            if (button instanceof HTMLElement) {
+              button.textContent = "Saved";
+            }
+            if (output) {
+              output.textContent = `Saved from a ${event.type} event`;
+            }
+          }
+
+          function removeItem(id, element) {
+            const output = document.querySelector("#event-output");
+            if (element instanceof HTMLElement) {
+              element.setAttribute("disabled", "true");
+              element.textContent = "Removed";
+            }
+            if (output) {
+              output.textContent = `Removed ${id} with a serialized argument`;
+            }
+          }
+
+          function previewInput(event) {
+            const output = document.querySelector("#event-output");
+            const target = event.target;
+            if (output && target && "value" in target) {
+              output.textContent = `Input event value: ${String(target.value)}`;
+            }
+          }
+        </script>
 
         <div class="flex flex-wrap gap-2">
           <span
@@ -200,11 +205,12 @@ function previewInput(event: Event) {
           02
         </span>
         <h2 class="text-base font-extrabold tracking-normal">
-          Move safe handlers to the client
+          Validate handlers at build time
         </h2>
         <p class="text-muted-foreground">
-          Flowmark reads Astro frontmatter, extracts the referenced functions,
-          and rejects handlers that capture server-only values.
+          Flowmark checks that every `(event)="handler()"` reference resolves to
+          a function declared in your `&lt;script data-flowmark&gt;` block — no
+          manual wiring, no runtime surprises.
         </p>
       </article>
       <article

@@ -1,5 +1,4 @@
 import ts from "typescript";
-import { locate, type FlowmarkDomDiagnostic } from "./diagnostics.js";
 
 export interface EventBinding {
   eventName: string;
@@ -20,27 +19,20 @@ export type HandlerArgument =
   | { type: "event" }
   | { type: "element" };
 
-export interface FrontmatterFunction {
+/** A top-level function declaration found in a `<script data-flowmark>` block. */
+export interface DeclaredFunction {
   name: string;
-  parameters: string[];
-  source: string;
-  body: string;
   offset: number;
-  isAsync: boolean;
-}
-
-export interface ParsedFrontmatter {
-  functions: FrontmatterFunction[];
 }
 
 const EVENT_NAME_RE = /^[\w-]+$/;
 
-const FRONTMATTER_FILENAME = "frontmatter.ts";
+const SOURCE_FILENAME = "flowmark-script.ts";
 
-function parseFrontmatterSource(frontmatter: string): ts.SourceFile {
+function parseSourceFile(source: string): ts.SourceFile {
   return ts.createSourceFile(
-    FRONTMATTER_FILENAME,
-    frontmatter,
+    SOURCE_FILENAME,
+    source,
     ts.ScriptTarget.Latest,
     true,
   );
@@ -420,11 +412,12 @@ function argEnd(source: string, start: number): number {
   return index;
 }
 
-export function extractFrontmatterFunctions(
-  frontmatter: string,
-): ParsedFrontmatter {
-  const sourceFile = parseFrontmatterSource(frontmatter);
-  const functions: FrontmatterFunction[] = [];
+/** Enumerates top-level function declarations in a `<script data-flowmark>` block. */
+export function extractFunctionDeclarations(
+  source: string,
+): DeclaredFunction[] {
+  const sourceFile = parseSourceFile(source);
+  const functions: DeclaredFunction[] = [];
 
   for (const statement of sourceFile.statements) {
     if (
@@ -435,49 +428,23 @@ export function extractFrontmatterFunctions(
       continue;
     }
 
-    const parameters = statement.parameters.map((param) =>
-      renderClientParameter(param, sourceFile),
-    );
-    const bodyText = statement.body.getText(sourceFile);
-    const isAsync =
-      statement.modifiers?.some(
-        (modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword,
-      ) ?? false;
-
     functions.push({
       name: statement.name.text,
-      parameters,
-      source: statement.getText(sourceFile),
-      body: bodyText.slice(1, -1),
       offset: statement.getStart(sourceFile),
-      isAsync,
     });
   }
 
-  return { functions };
+  return functions;
 }
 
-function renderClientParameter(
-  param: ts.ParameterDeclaration,
-  sourceFile: ts.SourceFile,
-): string {
-  if (!ts.isIdentifier(param.name)) {
-    throw new Error(
-      `Flowmark event handler destructured parameters are not supported.`,
-    );
-  }
-
-  const rest = param.dotDotDotToken === undefined ? "" : "...";
-  const name = param.name.text;
-  const initializer =
-    param.initializer === undefined
-      ? ""
-      : ` = ${param.initializer.getText(sourceFile)}`;
-  return `${rest}${name}${initializer}`;
-}
-
-export function findUnsupportedHandlerNames(frontmatter: string): string[] {
-  const sourceFile = parseFrontmatterSource(frontmatter);
+/**
+ * Names declared via `const name = () => {}` or `const name = function () {}`
+ * instead of a function declaration. Flowmark Events only supports handlers
+ * declared with `function name() {}`; this lets callers point at the
+ * unsupported form instead of reporting a generic "not found" diagnostic.
+ */
+export function findUnsupportedHandlerNames(source: string): string[] {
+  const sourceFile = parseSourceFile(source);
   const names = new Set<string>();
 
   for (const statement of sourceFile.statements) {
@@ -495,170 +462,6 @@ export function findUnsupportedHandlerNames(frontmatter: string): string[] {
   }
 
   return Array.from(names);
-}
-
-/**
- * Reports, per handler, the identifiers that resolve to frontmatter bindings
- * declared outside the handler itself. Those values live on the server, so a
- * handler that references them cannot move to the client.
- *
- * Identifiers that do not resolve inside the frontmatter (browser globals such
- * as `IntersectionObserver`, `alert`, or custom elements) are allowed: they
- * are resolved by the browser at runtime.
- */
-export function analyzeAllCaptures(
-  frontmatter: string,
-  functions: FrontmatterFunction[],
-): Map<string, string[]> {
-  const result = new Map<string, string[]>();
-  if (functions.length === 0) return result;
-
-  const sourceFile = parseFrontmatterSource(frontmatter);
-  const options: ts.CompilerOptions = { target: ts.ScriptTarget.Latest };
-  const host = ts.createCompilerHost(options);
-  const originalGetSourceFile = host.getSourceFile;
-  host.getSourceFile = (fileName, languageVersion, ...args) => {
-    if (fileName === FRONTMATTER_FILENAME) return sourceFile;
-    return originalGetSourceFile(fileName, languageVersion, ...args);
-  };
-
-  const program = ts.createProgram([FRONTMATTER_FILENAME], options, host);
-  const checker = program.getTypeChecker();
-
-  for (const func of functions) {
-    const declaration = findTopLevelFunction(sourceFile, func.name);
-    if (declaration === undefined) {
-      result.set(func.name, []);
-      continue;
-    }
-
-    const captures = new Set<string>();
-    const functionStart = declaration.getStart(sourceFile);
-    const functionEnd = declaration.getEnd();
-
-    const visit = (node: ts.Node) => {
-      if (ts.isIdentifier(node) && isReferenceIdentifier(node)) {
-        const declarations =
-          checker.getSymbolAtLocation(node)?.getDeclarations() ?? [];
-        const capturesFrontmatter = declarations.some(
-          (decl) =>
-            decl.getSourceFile() === sourceFile &&
-            !(
-              decl.getStart(sourceFile) >= functionStart &&
-              decl.getEnd() <= functionEnd
-            ),
-        );
-        if (capturesFrontmatter) {
-          captures.add(node.text);
-        }
-      }
-      ts.forEachChild(node, visit);
-    };
-
-    visit(declaration);
-    result.set(func.name, Array.from(captures));
-  }
-
-  return result;
-}
-
-function findTopLevelFunction(
-  sourceFile: ts.SourceFile,
-  name: string,
-): ts.FunctionDeclaration | undefined {
-  for (const statement of sourceFile.statements) {
-    if (
-      ts.isFunctionDeclaration(statement) &&
-      statement.name !== undefined &&
-      statement.name.text === name
-    ) {
-      return statement;
-    }
-  }
-  return undefined;
-}
-
-function isReferenceIdentifier(node: ts.Identifier): boolean {
-  const parent = node.parent;
-  if (parent === undefined) return true;
-
-  if (ts.isPropertyAccessExpression(parent) && parent.name === node) {
-    return false;
-  }
-  if (ts.isPropertyAssignment(parent) && parent.name === node) {
-    return false;
-  }
-  if (ts.isPropertySignature(parent) && parent.name === node) {
-    return false;
-  }
-  if (ts.isQualifiedName(parent)) {
-    return false;
-  }
-  if (
-    ts.isTypeReferenceNode(parent) ||
-    ts.isTypeQueryNode(parent) ||
-    ts.isTypeAliasDeclaration(parent) ||
-    ts.isInterfaceDeclaration(parent) ||
-    ts.isClassDeclaration(parent) ||
-    ts.isEnumDeclaration(parent) ||
-    ts.isModuleDeclaration(parent)
-  ) {
-    return false;
-  }
-  if (ts.isImportClause(parent) && parent.name === node) {
-    return false;
-  }
-  if (ts.isImportSpecifier(parent) && parent.name === node) {
-    return false;
-  }
-  if (
-    ts.isExportSpecifier(parent) &&
-    (parent.name === node || parent.propertyName === node)
-  ) {
-    return false;
-  }
-  if (
-    (ts.isFunctionDeclaration(parent) ||
-      ts.isFunctionExpression(parent) ||
-      ts.isMethodDeclaration(parent)) &&
-    parent.name === node
-  ) {
-    return false;
-  }
-  if (ts.isParameter(parent) && parent.name === node) {
-    return false;
-  }
-  if (ts.isVariableDeclaration(parent) && parent.name === node) {
-    return false;
-  }
-  if (ts.isBindingElement(parent) && parent.name === node) {
-    return false;
-  }
-  if (ts.isJsxAttribute(parent) && parent.name === node) {
-    return false;
-  }
-  if (
-    (ts.isJsxOpeningElement(parent) ||
-      ts.isJsxClosingElement(parent) ||
-      ts.isJsxSelfClosingElement(parent)) &&
-    parent.tagName === node
-  ) {
-    return false;
-  }
-  if (ts.isLabeledStatement(parent) && parent.label === node) {
-    return false;
-  }
-  if (
-    (ts.isBreakStatement(parent) || ts.isContinueStatement(parent)) &&
-    parent.label === node
-  ) {
-    return false;
-  }
-  if (ts.isMetaProperty(parent)) {
-    return false;
-  }
-
-  return true;
 }
 
 function skipWhitespace(source: string, start: number): number {

@@ -1,15 +1,18 @@
 ---
-function save(event: Event) {
-  const output = document.querySelector("#event-output");
-  output.textContent = `Saved from a ${event.type} event`;
-}
-
-function removeItem(id: string, element: HTMLElement) {
-  element.setAttribute("disabled", "true");
-}
 ---
 
 <button (click)="save($event)">Save</button>
 <button (click)="removeItem('item-1', $el)">
   Remove
 </button>
+
+<script data-flowmark>
+  function save(event) {
+    const output = document.querySelector("#event-output");
+    output.textContent = `Saved from a ${event.type} event`;
+  }
+
+  function removeItem(id, element) {
+    element.setAttribute("disabled", "true");
+  }
+</script>
