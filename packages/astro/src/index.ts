@@ -154,7 +154,7 @@ function transformAstroSource(
   virtualModules: Map<string, VirtualTemplate>,
   virtualIdsByFile: Map<string, Set<string>>,
 ): { code: string; map: ReturnType<MagicString["generateMap"]> } | null {
-  const templates = findEmbeddedTemplates(code);
+  const templates = findEmbeddedTemplates(code, filename);
   if (templates.length === 0) return null;
 
   const fileHash = createHash("sha256")
@@ -201,7 +201,10 @@ function transformAstroSource(
   };
 }
 
-function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
+function findEmbeddedTemplates(
+  code: string,
+  filename: string,
+): EmbeddedTemplate[] {
   const { ast } = parse(code, { position: true });
   const templates: EmbeddedTemplate[] = [];
 
@@ -221,7 +224,7 @@ function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
     if (openStart === -1 || openEnd === -1) {
       throw new FlowmarkAstroError(
         "Flowmark embedded template has an invalid opening tag.",
-        code,
+        filename,
         firstKnownOffset,
         code,
       );
@@ -243,7 +246,7 @@ function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
     if (!contextExpression) {
       throw new FlowmarkAstroError(
         "Flowmark embedded templates require a context expression: flowmark={...} or context={...}.",
-        code,
+        filename,
         openStart,
         code,
       );
@@ -251,7 +254,7 @@ function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
     if (flowmarkExpression !== "" && contextAttribute?.kind === "expression") {
       throw new FlowmarkAstroError(
         "Flowmark embedded templates must not combine flowmark={...} with context={...}; use one of them.",
-        code,
+        filename,
         openStart,
         code,
       );
@@ -261,7 +264,7 @@ function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
     if (closeStart === -1) {
       throw new FlowmarkAstroError(
         "Flowmark embedded template is missing </template>.",
-        code,
+        filename,
         openStart,
         code,
       );
@@ -270,7 +273,7 @@ function findEmbeddedTemplates(code: string): EmbeddedTemplate[] {
     if (closeTagEnd === -1) {
       throw new FlowmarkAstroError(
         "Flowmark embedded template has an invalid closing tag.",
-        code,
+        filename,
         closeStart,
         code,
       );

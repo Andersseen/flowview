@@ -399,6 +399,32 @@ fn control_flow_keywords_require_boundaries() {
 }
 
 #[test]
+fn escaped_interpolation_spanning_entire_attribute_value_is_literal() {
+    let output = compile_source(r#"<div title="\{{ x }}">hi</div>"#);
+    assert!(!output.contains("renderValue("));
+    assert!(output.contains(r#"title="{{ x }}""#));
+}
+
+#[test]
+fn escaped_interpolation_mixed_with_text_stays_literal() {
+    let output = compile_source(r#"<div title="a \{{ x }} b">hi</div>"#);
+    assert!(!output.contains("renderValue("));
+    assert!(output.contains(r#"title="a {{ x }} b""#));
+}
+
+#[test]
+fn escaped_and_real_interpolation_in_one_attribute_is_an_error() {
+    let errors = expect_error(r#"<div title="\{{ x }} {{ y }}">hi</div>"#);
+    assert!(errors[0].contains("span the entire attribute value"));
+}
+
+#[test]
+fn backtick_is_not_an_attribute_quote() {
+    let output = compile_source("<div class=`x`>hi</div>");
+    assert!(output.contains(r#"class="`x`""#));
+}
+
+#[test]
 fn expressions_support_escaped_quotes_and_template_literals() {
     let source = r#"@if (context.label === "a \"quoted\" value" || context.label === `a ) literal`) { <p>OK</p> }"#;
     let output = compile_source(source);

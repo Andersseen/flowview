@@ -155,21 +155,23 @@ fn parse_attribute(cursor: &mut Cursor) -> Result<Attribute, Vec<Diagnostic>> {
 
     let value = parse_attribute_value(cursor, &name, &start_mark)?;
 
-    if let Some(expression) = extract_dynamic_expression(&value.value) {
-        let expression_start = value.content_start
-            + value.value.find("{{").unwrap_or(0)
-            + 2
-            + leading_whitespace_after(&value.value, "{{");
-        javascript::validate_expression(cursor.source(), &expression, expression_start)?;
+    if !value.has_escaped_braces {
+        if let Some(expression) = extract_dynamic_expression(&value.value) {
+            let expression_start = value.content_start
+                + value.value.find("{{").unwrap_or(0)
+                + 2
+                + leading_whitespace_after(&value.value, "{{");
+            javascript::validate_expression(cursor.source(), &expression, expression_start)?;
 
-        return Ok(Attribute::Dynamic(DynamicAttribute {
-            name,
-            expression,
-            span: Span {
-                start,
-                end: cursor.position(),
-            },
-        }));
+            return Ok(Attribute::Dynamic(DynamicAttribute {
+                name,
+                expression,
+                span: Span {
+                    start,
+                    end: cursor.position(),
+                },
+            }));
+        }
     }
 
     if value.has_interpolation_marker {
@@ -288,6 +290,7 @@ struct AttributeValue {
     /// (immediately after the opening quote).
     content_start: usize,
     has_interpolation_marker: bool,
+    has_escaped_braces: bool,
 }
 
 fn parse_attribute_value(
@@ -298,7 +301,7 @@ fn parse_attribute_value(
     let start_mark = cursor.snapshot();
 
     let quote = match cursor.current() {
-        Some('\'' | '"' | '`') => {
+        Some('\'' | '"') => {
             let q = cursor.current().unwrap();
             cursor.advance();
             q
@@ -311,9 +314,13 @@ fn parse_attribute_value(
     let content_start = cursor.position();
     let mut value = String::new();
     let mut has_interpolation_marker = false;
+    let mut has_escaped_braces = false;
 
     while let Some(ch) = cursor.current() {
         if is_escaped_syntax(cursor) {
+            if matches!(cursor.peek(1), Some('{' | '}')) {
+                has_escaped_braces = true;
+            }
             cursor.advance();
             value.push(cursor.advance().unwrap());
             continue;
@@ -330,6 +337,7 @@ fn parse_attribute_value(
                 quote,
                 content_start,
                 has_interpolation_marker,
+                has_escaped_braces,
             });
         }
 
@@ -387,6 +395,7 @@ fn parse_unquoted_attribute_value(
         quote: '"',
         content_start,
         has_interpolation_marker,
+        has_escaped_braces: false,
     })
 }
 
