@@ -53,42 +53,59 @@ async function transformAstroResult(
 }
 
 describe("@flowmark/astro-events integration", () => {
-  it("transforms a basic event binding", async () => {
+  it("ignores Astro files without event bindings", async () => {
     const result = await transformAstro(`---
-function save() {
-  console.log("saved");
-}
+const title = "Hello";
 ---
-<button (click)="save()">Save</button>`);
+<button>Save</button>`);
 
-    expect(result).toContain('data-flow-on-click="save"');
-    expect(result).toContain("import { bindFlowEvents }");
-    expect(result).toContain("function save()");
-    expect(result).toContain("bindFlowEvents({");
+    expect(result).toBeNull();
   });
 
-  it("inlines the client module in a script tag", async () => {
-    const transformed = await transformAstroResult(`---
-function save() {
-  console.log("saved");
-}
+  it("does not mistake a script's arrow function for an event binding", async () => {
+    // `(icon) => (icon.style.display = ...)` inside a plain <script> looks
+    // like `(event)=` to a naive regex; findEventBindings correctly skips
+    // script tag content, so this must remain a no-op.
+    const result = await transformAstro(`---
 ---
-<button (click)="save()">Save</button>`);
+<button>Save</button>
 
-    expect(transformed?.code).toContain("<script>");
-    expect(transformed?.code).toContain("import { bindFlowEvents }");
-    expect(transformed?.code).toContain("function save()");
-    expect(transformed?.code).toContain("bindFlowEvents({");
-    expect(transformed?.code).toContain("</script>");
+<script is:inline>
+  const toggle = (icon) => (icon.style.display = "none");
+</script>`);
+
+    expect(result).toBeNull();
+  });
+
+  it("compiles bindings declared in a <script data-flowmark> block", async () => {
+    const result = await transformAstroResult(`---
+---
+<button (click)="save($event)">Save</button>
+
+<script data-flowmark>
+  function save(event) {
+    console.log(event);
+  }
+</script>`);
+
+    expect(result?.code).toContain('data-flow-on-click="save"');
+    expect(result?.code).toMatch(/data-flow-scope="[0-9a-f]{12}"/);
+    expect(result?.code).toContain(
+      'import { registerFlowHandlers } from "@flowmark/dom/runtime";',
+    );
+    expect(result?.code).toContain("registerFlowHandlers(");
+    expect(result?.code).toContain("function save(event)");
+    expect(result?.code).not.toContain("<script data-flowmark>");
   });
 
   it("returns a source map for the transformed Astro file", async () => {
     const transformed = await transformAstroResult(`---
-function save() {
-  console.log("saved");
-}
 ---
-<button (click)="save()">Save</button>`);
+<button (click)="save()">Save</button>
+
+<script data-flowmark>
+  function save() {}
+</script>`);
 
     expect(transformed).not.toBeNull();
     expect(transformed?.map).not.toBeNull();
@@ -101,92 +118,153 @@ function save() {
     expect((transformed?.map as { mappings: string }).mappings).toBeTruthy();
   });
 
-  it("escapes </script> sequences inside the injected client module", async () => {
-    const transformed = await transformAstro(`---
-function save() {
-  const markup = "</script>";
-  console.log(markup);
-}
----
-<button (click)="save()">Save</button>`);
-
-    const scriptMatch = transformed?.match(/<script>([\s\S]*?)<\/script>/);
-    expect(scriptMatch).toBeTruthy();
-    const scriptContent = scriptMatch?.[1] ?? "";
-    expect(scriptContent).not.toContain('"</script>"');
-    expect(scriptContent).toContain('"<\\/script>"');
-  });
-
-  it("separates injected scripts from frontmatter", async () => {
-    const transformed = await transformAstro(`---
-function save() {}
----
-<button (click)="save()">Save</button>`);
-
-    expect(transformed).toContain("---\n<script>");
-  });
-
-  it("preserves existing frontmatter", async () => {
+  it("preserves existing frontmatter and unrelated template content", async () => {
     const result = await transformAstro(`---
 const title = "Hello";
-
-function save() {
-  console.log("saved");
-}
 ---
-<button (click)="save()">Save {title}</button>`);
+<button (click)="save()">Save {title}</button>
+
+<script data-flowmark>
+  function save() {}
+</script>`);
 
     expect(result).toContain('const title = "Hello";');
     expect(result).toContain("Save {title}");
   });
 
-  it("ignores Astro files without event bindings", async () => {
-    const result = await transformAstro(`---
-const title = "Hello";
+  it("locates the script block correctly when multi-byte characters precede it", async () => {
+    // "@astrojs/compiler" reports UTF-8 byte offsets; an em dash (3 bytes,
+    // 1 UTF-16 code unit) before the script block previously desynced every
+    // offset computed after it.
+    const result = await transformAstroResult(`---
 ---
-<button>Save</button>`);
+<p>An em dash — right here.</p>
+<button (click)="save($event)">Save</button>
 
-    expect(result).toBeNull();
+<script data-flowmark>
+  function save(event) {
+    console.log(event);
+  }
+</script>`);
+
+    expect(result?.code).toContain("<script>");
+    expect(result?.code).toContain("function save(event)");
+    expect(result?.code).toContain('data-flow-on-click="save"');
+    expect(result?.code).toContain("registerFlowHandlers(");
+    expect(result?.code).not.toContain("data-flowmark");
+  });
+
+  it("uses the same scope id for every binding in the file", async () => {
+    const result = await transformAstroResult(`---
+---
+<button (click)="save()">Save</button>
+<input (input)="search($event)" />
+
+<script data-flowmark>
+  function save() {}
+  function search(event) {}
+</script>`);
+
+    const scopes = [
+      ...(result?.code.matchAll(/data-flow-scope="([0-9a-f]{12})"/g) ?? []),
+    ].map((match) => match[1]);
+    expect(scopes).toHaveLength(2);
+    expect(scopes[0]).toBe(scopes[1]);
+    expect(result?.code).toContain("registerFlowHandlers(");
+    expect(result?.code).toContain('["click","input"]');
   });
 
   it("reports a missing handler as a located error", async () => {
     await expect(
       transformAstro(`---
 ---
-<button (click)="save()">Save</button>`),
-    ).rejects.toMatchObject({
-      message: expect.stringContaining(
-        'Flowmark event handler "save" was used in the template',
-      ),
-      loc: expect.objectContaining({ line: expect.any(Number) }),
-    });
-  });
+<button (click)="save()">Save</button>
 
-  it("reports missing handler locations relative to the original Astro file", async () => {
-    await expect(
-      transformAstro(`---
----
-<button (click)="save()">Save</button>`),
+<script data-flowmark>
+  function other() {}
+</script>`),
     ).rejects.toMatchObject({
       message: expect.stringContaining(
-        'Flowmark event handler "save" was used in the template',
+        "was used in the template but was not found in the <script data-flowmark> block",
       ),
       loc: { line: 3, column: 9 },
     });
   });
 
-  it("reports a captured server value as a located error", async () => {
+  it("reports a duplicate handler declaration as a located error", async () => {
     await expect(
       transformAstro(`---
-const prefix = "item:";
-
-function save(id: string) {
-  console.log(prefix + id);
-}
 ---
-<button (click)="save('1')">Save</button>`),
+<button (click)="save()">Save</button>
+
+<script data-flowmark>
+  function save() {}
+  function save() {}
+</script>`),
     ).rejects.toMatchObject({
-      message: expect.stringContaining('captures "prefix"'),
+      message: expect.stringContaining(
+        "declared more than once in the <script data-flowmark> block",
+      ),
+    });
+  });
+
+  it("reports a helpful diagnostic for arrow function handlers", async () => {
+    await expect(
+      transformAstro(`---
+---
+<button (click)="save()">Save</button>
+
+<script data-flowmark>
+  const save = () => {};
+</script>`),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining("must be declared as a function"),
+    });
+  });
+
+  it("errors when more than one <script data-flowmark> block exists", async () => {
+    await expect(
+      transformAstro(`---
+---
+<button (click)="save()">Save</button>
+
+<script data-flowmark>
+  function save() {}
+</script>
+
+<script data-flowmark>
+  function other() {}
+</script>`),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining(
+        "At most one <script data-flowmark> block is allowed per file.",
+      ),
+    });
+  });
+
+  it("errors when the flowmark attribute has a value", async () => {
+    await expect(
+      transformAstro(`---
+---
+<button (click)="save()">Save</button>
+
+<script data-flowmark="true">
+  function save() {}
+</script>`),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining("must not have a value"),
+    });
+  });
+
+  it("errors when bindings exist but no <script data-flowmark> block is present", async () => {
+    await expect(
+      transformAstro(`---
+---
+<button (click)="save()">Save</button>`),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining(
+        "no <script data-flowmark> block declares their handlers",
+      ),
     });
   });
 });

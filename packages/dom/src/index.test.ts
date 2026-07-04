@@ -1,259 +1,124 @@
 import { describe, expect, it } from "vitest";
-import { compileEvents, FlowmarkDomError } from "./index.js";
+import {
+  applyTemplateEdits,
+  compileScriptEvents,
+  FlowmarkDomError,
+} from "./index.js";
 
-describe("compileEvents", () => {
-  it("compiles a basic click handler", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: `\nfunction save() {\n  console.log("saved");\n}\n`,
-      template: `\n<button (click)="save()">Save</button>\n`,
-    });
+describe("compileScriptEvents", () => {
+  function fixture(bindingsHtml: string, scriptSource: string) {
+    const template = `${bindingsHtml}\n\n<script data-flowmark>${scriptSource}</script>\n`;
+    const scriptOffset = template.indexOf(scriptSource);
+    return { template, scriptOffset, scriptSource };
+  }
 
-    expect(result.html).toContain('data-flow-on-click="save"');
-    expect(result.clientModule).toContain("import { bindFlowEvents }");
-    expect(result.clientModule).toContain("function save()");
-    expect(result.clientModule).toContain("bindFlowEvents({");
-    expect(result.clientModule).toContain("save,");
-  });
-
-  it("compiles a handler with $event", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: `\nfunction save(event: Event) {\n  console.log(event.type);\n}\n`,
-      template: `\n<button (click)="save($event)">Save</button>\n`,
-    });
-
-    expect(result.html).toContain('data-flow-on-click="save"');
-    expect(result.html).toContain(
-      'data-flow-args="[{&quot;__flow&quot;:&quot;$event&quot;}]"',
+  it("compiles a basic click handler declared in a script flowmark block", () => {
+    const { template, scriptOffset, scriptSource } = fixture(
+      `<button (click)="save($event)">Save</button>`,
+      `\nfunction save(event) {\n  console.log(event);\n}\n`,
     );
-    expect(result.clientModule).toContain("function save(event)");
-    expect(result.clientModule).not.toContain("event: Event");
-  });
 
-  it("compiles a handler with static literal arguments", () => {
-    const result = compileEvents({
+    const result = compileScriptEvents({
       filename: "test.astro",
-      frontmatter: `\nfunction removeItem(id: string) {\n  console.log(id);\n}\n`,
-      template: `\n<button (click)="removeItem('item-1')">Remove</button>\n`,
-    });
-
-    expect(result.html).toContain('data-flow-on-click="removeItem"');
-    expect(result.html).toContain('data-flow-args="[&quot;item-1&quot;]"');
-    expect(result.clientModule).toContain("function removeItem(id)");
-    expect(result.clientModule).not.toContain("id: string");
-  });
-
-  it("supports multiple handlers and events", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: `\nfunction save() {\n  console.log("saved");\n}\nfunction cancel() {\n  console.log("cancelled");\n}\n`,
-      template: `\n<button (click)="save()">Save</button>\n<button (click)="cancel()">Cancel</button>\n`,
-    });
-
-    expect(result.html).toContain('data-flow-on-click="save"');
-    expect(result.html).toContain('data-flow-on-click="cancel"');
-    expect(result.clientModule).toContain("function save()");
-    expect(result.clientModule).toContain("function cancel()");
-  });
-
-  it("returns unchanged HTML when no event bindings exist", () => {
-    const template = `\n<button>Save</button>\n`;
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: "",
+      scope: "abc123",
       template,
+      scriptOffset,
+      scriptSource,
     });
 
-    expect(result.html).toBe(template);
-    expect(result.clientModule).toBe("");
-  });
-
-  it("throws a diagnostic for a missing handler", () => {
-    expect(() =>
-      compileEvents({
-        filename: "test.astro",
-        frontmatter: "",
-        template: `\n<button (click)="save()">Save</button>\n`,
-      }),
-    ).toThrow(FlowmarkDomError);
-
-    try {
-      compileEvents({
-        filename: "test.astro",
-        frontmatter: "",
-        template: `\n<button (click)="save()">Save</button>\n`,
-      });
-    } catch (error) {
-      expect(error).toBeInstanceOf(FlowmarkDomError);
-      const diagnostic = (error as FlowmarkDomError).diagnostics[0];
-      expect(diagnostic?.message).toContain(
-        'Flowmark event handler "save" was used in the template',
-      );
-    }
-  });
-
-  it("throws a diagnostic for a handler that captures a server value", () => {
-    expect(() =>
-      compileEvents({
-        filename: "test.astro",
-        frontmatter: `\nconst prefix = "item:";\nfunction save(id: string) {\n  console.log(prefix + id);\n}\n`,
-        template: `\n<button (click)="save('1')">Save</button>\n`,
-      }),
-    ).toThrow(FlowmarkDomError);
-
-    try {
-      compileEvents({
-        filename: "test.astro",
-        frontmatter: `\nconst prefix = "item:";\nfunction save(id: string) {\n  console.log(prefix + id);\n}\n`,
-        template: `\n<button (click)="save('1')">Save</button>\n`,
-      });
-    } catch (error) {
-      expect(error).toBeInstanceOf(FlowmarkDomError);
-      const diagnostic = (error as FlowmarkDomError).diagnostics[0];
-      expect(diagnostic?.message).toContain('captures "prefix"');
-    }
-  });
-
-  it("throws for unsupported inline expressions", () => {
-    expect(() =>
-      compileEvents({
-        filename: "test.astro",
-        frontmatter: `\nfunction save() {}\n`,
-        template: `\n<button (click)="count++; save()">Save</button>\n`,
-      }),
-    ).toThrow(FlowmarkDomError);
-  });
-
-  it("throws for unsupported arguments", () => {
-    expect(() =>
-      compileEvents({
-        filename: "test.astro",
-        frontmatter: `\nfunction save(value: string) {\n  console.log(value);\n}\n`,
-        template: `\n<input (input)="search($event.target.value)" />\n`,
-      }),
-    ).toThrow(FlowmarkDomError);
-  });
-
-  it("throws for trailing content after a valid handler call", () => {
-    expect(() =>
-      compileEvents({
-        filename: "test.astro",
-        frontmatter: `\nfunction save() {}\n`,
-        template: `\n<button (click)="save() + 1">Save</button>\n`,
-      }),
-    ).toThrow(FlowmarkDomError);
-  });
-
-  it("throws for trailing identifiers after a valid handler call", () => {
-    expect(() =>
-      compileEvents({
-        filename: "test.astro",
-        frontmatter: `\nfunction save() {}\n`,
-        template: `\n<button (click)="save()foo">Save</button>\n`,
-      }),
-    ).toThrow(FlowmarkDomError);
-  });
-
-  it("ignores event-like attributes inside HTML comments", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: "",
-      template: `<!-- <button (click)="save()">Save</button> -->`,
-    });
-
-    expect(result.html).toBe(`<!-- <button (click)="save()">Save</button> -->`);
-    expect(result.clientModule).toBe("");
-  });
-
-  it("ignores event-like attributes inside script tags", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: "",
-      template: `<script>const el = '<button (click)="save()">Save</button>';</script>`,
-    });
-
-    expect(result.html).toBe(
-      `<script>const el = '<button (click)="save()">Save</button>';</script>`,
+    const html = applyTemplateEdits(template, result.templateEdits);
+    expect(html).toContain('data-flow-on-click="save"');
+    expect(html).toContain('data-flow-scope="abc123"');
+    expect(result.events).toEqual(["click"]);
+    expect(result.scriptAppend).toContain(
+      'import { registerFlowHandlers } from "@flowmark/dom/runtime";',
     );
-    expect(result.clientModule).toBe("");
+    expect(result.scriptAppend).toContain(
+      'registerFlowHandlers("abc123", { save }, ["click"]);',
+    );
   });
 
-  it("handles mixed attributes including non-event bindings", () => {
-    const result = compileEvents({
+  it("supports a custom runtime import", () => {
+    const { template, scriptOffset, scriptSource } = fixture(
+      `<button (click)="save()">Save</button>`,
+      `\nfunction save() {}\n`,
+    );
+
+    const result = compileScriptEvents({
       filename: "test.astro",
-      frontmatter: `\nfunction save() {}\n`,
-      template: `<button id="btn" class="primary" (click)="save()" disabled>Save</button>`,
+      scope: "abc123",
+      template,
+      scriptOffset,
+      scriptSource,
+      runtimeImport: "#flowmark/runtime",
     });
 
-    expect(result.html).toContain('data-flow-on-click="save"');
-    expect(result.html).toContain('id="btn"');
-    expect(result.html).toContain('class="primary"');
-    expect(result.html).toContain("disabled");
-    expect(result.clientModule).toContain("function save()");
+    expect(result.scriptAppend).toContain(
+      'import { registerFlowHandlers } from "#flowmark/runtime";',
+    );
   });
 
-  it("handles event attributes with single quotes", () => {
-    const result = compileEvents({
+  it("supports two independent bindings and reports both event names", () => {
+    const { template, scriptOffset, scriptSource } = fixture(
+      `<button (click)="save()">Save</button>\n<input (input)="search($event)" />`,
+      `\nfunction save() {}\nfunction search(event) {}\n`,
+    );
+
+    const result = compileScriptEvents({
       filename: "test.astro",
-      frontmatter: `\nfunction save() {}\n`,
-      template: `<button (click)='save()'>Save</button>`,
+      scope: "scope-1",
+      template,
+      scriptOffset,
+      scriptSource,
     });
 
-    expect(result.html).toContain('data-flow-on-click="save"');
+    const html = applyTemplateEdits(template, result.templateEdits);
+    expect(html).toContain('data-flow-on-click="save"');
+    expect(html).toContain('data-flow-on-input="search"');
+    expect(html).toContain('data-flow-scope="scope-1"');
+    expect(result.events).toEqual(["click", "input"]);
+    expect(result.scriptAppend).toContain("{ save, search }");
   });
 
-  it("does not treat text content as event attributes", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: "",
-      template: `<p>Use (click)="save()" syntax.</p>`,
-    });
+  it("throws a diagnostic for a handler missing from the script block", () => {
+    const { template, scriptOffset, scriptSource } = fixture(
+      `<button (click)="save()">Save</button>`,
+      `\nfunction other() {}\n`,
+    );
 
-    expect(result.clientModule).toBe("");
-  });
+    let caught: FlowmarkDomError | undefined;
+    try {
+      compileScriptEvents({
+        filename: "test.astro",
+        scope: "abc",
+        template,
+        scriptOffset,
+        scriptSource,
+      });
+    } catch (error) {
+      caught = error as FlowmarkDomError;
+    }
 
-  it("supports exported frontmatter handlers", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: `\nexport function save() {\n  console.log("saved");\n}\n`,
-      template: `\n<button (click)="save()">Save</button>\n`,
-    });
-
-    expect(result.clientModule).toContain("function save()");
-    expect(result.clientModule).not.toContain("export");
-    expect(result.clientModule).toContain('console.log("saved")');
-  });
-
-  it("supports async frontmatter handlers", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: `\nasync function save() {\n  await fetch("/api");\n}\n`,
-      template: `\n<button (click)="save()">Save</button>\n`,
-    });
-
-    expect(result.clientModule).toContain("async function save()");
-    expect(result.clientModule).toContain('await fetch("/api")');
-  });
-
-  it("supports exported async frontmatter handlers", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: `\nexport async function save() {\n  await fetch("/api");\n}\n`,
-      template: `\n<button (click)="save()">Save</button>\n`,
-    });
-
-    expect(result.clientModule).toContain("async function save()");
-    expect(result.clientModule).not.toContain("export");
+    expect(caught).toBeInstanceOf(FlowmarkDomError);
+    expect(caught?.diagnostics[0]?.message).toContain(
+      "was used in the template but was not found in the <script data-flowmark> block",
+    );
   });
 
   it("reports a helpful diagnostic for arrow function handlers", () => {
+    const { template, scriptOffset, scriptSource } = fixture(
+      `<button (click)="save()">Save</button>`,
+      `\nconst save = () => {};\n`,
+    );
+
     let caught: FlowmarkDomError | undefined;
     try {
-      compileEvents({
+      compileScriptEvents({
         filename: "test.astro",
-        frontmatter: `\nconst save = () => {\n  console.log("saved");\n};\n`,
-        template: `\n<button (click)="save()">Save</button>\n`,
+        scope: "abc",
+        template,
+        scriptOffset,
+        scriptSource,
       });
     } catch (error) {
       caught = error as FlowmarkDomError;
@@ -265,13 +130,20 @@ describe("compileEvents", () => {
     );
   });
 
-  it("reports a helpful diagnostic for function expression handlers", () => {
+  it("throws a diagnostic when a handler name is declared twice", () => {
+    const { template, scriptOffset, scriptSource } = fixture(
+      `<button (click)="save()">Save</button>`,
+      `\nfunction save() {}\nfunction save() {}\n`,
+    );
+
     let caught: FlowmarkDomError | undefined;
     try {
-      compileEvents({
+      compileScriptEvents({
         filename: "test.astro",
-        frontmatter: `\nconst save = function() {\n  console.log("saved");\n};\n`,
-        template: `\n<button (click)="save()">Save</button>\n`,
+        scope: "abc",
+        template,
+        scriptOffset,
+        scriptSource,
       });
     } catch (error) {
       caught = error as FlowmarkDomError;
@@ -279,127 +151,51 @@ describe("compileEvents", () => {
 
     expect(caught).toBeInstanceOf(FlowmarkDomError);
     expect(caught?.diagnostics[0]?.message).toContain(
-      "must be declared as a function",
+      "declared more than once in the <script data-flowmark> block",
     );
   });
 
-  it("allows property access and known globals in handlers", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: `\nfunction save() {\n  console.log("saved");\n  fetch("/api");\n}\n`,
-      template: `\n<button (click)="save()">Save</button>\n`,
-    });
-
-    expect(result.clientModule).toContain("function save()");
-    expect(result.clientModule).toContain('console.log("saved")');
-    expect(result.clientModule).toContain('fetch("/api")');
-  });
-
-  it("allows typed parameters without treating types as captures", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: `\nfunction save(id: string) {\n  console.log(id);\n}\n`,
-      template: `\n<button (click)="save('1')">Save</button>\n`,
-    });
-
-    expect(result.clientModule).toContain("function save(id)");
-    expect(result.clientModule).toContain("console.log(id)");
-  });
-
-  it("throws for captures through optional chaining", () => {
-    let caught: FlowmarkDomError | undefined;
-    try {
-      compileEvents({
-        filename: "test.astro",
-        frontmatter: `\nconst serverState = { value: 1 };\nfunction save() {\n  console.log(serverState?.value);\n}\n`,
-        template: `\n<button (click)="save()">Save</button>\n`,
-      });
-    } catch (error) {
-      caught = error as FlowmarkDomError;
-    }
-
-    expect(caught).toBeInstanceOf(FlowmarkDomError);
-    expect(caught?.diagnostics[0]?.message).toContain('captures "serverState"');
-  });
-
-  it("allows browser globals that are not on any allowlist", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: `\nfunction save(el: HTMLElement) {\n  const observer = new IntersectionObserver(() => alert("seen"));\n  observer.observe(el);\n  crypto.randomUUID();\n}\n`,
-      template: `\n<button (click)="save($el)">Save</button>\n`,
-    });
-
-    expect(result.clientModule).toContain("IntersectionObserver");
-  });
-
-  it("allows locals that shadow frontmatter bindings", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: `\nconst prefix = "server:";\nfunction save() {\n  const prefix = "client:";\n  console.log(prefix);\n}\n`,
-      template: `\n<button (click)="save()">Save</button>\n`,
-    });
-
-    expect(result.clientModule).toContain('const prefix = "client:"');
-  });
-
-  it("ignores function-like text inside comments and strings", () => {
-    let caught: FlowmarkDomError | undefined;
-    try {
-      compileEvents({
-        filename: "test.astro",
-        frontmatter: `\n// function save() { legacy }\nconst note = "function save() {}";\n`,
-        template: `\n<button (click)="save()">Save</button>\n`,
-      });
-    } catch (error) {
-      caught = error as FlowmarkDomError;
-    }
-
-    expect(caught).toBeInstanceOf(FlowmarkDomError);
-    expect(caught?.diagnostics[0]?.message).toContain(
-      "was used in the template but was not found",
+  it("throws for unsupported arguments", () => {
+    const { template, scriptOffset, scriptSource } = fixture(
+      `<button (click)="save([1, 2])">Save</button>`,
+      `\nfunction save(list) {}\n`,
     );
+
+    expect(() =>
+      compileScriptEvents({
+        filename: "test.astro",
+        scope: "abc",
+        template,
+        scriptOffset,
+        scriptSource,
+      }),
+    ).toThrow(FlowmarkDomError);
   });
 
-  it("preserves parameter default values in the client module", () => {
-    const result = compileEvents({
-      filename: "test.astro",
-      frontmatter: `\nfunction save(mode: string = "quick") {\n  console.log(mode);\n}\n`,
-      template: `\n<button (click)="save()">Save</button>\n`,
-    });
+  it("keeps diagnostic locations correct when the script is not at the start of the template", () => {
+    const scriptSource = `\nfunction save() {}\nfunction save() {}\n`;
+    const template = `<p>Intro text</p>\n\n<button (click)="save()">Save</button>\n\n<script data-flowmark>${scriptSource}</script>\n`;
+    const scriptOffset = template.indexOf(scriptSource);
 
-    expect(result.clientModule).toContain('function save(mode = "quick")');
-    expect(result.clientModule).not.toContain("string");
-  });
+    const secondDeclarationOffset = template.lastIndexOf("function save");
+    const expectedLine = template
+      .slice(0, secondDeclarationOffset)
+      .split("\n").length;
 
-  it("throws for captures of imported frontmatter values", () => {
     let caught: FlowmarkDomError | undefined;
     try {
-      compileEvents({
+      compileScriptEvents({
         filename: "test.astro",
-        frontmatter: `\nimport { apiUrl } from "./config";\nfunction save() {\n  fetch(apiUrl);\n}\n`,
-        template: `\n<button (click)="save()">Save</button>\n`,
+        scope: "abc",
+        template,
+        scriptOffset,
+        scriptSource,
       });
     } catch (error) {
       caught = error as FlowmarkDomError;
     }
 
     expect(caught).toBeInstanceOf(FlowmarkDomError);
-    expect(caught?.diagnostics[0]?.message).toContain('captures "apiUrl"');
-  });
-
-  it("throws for captures inside nested functions", () => {
-    let caught: FlowmarkDomError | undefined;
-    try {
-      compileEvents({
-        filename: "test.astro",
-        frontmatter: `\nconst prefix = "item:";\nfunction save() {\n  const helper = () => prefix + "x";\n  console.log(helper());\n}\n`,
-        template: `\n<button (click)="save()">Save</button>\n`,
-      });
-    } catch (error) {
-      caught = error as FlowmarkDomError;
-    }
-
-    expect(caught).toBeInstanceOf(FlowmarkDomError);
-    expect(caught?.diagnostics[0]?.message).toContain('captures "prefix"');
+    expect(caught?.diagnostics[0]?.line).toBe(expectedLine);
   });
 });

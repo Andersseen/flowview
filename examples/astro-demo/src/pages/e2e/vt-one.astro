@@ -1,0 +1,25 @@
+---
+import { ClientRouter } from "astro:transitions";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex" />
+    <title>Flowmark Events e2e — view transitions (one)</title>
+    <ClientRouter />
+  </head>
+  <body>
+    <h1>VT One</h1>
+    <button data-testid="ping-one" (click)="ping()">Ping One</button>
+    <output data-testid="out-one">idle</output>
+    <a href="/e2e/vt-two" data-testid="to-two">Go to two</a>
+
+    <script data-flowmark>
+      function ping() {
+        const output = document.querySelector('[data-testid="out-one"]');
+        if (output) output.textContent = "one-pinged";
+      }
+    </script>
+  </body>
+</html>

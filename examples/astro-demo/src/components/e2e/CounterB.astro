@@ -1,0 +1,15 @@
+---
+// Sibling of CounterA. Same handler name `save`, different scope and output.
+---
+
+<section>
+  <button data-testid="save-b" (click)="save()">Save B</button>
+  <output data-testid="out-b">idle</output>
+</section>
+
+<script data-flowmark>
+  function save() {
+    const output = document.querySelector('[data-testid="out-b"]');
+    if (output) output.textContent = "B";
+  }
+</script>

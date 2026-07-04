@@ -1,10 +1,16 @@
 import { parse } from "@astrojs/compiler/sync";
-import type { Node as AstroNode } from "@astrojs/compiler/types";
+import type {
+  AttributeNode,
+  ElementNode,
+  Node as AstroNode,
+  TextNode,
+} from "@astrojs/compiler/types";
+import { createHash } from "node:crypto";
 import MagicString, { type SourceMap } from "magic-string";
 import {
-  compileEvents,
+  compileScriptEvents,
+  findEventBindings,
   FlowmarkDomError,
-  type CompileEventsResult,
   type FlowmarkDomDiagnostic,
 } from "@flowmark/dom";
 import type { AstroIntegration } from "astro";
@@ -74,7 +80,9 @@ function flowmarkEventsVitePlugin(options: FlowmarkAstroEventsOptions): Plugin {
       if (!cleanId.endsWith(".astro")) return null;
 
       try {
-        return transformAstroSource(code, cleanId, runtimeImport);
+        const result = transformAstroSource(code, cleanId, runtimeImport);
+        if (result === null) return null;
+        return { code: result.code, map: result.map };
       } catch (error) {
         if (error instanceof FlowmarkAstroEventsError) {
           const locatedError = {
@@ -110,7 +118,7 @@ function flowmarkEventsVitePlugin(options: FlowmarkAstroEventsOptions): Plugin {
   };
 }
 
-interface TransformResult {
+interface TransformSourceResult {
   code: string;
   map: SourceMap | null;
 }
@@ -119,23 +127,71 @@ function transformAstroSource(
   code: string,
   filename: string,
   runtimeImport: string,
-): TransformResult | null {
+): TransformSourceResult | null {
   const { ast } = parse(code, { position: true });
   const frontmatter = findFrontmatter(ast);
   if (frontmatter === undefined) return null;
 
-  const templateStart = frontmatter.position.end.offset;
-  const frontmatterSource = frontmatter.value;
+  const toIndex = createByteOffsetConverter(code);
+  const templateStart = toIndex(frontmatter.position.end.offset);
   const templateSource = code.slice(templateStart);
 
-  if (!hasEventAttribute(templateSource)) return null;
+  if (findEventBindings(templateSource).length === 0) return null;
 
-  let result: CompileEventsResult;
-  try {
-    result = compileEvents({
+  const scriptBlocks = findScriptFlowmarkBlocks(ast, code, filename, toIndex);
+
+  if (scriptBlocks.length > 1) {
+    throw new FlowmarkAstroEventsError(
+      "At most one <script data-flowmark> block is allowed per file.",
       filename,
-      frontmatter: frontmatterSource,
+      scriptBlocks[1]!.elementStart,
+      code,
+    );
+  }
+
+  if (scriptBlocks.length === 1) {
+    return transformWithScriptBlock(
+      code,
+      filename,
+      templateStart,
+      templateSource,
+      scriptBlocks[0]!,
+      runtimeImport,
+    );
+  }
+
+  throw new FlowmarkAstroEventsError(
+    "Flowmark Events bindings were found but no <script data-flowmark> " +
+      "block declares their handlers. Declare event handlers in a " +
+      "<script data-flowmark> block; declaring them in Astro frontmatter " +
+      "is no longer supported.",
+    filename,
+    templateStart,
+    code,
+  );
+}
+
+function transformWithScriptBlock(
+  code: string,
+  filename: string,
+  templateStart: number,
+  templateSource: string,
+  block: ScriptFlowmarkBlock,
+  runtimeImport: string,
+): TransformSourceResult {
+  const scope = createHash("sha256")
+    .update(filename)
+    .digest("hex")
+    .slice(0, 12);
+
+  let result;
+  try {
+    result = compileScriptEvents({
+      filename,
+      scope,
       template: templateSource,
+      scriptOffset: block.scriptContentStart - templateStart,
+      scriptSource: block.scriptSource,
       runtimeImport,
     });
   } catch (error) {
@@ -147,26 +203,140 @@ function transformAstroSource(
       );
       throw new FlowmarkDomError(error.message, translated);
     }
-    throw new FlowmarkAstroEventsError(
-      error instanceof Error ? error.message : String(error),
-      filename,
-      templateStart,
-      code,
+    throw error;
+  }
+
+  const s = new MagicString(code);
+
+  for (const edit of result.templateEdits) {
+    s.overwrite(
+      templateStart + edit.start,
+      templateStart + edit.end,
+      edit.replacement,
     );
   }
 
-  if (result.clientModule === "") {
-    return null;
-  }
+  s.overwrite(block.flowmarkAttributeStart, block.flowmarkAttributeEnd, "");
 
-  const safeModule = result.clientModule.replace(/<\/script>/gi, "<\\/script>");
-  const script = `<script>\n${safeModule}\n</script>\n`;
-  const s = new MagicString(code);
-  s.overwrite(templateStart, code.length, `\n${script}${result.html}`);
+  if (result.scriptAppend !== "") {
+    s.appendLeft(block.scriptContentEnd, result.scriptAppend);
+  }
 
   return {
     code: s.toString(),
     map: s.generateMap({ source: filename, includeContent: true }),
+  };
+}
+
+interface ScriptFlowmarkBlock {
+  elementStart: number;
+  flowmarkAttributeStart: number;
+  flowmarkAttributeEnd: number;
+  scriptSource: string;
+  scriptContentStart: number;
+  scriptContentEnd: number;
+}
+
+/**
+ * `@astrojs/compiler` reports positions as 0-based UTF-8 BYTE offsets, but
+ * `code` is a JS string indexed in UTF-16 code units. Any multi-byte
+ * character (accented letters, em dashes, emoji, …) earlier in the file
+ * makes the two diverge, so every AST offset must be converted before it is
+ * used to index or slice `code`.
+ */
+function createByteOffsetConverter(
+  code: string,
+): (byteOffset: number) => number {
+  const buffer = Buffer.from(code, "utf8");
+  return (byteOffset: number) =>
+    buffer.subarray(0, byteOffset).toString("utf8").length;
+}
+
+function findScriptFlowmarkBlocks(
+  ast: AstroNode,
+  code: string,
+  filename: string,
+  toIndex: (byteOffset: number) => number,
+): ScriptFlowmarkBlock[] {
+  const blocks: ScriptFlowmarkBlock[] = [];
+
+  const visit = (node: AstroNode): void => {
+    if (node.type === "element" && node.name === "script") {
+      const flowmarkAttribute = node.attributes.find(
+        (attribute) => attribute.name === "data-flowmark",
+      );
+      if (flowmarkAttribute !== undefined) {
+        blocks.push(
+          buildScriptBlock(node, flowmarkAttribute, code, filename, toIndex),
+        );
+      }
+    }
+    if ("children" in node) {
+      for (const child of node.children) {
+        visit(child);
+      }
+    }
+  };
+
+  visit(ast);
+  return blocks;
+}
+
+function buildScriptBlock(
+  element: ElementNode,
+  flowmarkAttribute: AttributeNode,
+  code: string,
+  filename: string,
+  toIndex: (byteOffset: number) => number,
+): ScriptFlowmarkBlock {
+  const elementStart = toIndex(element.position?.start.offset ?? 0);
+
+  if (flowmarkAttribute.kind !== "empty") {
+    throw new FlowmarkAstroEventsError(
+      "The `data-flowmark` attribute on <script> must not have a value.",
+      filename,
+      flowmarkAttribute.position === undefined
+        ? elementStart
+        : toIndex(flowmarkAttribute.position.start.offset),
+      code,
+    );
+  }
+
+  const attributeStart =
+    flowmarkAttribute.position === undefined
+      ? elementStart
+      : toIndex(flowmarkAttribute.position.start.offset);
+  // Also remove the single preceding space so stripping the attribute
+  // leaves `<script>` rather than `<script >`.
+  const flowmarkAttributeStart =
+    code[attributeStart - 1] === " " ? attributeStart - 1 : attributeStart;
+  const flowmarkAttributeEnd = attributeStart + flowmarkAttribute.name.length;
+
+  const textChild = element.children.find(
+    (child): child is TextNode => child.type === "text",
+  );
+  const elementEnd =
+    element.position?.end === undefined
+      ? code.length
+      : toIndex(element.position.end.offset);
+  const fallbackContentEnd = Math.max(
+    elementStart,
+    elementEnd - "</script>".length,
+  );
+
+  return {
+    elementStart,
+    flowmarkAttributeStart,
+    flowmarkAttributeEnd,
+    scriptSource: textChild?.value ?? "",
+    scriptContentStart:
+      textChild?.position?.start.offset === undefined
+        ? fallbackContentEnd
+        : toIndex(textChild.position.start.offset),
+    scriptContentEnd:
+      textChild?.position?.end === undefined
+        ? fallbackContentEnd
+        : toIndex(textChild.position.end.offset),
   };
 }
 
@@ -188,10 +358,6 @@ function findFrontmatter(ast: AstroNode):
   }
 
   return undefined;
-}
-
-function hasEventAttribute(source: string): boolean {
-  return /\s\([\w-]+\)\s*=/.test(source);
 }
 
 function lineAndColumn(

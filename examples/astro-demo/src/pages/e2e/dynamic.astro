@@ -1,0 +1,65 @@
+---
+// Exercises the delegation runtime beyond static markup:
+// - a row cloned from a <template> AFTER load still fires (defect #4),
+// - module-level state in the client script (defect #1),
+// - an (input) binding (bubble phase),
+// - a (focus) binding (capture phase, since focus does not bubble).
+---
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex" />
+    <title>Flowmark Events e2e — dynamic DOM</title>
+  </head>
+  <body>
+    <h1>Dynamic DOM</h1>
+
+    <button data-testid="add-row" (click)="addRow()">Add row</button>
+    <ul data-testid="rows"></ul>
+    <output data-testid="removed-count">0</output>
+
+    <template data-testid="row-template">
+      <li>
+        <button (click)="removeRow($el)">remove</button>
+      </li>
+    </template>
+
+    <input data-testid="text-input" (input)="onInput($event)" />
+    <output data-testid="input-value">empty</output>
+
+    <input data-testid="focus-input" (focus)="onFocus()" />
+    <output data-testid="focus-state">blur</output>
+
+    <script data-flowmark>
+      // Module-level state: legal in a client script, previously rejected by
+      // the frontmatter-extraction capture analysis.
+      let removed = 0;
+
+      function addRow() {
+        const template = document.querySelector('[data-testid="row-template"]');
+        const rows = document.querySelector('[data-testid="rows"]');
+        if (template instanceof HTMLTemplateElement && rows) {
+          rows.appendChild(template.content.cloneNode(true));
+        }
+      }
+
+      function removeRow(element) {
+        element.closest("li")?.remove();
+        removed += 1;
+        const output = document.querySelector('[data-testid="removed-count"]');
+        if (output) output.textContent = String(removed);
+      }
+
+      function onInput(event) {
+        const output = document.querySelector('[data-testid="input-value"]');
+        if (output) output.textContent = event.target.value;
+      }
+
+      function onFocus() {
+        const output = document.querySelector('[data-testid="focus-state"]');
+        if (output) output.textContent = "focused";
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+---
+// Two components (A and B) both declare a handler named `save`. Each writes
+// only to its own output. Scope isolation must route each button to its own
+// component's handler, even though the names collide.
+---
+
+<section>
+  <button data-testid="save-a" (click)="save()">Save A</button>
+  <output data-testid="out-a">idle</output>
+</section>
+
+<script data-flowmark>
+  function save() {
+    const output = document.querySelector('[data-testid="out-a"]');
+    if (output) output.textContent = "A";
+  }
+</script>

@@ -4,103 +4,83 @@ export interface FlowEventHandlers {
 
 const FLOW_EVENT_PREFIX = "data-flow-on-";
 const FLOW_ARGS_ATTR = "data-flow-args";
+const FLOW_SCOPE_ATTR = "data-flow-scope";
 const FLOW_EVENT_MARKER = "__flow";
-const FLOW_BOUND_ATTR = "data-flow-bound";
+// Elements without a `data-flow-scope` attribute resolve against this scope.
+const DEFAULT_SCOPE = "";
+
+// focus/blur do not bubble, so delegation for them must use the capture phase.
+const CAPTURE_EVENTS = new Set(["focus", "blur"]);
+
+const registry = new Map<string, FlowEventHandlers>();
+const listening = new Set<string>();
 
 /**
- * Scan the document for Flowmark Events markers and attach native listeners.
- * Returns an `unbind` function that removes the attached listeners.
+ * Register handlers for a compiled Flowmark Events scope and ensure a single
+ * delegated `document` listener exists for each event name. Handlers are
+ * resolved at dispatch time via `data-flow-scope` on the matched element, so
+ * elements added to the DOM later (view transitions, `@for` re-renders) work
+ * without rebinding.
+ *
+ * Returns an unbind function that removes this scope's handlers. Document
+ * listeners are left attached; they are inert once the scope is gone.
  */
-export function bindFlowEvents(handlers: FlowEventHandlers): () => void {
+export function registerFlowHandlers(
+  scope: string,
+  handlers: FlowEventHandlers,
+  events: string[],
+): () => void {
   if (typeof document === "undefined") {
     return () => {};
   }
 
-  if (document.readyState === "loading") {
-    let unbind: (() => void) | undefined;
-    document.addEventListener(
-      "DOMContentLoaded",
-      () => {
-        unbind = bindFlowEventsNow(document, handlers);
-      },
-      { once: true },
-    );
-    return () => {
-      unbind?.();
-    };
-  }
-
-  return bindFlowEventsNow(document, handlers);
-}
-
-function bindFlowEventsNow(
-  root: ParentNode,
-  handlers: FlowEventHandlers,
-): () => void {
-  const unbinders: (() => void)[] = [];
-
-  for (const element of Array.from(root.querySelectorAll("*"))) {
-    if (hasFlowEventAttribute(element as HTMLElement)) {
-      unbinders.push(bindElement(element as HTMLElement, handlers));
-    }
+  registry.set(scope, handlers);
+  for (const eventName of events) {
+    ensureListening(eventName);
   }
 
   return () => {
-    for (const unbind of unbinders) {
-      unbind();
-    }
+    registry.delete(scope);
   };
 }
 
-function hasFlowEventAttribute(element: HTMLElement): boolean {
-  return Array.from(element.attributes).some((attribute) =>
-    attribute.name.startsWith(FLOW_EVENT_PREFIX),
-  );
+function ensureListening(eventName: string): void {
+  if (listening.has(eventName)) return;
+  listening.add(eventName);
+  document.addEventListener(eventName, createDelegatedListener(eventName), {
+    capture: CAPTURE_EVENTS.has(eventName),
+  });
 }
 
-function bindElement(
-  element: HTMLElement,
-  handlers: FlowEventHandlers,
-): () => void {
-  if (element.hasAttribute(FLOW_BOUND_ATTR)) {
-    return () => {};
-  }
+function createDelegatedListener(eventName: string): (event: Event) => void {
+  const attribute = `${FLOW_EVENT_PREFIX}${eventName}`;
 
-  const listeners: { eventName: string; listener: EventListener }[] = [];
+  return (event: Event) => {
+    if (!(event.target instanceof Element)) return;
 
-  for (const attribute of Array.from(element.attributes)) {
-    if (!attribute.name.startsWith(FLOW_EVENT_PREFIX)) continue;
+    const element = event.target.closest(`[${attribute}]`);
+    if (element === null) return;
 
-    const eventName = attribute.name.slice(FLOW_EVENT_PREFIX.length);
-    const handlerName = attribute.value;
-    const handler = handlers[handlerName];
+    const handlerName = element.getAttribute(attribute);
+    if (handlerName === null) return;
+
+    const scope = element.getAttribute(FLOW_SCOPE_ATTR) ?? DEFAULT_SCOPE;
+    const handler = registry.get(scope)?.[handlerName];
     if (typeof handler !== "function") {
       console.warn(
         `[flowmark] Event handler "${handlerName}" is not a function.`,
       );
-      continue;
+      return;
     }
 
-    const args = readArgs(element);
-    const listener = (event: Event) => {
-      const resolvedArgs = args.map((arg) => resolveArg(arg, event, element));
-      handler(...resolvedArgs);
-    };
-    element.addEventListener(eventName, listener);
-    listeners.push({ eventName, listener });
-  }
-
-  element.setAttribute(FLOW_BOUND_ATTR, "true");
-
-  return () => {
-    for (const { eventName, listener } of listeners) {
-      element.removeEventListener(eventName, listener);
-    }
-    element.removeAttribute(FLOW_BOUND_ATTR);
+    const args = readArgs(element).map((arg) =>
+      resolveArg(arg, event, element),
+    );
+    handler(...args);
   };
 }
 
-function readArgs(element: HTMLElement): unknown[] {
+function readArgs(element: Element): unknown[] {
   const raw = element.getAttribute(FLOW_ARGS_ATTR);
   if (!raw) return [];
 
@@ -113,7 +93,7 @@ function readArgs(element: HTMLElement): unknown[] {
   }
 }
 
-function resolveArg(arg: unknown, event: Event, element: HTMLElement): unknown {
+function resolveArg(arg: unknown, event: Event, element: Element): unknown {
   if (isFlowMarker(arg, "$event")) return event;
   if (isFlowMarker(arg, "$el")) return element;
   return arg;
@@ -126,18 +106,4 @@ function isFlowMarker(arg: unknown, marker: string): boolean {
     FLOW_EVENT_MARKER in arg &&
     (arg as Record<string, unknown>)[FLOW_EVENT_MARKER] === marker
   );
-}
-
-/**
- * Bind events scoped to a specific root element. Useful for partial updates.
- * Returns an `unbind` function that removes the attached listeners.
- */
-export function bindFlowEventsIn(
-  root: ParentNode,
-  handlers: FlowEventHandlers,
-): () => void {
-  if (typeof document === "undefined") {
-    return () => {};
-  }
-  return bindFlowEventsNow(root, handlers);
 }

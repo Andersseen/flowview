@@ -282,6 +282,41 @@ event bindings such as `(click)="save($event)"`. It is not part of the core HTML
 compiler. The implementation packages are currently named `@flowmark/dom` and
 `@flowmark/astro-events`.
 
+Handlers are declared in a `<script data-flowmark>` block, which is ordinary
+client-side JavaScript: normal imports, module-level state, and closures all
+work exactly as they would in any other `<script>` tag.
+
+```astro
+<button (click)="save($event)">Save</button>
+<button (click)="removeItem('item-1', $el)">Remove</button>
+
+<script data-flowmark>
+  function save(event) {
+    console.log(event.type);
+  }
+
+  function removeItem(id, element) {
+    element.setAttribute("disabled", "true");
+  }
+</script>
+```
+
+At build time, `@flowmark/astro-events` validates that every `(event)="handler()"`
+binding resolves to a function declared in that block, rewrites the bindings to
+`data-flow-on-<event>` / `data-flow-scope` / `data-flow-args` attributes, and
+appends a `registerFlowHandlers(scope, handlers, events)` call to the script.
+The runtime (`@flowmark/dom/runtime`) attaches one delegated `document`
+listener per event type and resolves the handler at dispatch time, so elements
+added to the DOM later (view transitions, `@for` re-renders) work without
+rebinding. `data-flowmark` (not `flowmark`) is required because `<script>`
+attributes are strictly typed in Astro's JSX namespace, and only `data-*`
+attributes are permitted to hold arbitrary custom markers.
+
+At most one `<script data-flowmark>` block is allowed per `.astro` file, and
+every `(event)="handler()"` binding in that file must resolve to a function
+declared in it; declaring handlers in Astro frontmatter is no longer
+supported.
+
 ## Run The Astro Demo
 
 ```sh
