@@ -1,0 +1,35 @@
+{
+  "name": "hono-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "flowview Events in a plain Vite + Hono project, without Astro.",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "dev:e2e": "PORT=4322 tsx watch src/server.ts",
+    "build": "pnpm run build:client && pnpm run build:server",
+    "build:client": "vite build",
+    "build:server": "vite build --ssr src/pages/index.flow",
+    "start": "NODE_ENV=production tsx src/server.ts",
+    "test": "pnpm run test:unit",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@flowview/events": "workspace:*",
+    "@flowview/runtime": "workspace:*",
+    "@flowview/vite": "workspace:*",
+    "@flowview/vite-events": "workspace:*",
+    "@hono/node-server": "^1.13.0",
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "@types/node": "^26.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.0",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  }
+}
