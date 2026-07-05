@@ -79,10 +79,10 @@ importers:
         specifier: ^2.13.1
         version: 2.13.1
       '@flowview/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       '@flowview/vite':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../vite
       magic-string:
         specifier: ^0.30.21
@@ -113,7 +113,7 @@ importers:
         specifier: ^2.13.1
         version: 2.13.1
       '@flowview/events':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../events
       magic-string:
         specifier: ^0.30.0
@@ -134,6 +134,21 @@ importers:
       vite:
         specifier: ^6.0.0
         version: 6.4.3(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@26.0.0)(jiti@2.7.0)(jsdom@26.1.0)(lightningcss@1.32.0)(yaml@2.9.0)
+
+  packages/compiler:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.0.0
+        version: 26.0.0
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.15)(typescript@5.9.3)(yaml@2.9.0)
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
       vitest:
         specifier: ^3.0.0
         version: 3.2.6(@types/debug@4.1.13)(@types/node@26.0.0)(jiti@2.7.0)(jsdom@26.1.0)(lightningcss@1.32.0)(yaml@2.9.0)
@@ -193,8 +208,11 @@ importers:
 
   packages/vite:
     dependencies:
+      '@flowview/compiler':
+        specifier: workspace:^
+        version: link:../compiler
       '@flowview/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
     devDependencies:
       '@types/node':
@@ -213,7 +231,7 @@ importers:
         specifier: ^3.0.0
         version: 3.2.6(@types/debug@4.1.13)(@types/node@26.0.0)(jiti@2.7.0)(jsdom@26.1.0)(lightningcss@1.32.0)(yaml@2.9.0)
 
-  packages/vscode-flowmark:
+  packages/vscode-flowview:
     devDependencies:
       '@vscode/vsce':
         specifier: ^3.2.2

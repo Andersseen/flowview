@@ -1,0 +1,22 @@
+[package]
+name = "flowview-cli"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "CLI for the flowview HTML template compiler."
+repository = "https://github.com/andersseen/flowview"
+keywords = ["template", "compiler", "html", "cli"]
+categories = ["command-line-utilities", "template-engine"]
+
+[[bin]]
+name = "flowview"
+path = "src/main.rs"
+
+[dependencies]
+flowview-compiler = { version = "0.1.0", path = "../flowview-compiler" }
+clap = { version = "4.5", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+tempfile = "3.0"

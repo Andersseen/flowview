@@ -5,16 +5,16 @@ import type {
   TagLikeNode,
 } from "@astrojs/compiler/types";
 import { createHash } from "node:crypto";
-import flowmarkVite, {
-  compileFlowmark,
+import flowviewVite, {
+  compileFlowview,
   resolveCompilerPath,
-  type FlowmarkViteOptions,
+  type FlowviewViteOptions,
 } from "@flowview/vite";
 import type { AstroIntegration } from "astro";
 import MagicString from "magic-string";
 import type { Plugin } from "vite";
 
-export interface FlowmarkAstroOptions extends FlowmarkViteOptions {}
+export interface FlowviewAstroOptions extends FlowviewViteOptions {}
 
 interface EmbeddedTemplate {
   source: string;
@@ -30,7 +30,7 @@ interface VirtualTemplate {
   lineOffset: number;
 }
 
-class FlowmarkAstroError extends Error {
+class FlowviewAstroError extends Error {
   readonly loc: { line: number; column: number };
 
   constructor(
@@ -40,17 +40,17 @@ class FlowmarkAstroError extends Error {
     code: string,
   ) {
     super(message);
-    this.name = "FlowmarkAstroError";
+    this.name = "FlowviewAstroError";
     const { line, column } = lineAndColumn(code, offset);
     this.loc = { line, column };
   }
 }
 
-const VIRTUAL_PREFIX = "virtual:flowmark-astro/";
+const VIRTUAL_PREFIX = "virtual:flowview-astro/";
 const RESOLVED_VIRTUAL_PREFIX = "\0" + VIRTUAL_PREFIX;
 
-export default function flowmark(
-  options: FlowmarkAstroOptions = {},
+export default function flowview(
+  options: FlowviewAstroOptions = {},
 ): AstroIntegration {
   return {
     name: "@flowview/astro",
@@ -58,7 +58,7 @@ export default function flowmark(
       "astro:config:setup": ({ updateConfig }) => {
         updateConfig({
           vite: {
-            plugins: [flowmarkVite(options), flowmarkAstroPlugin(options)],
+            plugins: [flowviewVite(options), flowviewAstroPlugin(options)],
           },
         });
       },
@@ -66,7 +66,7 @@ export default function flowmark(
   };
 }
 
-function flowmarkAstroPlugin(options: FlowmarkAstroOptions): Plugin {
+function flowviewAstroPlugin(options: FlowviewAstroOptions): Plugin {
   const runtimeImport = options.runtimeImport ?? "@flowview/runtime";
   const compilerPath = resolveCompilerPath(options.compilerPath);
   const virtualModules = new Map<string, VirtualTemplate>();
@@ -105,10 +105,10 @@ function flowmarkAstroPlugin(options: FlowmarkAstroOptions): Plugin {
         VIRTUAL_PREFIX + id.slice(RESOLVED_VIRTUAL_PREFIX.length);
       const template = virtualModules.get(publicId);
       if (template === undefined) {
-        throw new Error(`Missing Flowmark virtual module: ${publicId}`);
+        throw new Error(`Missing flowview virtual module: ${publicId}`);
       }
 
-      const { code } = await compileFlowmark(template.source, {
+      const { code } = await compileFlowview(template.source, {
         filename: template.filename,
         lineOffset: template.lineOffset,
         runtimeImport,
@@ -119,7 +119,7 @@ function flowmarkAstroPlugin(options: FlowmarkAstroOptions): Plugin {
 
     transform(code, id) {
       const cleanId = stripQuery(id);
-      if (!cleanId.endsWith(".astro") || !code.includes("flowmark")) {
+      if (!cleanId.endsWith(".astro") || !code.includes("flowview")) {
         return null;
       }
 
@@ -131,7 +131,7 @@ function flowmarkAstroPlugin(options: FlowmarkAstroOptions): Plugin {
           virtualIdsByFile,
         );
       } catch (error) {
-        if (error instanceof FlowmarkAstroError) {
+        if (error instanceof FlowviewAstroError) {
           const locatedError = {
             message: error.message,
             id: cleanId,
@@ -168,7 +168,7 @@ function transformAstroSource(
   const transformed = new MagicString(code);
 
   templates.forEach((template, index) => {
-    const renderName = `__flowmarkRender${index}`;
+    const renderName = `__flowviewRender${index}`;
     const contentHash = createHash("sha256")
       .update(template.source)
       .digest("hex")
@@ -210,20 +210,20 @@ function findEmbeddedTemplates(
 
   visitAstroNodes(ast, (node) => {
     if (!isTagNode(node) || node.name !== "template") return true;
-    const flowmarkAttribute = node.attributes.find(
-      (attribute) => attribute.name === "flowmark",
+    const flowviewAttribute = node.attributes.find(
+      (attribute) => attribute.name === "flowview",
     );
-    if (!flowmarkAttribute) return true;
+    if (!flowviewAttribute) return true;
 
     const firstKnownOffset =
-      flowmarkAttribute.position?.start.offset ??
+      flowviewAttribute.position?.start.offset ??
       node.position?.start.offset ??
       0;
     const openStart = code.lastIndexOf("<", firstKnownOffset);
     const openEnd = findTagEnd(code, openStart);
     if (openStart === -1 || openEnd === -1) {
-      throw new FlowmarkAstroError(
-        "Flowmark embedded template has an invalid opening tag.",
+      throw new FlowviewAstroError(
+        "flowview embedded template has an invalid opening tag.",
         filename,
         firstKnownOffset,
         code,
@@ -233,27 +233,27 @@ function findEmbeddedTemplates(
     const contextAttribute = node.attributes.find(
       (attribute) => attribute.name === "context",
     );
-    const flowmarkExpression =
-      flowmarkAttribute.kind === "expression"
-        ? flowmarkAttribute.value.trim()
+    const flowviewExpression =
+      flowviewAttribute.kind === "expression"
+        ? flowviewAttribute.value.trim()
         : "";
     const contextExpression =
-      flowmarkExpression !== ""
-        ? flowmarkExpression
+      flowviewExpression !== ""
+        ? flowviewExpression
         : contextAttribute?.kind === "expression"
           ? contextAttribute.value.trim()
           : "";
     if (!contextExpression) {
-      throw new FlowmarkAstroError(
-        "Flowmark embedded templates require a context expression: flowmark={...} or context={...}.",
+      throw new FlowviewAstroError(
+        "flowview embedded templates require a context expression: flowview={...} or context={...}.",
         filename,
         openStart,
         code,
       );
     }
-    if (flowmarkExpression !== "" && contextAttribute?.kind === "expression") {
-      throw new FlowmarkAstroError(
-        "Flowmark embedded templates must not combine flowmark={...} with context={...}; use one of them.",
+    if (flowviewExpression !== "" && contextAttribute?.kind === "expression") {
+      throw new FlowviewAstroError(
+        "flowview embedded templates must not combine flowview={...} with context={...}; use one of them.",
         filename,
         openStart,
         code,
@@ -262,8 +262,8 @@ function findEmbeddedTemplates(
 
     const closeStart = findMatchingTemplateClose(code, openEnd + 1);
     if (closeStart === -1) {
-      throw new FlowmarkAstroError(
-        "Flowmark embedded template is missing </template>.",
+      throw new FlowviewAstroError(
+        "flowview embedded template is missing </template>.",
         filename,
         openStart,
         code,
@@ -271,8 +271,8 @@ function findEmbeddedTemplates(
     }
     const closeTagEnd = findTagEnd(code, closeStart);
     if (closeTagEnd === -1) {
-      throw new FlowmarkAstroError(
-        "Flowmark embedded template has an invalid closing tag.",
+      throw new FlowviewAstroError(
+        "flowview embedded template has an invalid closing tag.",
         filename,
         closeStart,
         code,

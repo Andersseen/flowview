@@ -1,0 +1,83 @@
+{
+  "name": "vscode-flowview",
+  "displayName": "flowview Language Support",
+  "description": "Syntax highlighting and snippets for flowview templates.",
+  "version": "0.1.0",
+  "private": true,
+  "publisher": "andersseen",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andersseen/flowview.git",
+    "directory": "packages/vscode-flowview"
+  },
+  "scripts": {
+    "dev": "code --new-window --extensionDevelopmentPath=\"$PWD\" ../../examples/astro-demo",
+    "test": "node ./test/grammar.test.mjs",
+    "package": "mkdir -p dist && vsce package --no-dependencies --out dist/flowview-language-support.vsix",
+    "package:pre-release": "mkdir -p dist && vsce package --no-dependencies --pre-release --out dist/flowview-language-support.vsix"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.2.2",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "flowview",
+        "aliases": [
+          "flowview",
+          "flowview"
+        ],
+        "extensions": [
+          ".flow"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "flowview",
+        "scopeName": "source.flowview",
+        "path": "./syntaxes/flowview.tmLanguage.json"
+      },
+      {
+        "scopeName": "flowview.astro.injection",
+        "path": "./syntaxes/flowview-astro-injection.tmLanguage.json",
+        "injectTo": [
+          "source.astro"
+        ],
+        "embeddedLanguages": {
+          "meta.embedded.flowview": "flowview",
+          "meta.interpolation.flowview": "javascript",
+          "meta.control.expression.flowview": "javascript"
+        }
+      },
+      {
+        "scopeName": "flowview.astro.raw.injection",
+        "path": "./syntaxes/flowview-astro-raw-injection.tmLanguage.json",
+        "injectTo": [
+          "source.astro"
+        ]
+      }
+    ],
+    "snippets": [
+      {
+        "language": "flowview",
+        "path": "./snippets/flowview.json"
+      },
+      {
+        "language": "astro",
+        "path": "./snippets/astro-flowview.json"
+      }
+    ]
+  }
+}

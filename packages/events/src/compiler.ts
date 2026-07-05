@@ -1,7 +1,7 @@
 import {
   locate,
-  FlowmarkDomError,
-  type FlowmarkDomDiagnostic,
+  FlowviewDomError,
+  type FlowviewDomDiagnostic,
 } from "./diagnostics.js";
 import {
   extractFunctionDeclarations,
@@ -23,7 +23,7 @@ export interface CompileScriptEventsRequest {
   /** Offset of `scriptSource` within `template`, used to keep all diagnostics
    * in one coordinate space. */
   scriptOffset: number;
-  /** Inner text content of the `<script data-flowmark>` block. */
+  /** Inner text content of the `<script data-flowview>` block. */
   scriptSource: string;
   runtimeImport?: string;
 }
@@ -44,7 +44,7 @@ export function compileScriptEvents(
   request: CompileScriptEventsRequest,
 ): CompileScriptEventsResult {
   const runtimeImport = request.runtimeImport ?? DEFAULT_RUNTIME_IMPORT;
-  const diagnostics: FlowmarkDomDiagnostic[] = [];
+  const diagnostics: FlowviewDomDiagnostic[] = [];
 
   const bindings = findEventBindings(request.template);
   const declaredByName = new Map<string, DeclaredFunction[]>();
@@ -60,7 +60,7 @@ export function compileScriptEvents(
   for (const occurrences of declaredByName.values()) {
     for (const duplicate of occurrences.slice(1)) {
       diagnostics.push({
-        message: `Flowmark event handler "${duplicate.name}" is declared more than once in the <script data-flowmark> block.`,
+        message: `flowview event handler "${duplicate.name}" is declared more than once in the <script data-flowview> block.`,
         severity: "error",
         filename: request.filename,
         ...locate(request.template, request.scriptOffset + duplicate.offset),
@@ -94,8 +94,8 @@ export function compileScriptEvents(
     if (!declaredByName.has(call.name)) {
       const isUnsupported = unsupportedNames.has(call.name);
       const message = isUnsupported
-        ? `Flowmark event handler "${call.name}" must be declared as a function (\`function ${call.name}(...) { ... }\`) inside the <script data-flowmark> block. Arrow functions and function expressions are not supported yet.`
-        : `Flowmark event handler "${call.name}" was used in the template but was not found in the <script data-flowmark> block.`;
+        ? `flowview event handler "${call.name}" must be declared as a function (\`function ${call.name}(...) { ... }\`) inside the <script data-flowview> block. Arrow functions and function expressions are not supported yet.`
+        : `flowview event handler "${call.name}" was used in the template but was not found in the <script data-flowview> block.`;
       diagnostics.push({
         message,
         severity: "error",
@@ -136,8 +136,8 @@ export function compileScriptEvents(
   }
 
   if (diagnostics.some((d) => d.severity === "error")) {
-    throw new FlowmarkDomError(
-      `Flowmark Events compilation failed for ${request.filename}`,
+    throw new FlowviewDomError(
+      `flowview Events compilation failed for ${request.filename}`,
       diagnostics,
     );
   }
@@ -177,7 +177,7 @@ function validateArguments(args: HandlerArgument[]): { error?: string } {
         typeof value !== "boolean" &&
         value !== null
       ) {
-        return { error: `Flowmark event argument cannot be serialized.` };
+        return { error: `flowview event argument cannot be serialized.` };
       }
     }
   }

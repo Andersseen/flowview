@@ -5,10 +5,10 @@ This monorepo uses [Changesets](https://github.com/changesets/changesets) to man
 ## Quick scripts from root
 
 ```bash
-# Primary: publish npm packages (@flowview/runtime + @flowview/events + @flowview/vite)
+# Primary: publish npm packages under @flowview
 pnpm run publish:npm
 
-# Optional: publish Rust crates (flowmark-compiler + flowmark-cli)
+# Optional: publish Rust crates (flowview-compiler + flowview-cli)
 pnpm run publish:rust
 ```
 
@@ -17,18 +17,22 @@ pnpm run publish:rust
 Requires npm login with access to the `@flowview` scope.
 
 ```bash
-cd /Users/andriipap/Andersseen/Web/Projects/flowmark
+cd /Users/andriipap/Andersseen/Web/Projects/flowview
 pnpm run publish:npm
 ```
 
-This builds runtime/events/vite and runs `changeset publish`, which publishes the current versions.
+This builds runtime, events, compiler, Vite, Astro, Astro Events, and Prettier packages, then runs `changeset publish`.
 
 Verify with:
 
 ```bash
 npm view @flowview/runtime version
 npm view @flowview/events version
+npm view @flowview/compiler version
 npm view @flowview/vite version
+npm view @flowview/astro version
+npm view @flowview/astro-events version
+npm view @flowview/prettier version
 ```
 
 ## Rust crates (optional)
@@ -38,22 +42,22 @@ Requires `cargo login <CRATES_IO_TOKEN>` first.
 Order matters: the CLI depends on the compiler crate.
 
 ```bash
-cd /Users/andriipap/Andersseen/Web/Projects/flowmark
+cd /Users/andriipap/Andersseen/Web/Projects/flowview
 pnpm run publish:rust
 ```
 
 This runs:
 
 ```bash
-cargo publish -p flowmark-compiler
-cargo publish -p flowmark-cli
+cargo publish -p flowview-compiler
+cargo publish -p flowview-cli
 ```
 
 Verify with:
 
 ```bash
-cargo search flowmark-compiler
-cargo search flowmark-cli
+cargo search flowview-compiler
+cargo search flowview-cli
 ```
 
 ## Subsequent npm releases (automated)

@@ -1,22 +1,21 @@
 {
   "name": "@flowview/events",
-  "version": "0.0.1",
-  "description": "Flowmark Events compiler and runtime for client-side bindings.",
+  "version": "0.1.1",
+  "description": "flowview Events compiler and runtime for client-side bindings.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "repository": {
     "type": "git",
-    "url": "https://github.com/andersseen/flowmark.git",
+    "url": "https://github.com/andersseen/flowview.git",
     "directory": "packages/events"
   },
   "bugs": {
-    "url": "https://github.com/andersseen/flowmark/issues"
+    "url": "https://github.com/andersseen/flowview/issues"
   },
-  "homepage": "https://github.com/andersseen/flowmark/tree/main/packages/events#readme",
+  "homepage": "https://github.com/andersseen/flowview/tree/main/packages/events#readme",
   "keywords": [
     "flowview",
-    "flowmark",
     "template",
     "events",
     "dom",

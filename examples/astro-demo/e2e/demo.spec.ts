@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("renders the Flowmark landing page", async ({ page }) => {
+test("renders the flowview landing page", async ({ page }) => {
   await page.goto("/");
 
   await expect(
@@ -17,11 +17,11 @@ test("renders the Flowmark landing page", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("renders the Flowmark control flow page", async ({ page }) => {
+test("renders the flowview control flow page", async ({ page }) => {
   await page.goto("/control-flow");
 
   await expect(
-    page.getByRole("heading", { name: "Flowmark", level: 1 }),
+    page.getByRole("heading", { name: "flowview", level: 1 }),
   ).toBeVisible();
   await expect(
     page
@@ -30,7 +30,7 @@ test("renders the Flowmark control flow page", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Get started" })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Why Flowmark?" }),
+    page.getByRole("heading", { name: "Why flowview?" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Modern control flow" }),
@@ -50,7 +50,7 @@ test("renders the Flowmark control flow page", async ({ page }) => {
   await expect(
     page.getByText("npm install @flowview/astro @flowview/runtime"),
   ).toBeVisible();
-  await expect(page.locator("footer")).toContainText("Flowmark");
+  await expect(page.locator("footer")).toContainText("flowview");
 });
 
 test("runs compiled event handlers", async ({ page }) => {
@@ -71,10 +71,10 @@ test("runs compiled event handlers", async ({ page }) => {
 test("preserves whitespace and escapes interpolated HTML", async ({ page }) => {
   await page.goto("/security");
 
-  await expect(page.locator("#space")).toHaveText("Hello Flowmark");
+  await expect(page.locator("#space")).toHaveText("Hello flowview");
   await expect(page.locator("#pre")).toHaveText("first\n  second");
   await expect(page.locator("#escaped")).toHaveText(
-    '<img src=x onerror="globalThis.__flowmarkXss = true">',
+    '<img src=x onerror="globalThis.__flowviewXss = true">',
   );
   await expect(page.locator("#escaped img")).toHaveCount(0);
   await expect(page.locator("#literal-at")).toHaveText("contact@if.example");
@@ -85,13 +85,13 @@ test("preserves whitespace and escapes interpolated HTML", async ({ page }) => {
   expect(
     await page.evaluate(
       () =>
-        (globalThis as typeof globalThis & { __flowmarkXss?: boolean })
-          .__flowmarkXss,
+        (globalThis as typeof globalThis & { __flowviewXss?: boolean })
+          .__flowviewXss,
     ),
   ).toBeUndefined();
 });
 
-test("renders an isolated inline Flowmark page in Astro", async ({ page }) => {
+test("renders an isolated inline flowview page in Astro", async ({ page }) => {
   await page.goto("/inline");
   await expect(page.locator("#inline")).toHaveText(
     "Hello from an inline Astro template",

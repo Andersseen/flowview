@@ -1,6 +1,6 @@
 # Security Policy
 
-Flowmark is an early-stage compiler project. Please report security issues
+flowview is an early-stage compiler project. Please report security issues
 privately before opening public issues.
 
 ## Supported Versions
@@ -22,7 +22,7 @@ been reviewed.
 
 ## Template Trust Model
 
-`.flow` templates are trusted source code. Flowmark preserves expressions as
+`.flow` templates are trusted source code. flowview preserves expressions as
 JavaScript source strings in generated render functions. Do not compile
 user-submitted templates unless you sandbox the generated code yourself.
 
@@ -38,5 +38,5 @@ attributes such as `href` and `src`.
 
 Validate values for their destination context. Prefer interpolation in normal
 text and quoted ordinary data attributes; unquoted attribute interpolation is
-rejected by the compiler. Flowmark does not currently provide a raw HTML escape
+rejected by the compiler. flowview does not currently provide a raw HTML escape
 hatch or context-aware URL/CSS/JavaScript sanitizers.

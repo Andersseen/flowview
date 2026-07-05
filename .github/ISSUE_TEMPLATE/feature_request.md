@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an improvement to Flowmark
+about: Suggest an improvement to flowview
 title: "feat: "
 labels: enhancement
 ---
@@ -13,4 +13,4 @@ labels: enhancement
 
 ## Scope Notes
 
-Does this fit Flowmark's goal of staying a small template compiler?
+Does this fit flowview's goal of staying a small template compiler?

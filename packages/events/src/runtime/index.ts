@@ -16,7 +16,7 @@ const registry = new Map<string, FlowEventHandlers>();
 const listening = new Set<string>();
 
 /**
- * Register handlers for a compiled Flowmark Events scope and ensure a single
+ * Register handlers for a compiled flowview Events scope and ensure a single
  * delegated `document` listener exists for each event name. Handlers are
  * resolved at dispatch time via `data-flow-scope` on the matched element, so
  * elements added to the DOM later (view transitions, `@for` re-renders) work
@@ -68,7 +68,7 @@ function createDelegatedListener(eventName: string): (event: Event) => void {
     const handler = registry.get(scope)?.[handlerName];
     if (typeof handler !== "function") {
       console.warn(
-        `[flowmark] Event handler "${handlerName}" is not a function.`,
+        `[flowview] Event handler "${handlerName}" is not a function.`,
       );
       return;
     }
@@ -88,18 +88,18 @@ function readArgs(element: Element): unknown[] {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch {
-    console.warn(`[flowmark] Could not parse event args: ${raw}`);
+    console.warn(`[flowview] Could not parse event args: ${raw}`);
     return [];
   }
 }
 
 function resolveArg(arg: unknown, event: Event, element: Element): unknown {
-  if (isFlowMarker(arg, "$event")) return event;
-  if (isFlowMarker(arg, "$el")) return element;
+  if (isFlowviewMarker(arg, "$event")) return event;
+  if (isFlowviewMarker(arg, "$el")) return element;
   return arg;
 }
 
-function isFlowMarker(arg: unknown, marker: string): boolean {
+function isFlowviewMarker(arg: unknown, marker: string): boolean {
   return (
     typeof arg === "object" &&
     arg !== null &&

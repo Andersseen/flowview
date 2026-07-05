@@ -11,7 +11,7 @@ export interface SiteMeta {
 }
 
 /**
- * Context passed to the Hero Flowmark template.
+ * Context passed to the Hero flowview template.
  */
 export interface HeroContext {
   title: string;
@@ -21,7 +21,7 @@ export interface HeroContext {
 }
 
 /**
- * A single feature card rendered by the Features Flowmark template.
+ * A single feature card rendered by the Features flowview template.
  */
 export interface Feature {
   id: string;
@@ -31,7 +31,7 @@ export interface Feature {
 }
 
 /**
- * Context passed to the Features Flowmark template.
+ * Context passed to the Features flowview template.
  */
 export interface FeaturesContext {
   items: Feature[];
@@ -43,7 +43,7 @@ export interface FeaturesContext {
 export type SyntaxExampleId = "for" | "if" | "switch";
 
 /**
- * A single syntax example rendered by the Syntax Showcase Flowmark template.
+ * A single syntax example rendered by the Syntax Showcase flowview template.
  */
 export interface SyntaxExample {
   id: SyntaxExampleId;
@@ -53,7 +53,7 @@ export interface SyntaxExample {
 }
 
 /**
- * Context passed to the Syntax Showcase Flowmark template.
+ * Context passed to the Syntax Showcase flowview template.
  */
 export interface SyntaxShowcaseContext {
   examples: SyntaxExample[];
@@ -70,7 +70,7 @@ export interface Step {
 }
 
 /**
- * Context passed to the Getting Started Flowmark template.
+ * Context passed to the Getting Started flowview template.
  */
 export interface GettingStartedContext {
   title: string;
@@ -88,7 +88,7 @@ export interface FooterLink {
 }
 
 /**
- * Context passed to the Footer Flowmark template.
+ * Context passed to the Footer flowview template.
  */
 export interface FooterContext {
   brand: string;

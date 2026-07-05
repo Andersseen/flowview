@@ -2,17 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   applyTemplateEdits,
   compileScriptEvents,
-  FlowmarkDomError,
+  FlowviewDomError,
 } from "./index.js";
 
 describe("compileScriptEvents", () => {
   function fixture(bindingsHtml: string, scriptSource: string) {
-    const template = `${bindingsHtml}\n\n<script data-flowmark>${scriptSource}</script>\n`;
+    const template = `${bindingsHtml}\n\n<script data-flowview>${scriptSource}</script>\n`;
     const scriptOffset = template.indexOf(scriptSource);
     return { template, scriptOffset, scriptSource };
   }
 
-  it("compiles a basic click handler declared in a script flowmark block", () => {
+  it("compiles a basic click handler declared in a script flowview block", () => {
     const { template, scriptOffset, scriptSource } = fixture(
       `<button (click)="save($event)">Save</button>`,
       `\nfunction save(event) {\n  console.log(event);\n}\n`,
@@ -50,11 +50,11 @@ describe("compileScriptEvents", () => {
       template,
       scriptOffset,
       scriptSource,
-      runtimeImport: "#flowmark/runtime",
+      runtimeImport: "#flowview/runtime",
     });
 
     expect(result.scriptAppend).toContain(
-      'import { registerFlowHandlers } from "#flowmark/runtime";',
+      'import { registerFlowHandlers } from "#flowview/runtime";',
     );
   });
 
@@ -86,7 +86,7 @@ describe("compileScriptEvents", () => {
       `\nfunction other() {}\n`,
     );
 
-    let caught: FlowmarkDomError | undefined;
+    let caught: FlowviewDomError | undefined;
     try {
       compileScriptEvents({
         filename: "test.astro",
@@ -96,12 +96,12 @@ describe("compileScriptEvents", () => {
         scriptSource,
       });
     } catch (error) {
-      caught = error as FlowmarkDomError;
+      caught = error as FlowviewDomError;
     }
 
-    expect(caught).toBeInstanceOf(FlowmarkDomError);
+    expect(caught).toBeInstanceOf(FlowviewDomError);
     expect(caught?.diagnostics[0]?.message).toContain(
-      "was used in the template but was not found in the <script data-flowmark> block",
+      "was used in the template but was not found in the <script data-flowview> block",
     );
   });
 
@@ -111,7 +111,7 @@ describe("compileScriptEvents", () => {
       `\nconst save = () => {};\n`,
     );
 
-    let caught: FlowmarkDomError | undefined;
+    let caught: FlowviewDomError | undefined;
     try {
       compileScriptEvents({
         filename: "test.astro",
@@ -121,10 +121,10 @@ describe("compileScriptEvents", () => {
         scriptSource,
       });
     } catch (error) {
-      caught = error as FlowmarkDomError;
+      caught = error as FlowviewDomError;
     }
 
-    expect(caught).toBeInstanceOf(FlowmarkDomError);
+    expect(caught).toBeInstanceOf(FlowviewDomError);
     expect(caught?.diagnostics[0]?.message).toContain(
       "must be declared as a function",
     );
@@ -136,7 +136,7 @@ describe("compileScriptEvents", () => {
       `\nfunction save() {}\nfunction save() {}\n`,
     );
 
-    let caught: FlowmarkDomError | undefined;
+    let caught: FlowviewDomError | undefined;
     try {
       compileScriptEvents({
         filename: "test.astro",
@@ -146,12 +146,12 @@ describe("compileScriptEvents", () => {
         scriptSource,
       });
     } catch (error) {
-      caught = error as FlowmarkDomError;
+      caught = error as FlowviewDomError;
     }
 
-    expect(caught).toBeInstanceOf(FlowmarkDomError);
+    expect(caught).toBeInstanceOf(FlowviewDomError);
     expect(caught?.diagnostics[0]?.message).toContain(
-      "declared more than once in the <script data-flowmark> block",
+      "declared more than once in the <script data-flowview> block",
     );
   });
 
@@ -169,12 +169,12 @@ describe("compileScriptEvents", () => {
         scriptOffset,
         scriptSource,
       }),
-    ).toThrow(FlowmarkDomError);
+    ).toThrow(FlowviewDomError);
   });
 
   it("keeps diagnostic locations correct when the script is not at the start of the template", () => {
     const scriptSource = `\nfunction save() {}\nfunction save() {}\n`;
-    const template = `<p>Intro text</p>\n\n<button (click)="save()">Save</button>\n\n<script data-flowmark>${scriptSource}</script>\n`;
+    const template = `<p>Intro text</p>\n\n<button (click)="save()">Save</button>\n\n<script data-flowview>${scriptSource}</script>\n`;
     const scriptOffset = template.indexOf(scriptSource);
 
     const secondDeclarationOffset = template.lastIndexOf("function save");
@@ -182,7 +182,7 @@ describe("compileScriptEvents", () => {
       .slice(0, secondDeclarationOffset)
       .split("\n").length;
 
-    let caught: FlowmarkDomError | undefined;
+    let caught: FlowviewDomError | undefined;
     try {
       compileScriptEvents({
         filename: "test.astro",
@@ -192,10 +192,10 @@ describe("compileScriptEvents", () => {
         scriptSource,
       });
     } catch (error) {
-      caught = error as FlowmarkDomError;
+      caught = error as FlowviewDomError;
     }
 
-    expect(caught).toBeInstanceOf(FlowmarkDomError);
+    expect(caught).toBeInstanceOf(FlowviewDomError);
     expect(caught?.diagnostics[0]?.line).toBe(expectedLine);
   });
 });

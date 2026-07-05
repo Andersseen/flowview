@@ -1,21 +1,21 @@
 {
   "name": "@flowview/runtime",
-  "version": "0.1.0",
-  "description": "Tiny runtime for Flowmark-generated render functions.",
+  "version": "0.1.1",
+  "description": "Tiny runtime for flowview-generated render functions.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "repository": {
     "type": "git",
-    "url": "https://github.com/andersseen/flowmark.git",
+    "url": "https://github.com/andersseen/flowview.git",
     "directory": "packages/runtime"
   },
   "bugs": {
-    "url": "https://github.com/andersseen/flowmark/issues"
+    "url": "https://github.com/andersseen/flowview/issues"
   },
-  "homepage": "https://github.com/andersseen/flowmark/tree/main/packages/runtime#readme",
+  "homepage": "https://github.com/andersseen/flowview/tree/main/packages/runtime#readme",
   "keywords": [
-    "flowmark",
+    "flowview",
     "template",
     "compiler",
     "runtime",

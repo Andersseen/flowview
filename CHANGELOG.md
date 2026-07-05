@@ -1,20 +1,20 @@
 # Changelog
 
-All notable changes to Flowmark will be documented in this file.
+All notable changes to flowview will be documented in this file.
 
 This project does not have a stable release yet.
 
 ## Unreleased
 
-- Added `@flowmark/prettier`, a Prettier plugin that wraps
-  prettier-plugin-astro and preserves `<template flowmark …>` regions
+- Added `@flowview/prettier`, a Prettier plugin that wraps
+  prettier-plugin-astro and preserves `<template flowview …>` regions
   byte-for-byte, removing the need for `<!-- prettier-ignore -->` comments.
   The repo, demo, and docs now format without any ignore comments, and the
   plugin guards against prettier-plugin-astro's module-level
   `prettier-ignore` state leaking across files.
 - Fixed the VS Code extension development scripts to pass an absolute
   `--extensionDevelopmentPath`, which VS Code requires.
-- Added the `<template flowmark={context} is:raw>` shorthand: the `flowmark`
+- Added the `<template flowview={context} is:raw>` shorthand: the `flowview`
   attribute now accepts the context expression directly, `context={...}`
   remains supported, and combining both is a compile error. Docs, demo, and
   editor snippets use the short form.
@@ -49,7 +49,7 @@ This project does not have a stable release yet.
 - Added focused Astro transformation tests and generated-code execution tests.
 - Added an editor-compatible Astro authoring wrapper, executable VS Code grammar
   tests, and a clean `astro check` gate for the demo.
-- Migrated every demo page-content surface to inline Flowmark in `.astro` files.
+- Migrated every demo page-content surface to inline flowview in `.astro` files.
 - Preserved template whitespace exactly instead of collapsing individual text nodes.
 - Hardened interpolation escaping for unquoted HTML attributes and documented
   context-specific security limits.
@@ -57,7 +57,7 @@ This project does not have a stable release yet.
 - Added stdin compilation and display-name/line-offset diagnostics to the CLI.
 - Removed `cargo run` and temporary-file compilation from the Astro integration.
 - Added content-addressed virtual modules for reliable Astro development updates.
-- Added the `@flowmark/vite` package and a tested standalone `.flow` import path.
+- Added the `@flowview/vite` package and a tested standalone `.flow` import path.
 - Added a Rust compiler crate for `.flow` templates.
 - Added a CLI for compiling templates to JavaScript render functions.
 - Added a small TypeScript runtime for escaped interpolation.

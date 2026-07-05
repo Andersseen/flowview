@@ -9,7 +9,7 @@ async function formatAstro(source: string): Promise<string> {
   });
 }
 
-const TEMPLATE = `<template flowmark={context} is:raw>
+const TEMPLATE = `<template flowview={context} is:raw>
   <ol class="grid gap-4" aria-label="Release history">
     @for (release of context.releases; track release.id) {
       <li>
@@ -26,7 +26,7 @@ const TEMPLATE = `<template flowmark={context} is:raw>
 </template>`;
 
 describe("@flowview/prettier", () => {
-  it("preserves flowmark template regions byte-for-byte", async () => {
+  it("preserves flowview template regions byte-for-byte", async () => {
     const source = `---
 const context = { releases: [] };
 ---
@@ -43,7 +43,7 @@ ${TEMPLATE}
 const   context = {title:"Hello"};
 ---
 <p   class="intro"  >Before</p>
-<template flowmark={context} is:raw>
+<template flowview={context} is:raw>
   @if (context.title) { <h1>{{ context.title }}</h1> }
 </template>
 `;
@@ -69,7 +69,7 @@ ${TEMPLATE}
     expect(twice).toBe(once);
   });
 
-  it("formats Astro files without flowmark templates like prettier-plugin-astro", async () => {
+  it("formats Astro files without flowview templates like prettier-plugin-astro", async () => {
     const source = `<div   class="a" ><p>x</p></div>\n`;
     const result = await formatAstro(source);
     expect(result).toBe(`<div class="a"><p>x</p></div>\n`);
@@ -77,10 +77,10 @@ ${TEMPLATE}
 
   it("does not leak prettier-ignore state into the next file", async () => {
     // prettier-plugin-astro arms module-level state on `prettier-ignore`
-    // comments; a Flowmark template right after one must consume it so the
+    // comments; a flowview template right after one must consume it so the
     // next formatted file does not crash.
     const withIgnore = `<!-- prettier-ignore -->
-<template flowmark={context} is:raw>
+<template flowview={context} is:raw>
   @if (context.x) { <b>{{ context.y }}</b> }
 </template>
 `;
@@ -92,9 +92,9 @@ ${TEMPLATE}
     expect(second).toBe(`<p class="next-file">ok</p>\n`);
   });
 
-  it("preserves nested flowmark templates inside markup", async () => {
+  it("preserves nested flowview templates inside markup", async () => {
     const source = `<div>
-  <template flowmark={context} is:raw>
+  <template flowview={context} is:raw>
     @for (item of context.items) { <span>{{ item }}</span> }
   </template>
 </div>

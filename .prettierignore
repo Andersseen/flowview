@@ -6,7 +6,7 @@ coverage/
 **/test-results/
 **/playwright-report/
 examples/astro-demo/src/generated/
-# Prettier's Astro parser does not understand embedded Flowmark yet.
+# Prettier's Astro parser does not understand embedded flowview yet.
 examples/astro-demo/src/components/DemoPage.astro
 examples/astro-demo/src/pages/security.astro
 pnpm-lock.yaml

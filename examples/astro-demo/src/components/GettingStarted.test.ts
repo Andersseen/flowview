@@ -9,7 +9,7 @@ describe("GettingStarted", () => {
       props: {
         context: {
           title: "Get started",
-          description: "Add Flowmark to your project.",
+          description: "Add flowview to your project.",
           steps: [
             {
               label: "Install",
@@ -18,7 +18,7 @@ describe("GettingStarted", () => {
             },
             {
               label: "Configure",
-              code: "integrations: [flowmark()]",
+              code: "integrations: [flowview()]",
               description: "Add the integration.",
             },
           ],
@@ -27,11 +27,11 @@ describe("GettingStarted", () => {
     });
 
     expect(html).toContain("Get started");
-    expect(html).toContain("Add Flowmark to your project.");
+    expect(html).toContain("Add flowview to your project.");
     expect(html).toContain("Install");
     expect(html).toContain("npm install @flowview/astro");
     expect(html).toContain("Configure");
-    expect(html).toContain("integrations: [flowmark()]");
+    expect(html).toContain("integrations: [flowview()]");
     expect(html).toContain("bash");
     expect(html).toContain("astro");
   });

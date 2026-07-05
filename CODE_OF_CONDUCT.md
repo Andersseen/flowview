@@ -1,6 +1,6 @@
 # Code of Conduct
 
-Flowmark follows a simple rule: be respectful, direct, and constructive.
+flowview follows a simple rule: be respectful, direct, and constructive.
 
 ## Expected Behavior
 

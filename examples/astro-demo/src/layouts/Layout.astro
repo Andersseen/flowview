@@ -10,8 +10,8 @@ export interface Props {
 
 const {
   title,
-  description = "Flowmark compiles HTML-like templates with Angular-inspired control flow into plain JavaScript render functions.",
-  siteUrl = "https://flowmark.example",
+  description = "flowview compiles HTML-like templates with Angular-inspired control flow into plain JavaScript render functions.",
+  siteUrl = "https://flowview.example",
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, siteUrl).toString();
@@ -49,7 +49,7 @@ const serializedNavItems = JSON.stringify(navItems);
     <title>{title}</title>
     <script is:inline>
       (function () {
-        const stored = localStorage.getItem("flowmark-theme");
+        const stored = localStorage.getItem("flowview-theme");
         const systemDark = window.matchMedia(
           "(prefers-color-scheme: dark)",
         ).matches;
@@ -85,7 +85,7 @@ const serializedNavItems = JSON.stringify(navItems);
         item-variant="filled"
         mobile-breakpoint="768"
         minimal-breakpoint="768"
-        aria-nav-label="Flowmark navigation"
+        aria-nav-label="flowview navigation"
       >
         <a
           slot="start"
@@ -97,16 +97,16 @@ const serializedNavItems = JSON.stringify(navItems);
           >
             F
           </span>
-          <span class="hidden sm:inline">Flowmark</span>
+          <span class="hidden sm:inline">flowview</span>
         </a>
 
         <div slot="end" class="flex items-center gap-1">
           <a
-            href="https://github.com/andersseen/flowmark"
+            href="https://github.com/andersseen/flowview"
             target="_blank"
             rel="noopener noreferrer"
             class="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            aria-label="View Flowmark on GitHub"
+            aria-label="View flowview on GitHub"
           >
             <and-icon name="github" size="20" aria-hidden="true"></and-icon>
           </a>
@@ -135,7 +135,7 @@ const serializedNavItems = JSON.stringify(navItems);
 
         <div slot="mobile-nav" class="flex flex-col gap-3 p-4">
           <a
-            href="https://github.com/andersseen/flowmark"
+            href="https://github.com/andersseen/flowview"
             target="_blank"
             rel="noopener noreferrer"
             class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
@@ -221,7 +221,7 @@ const serializedNavItems = JSON.stringify(navItems);
             const current =
               document.documentElement.getAttribute("data-mode") || "light";
             const next = current === "dark" ? "light" : "dark";
-            localStorage.setItem("flowmark-theme", next);
+            localStorage.setItem("flowview-theme", next);
             applyMode(next);
           });
         });

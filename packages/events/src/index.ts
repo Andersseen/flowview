@@ -13,8 +13,8 @@ export {
 } from "./parser.js";
 
 export {
-  FlowmarkDomError,
-  type FlowmarkDomDiagnostic,
-  type FlowmarkDomLocation,
+  FlowviewDomError,
+  type FlowviewDomDiagnostic,
+  type FlowviewDomLocation,
   locate,
 } from "./diagnostics.js";

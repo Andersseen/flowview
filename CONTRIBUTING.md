@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in Flowmark. This project is still early, so the best
+Thanks for your interest in flowview. This project is still early, so the best
 contributions are small, well-scoped changes that make the compiler easier to
 trust.
 
@@ -33,8 +33,8 @@ pnpm run demo
 
 ## Repository Layout
 
-- `crates/flowmark-compiler`: Rust compiler library
-- `crates/flowmark-cli`: Rust CLI
+- `crates/flowview-compiler`: Rust compiler library
+- `crates/flowview-cli`: Rust CLI
 - `packages/runtime`: TypeScript runtime helpers
 - `examples/astro-demo`: Astro demo site
 - `examples/basic`: small `.flow` examples

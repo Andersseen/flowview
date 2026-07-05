@@ -5,7 +5,7 @@ import compiledExample from "../snippets/events-compiled.html.txt?raw";
 ---
 
 <Layout
-  title="Flowmark Events compiler"
+  title="flowview Events compiler"
   description="Angular-style event binding syntax compiled for Astro pages."
 >
   <main class="grid gap-8 py-12 md:py-14">
@@ -13,7 +13,7 @@ import compiledExample from "../snippets/events-compiled.html.txt?raw";
       <p
         class="w-fit rounded-md border border-border bg-background px-3 py-1 text-sm font-bold uppercase tracking-normal text-muted-foreground"
       >
-        Flowmark Events
+        flowview Events
       </p>
       <h1
         class="max-w-4xl text-4xl font-black tracking-normal text-foreground md:text-6xl"
@@ -24,12 +24,12 @@ import compiledExample from "../snippets/events-compiled.html.txt?raw";
         The events compiler brings Angular's event-binding DX to plain Astro
         markup. Write handlers in a <code
           class="rounded-md border border-border bg-muted/45 px-1 py-0.5 text-[0.9em] text-foreground"
-          >&lt;script data-flowmark&gt;</code
+          >&lt;script data-flowview&gt;</code
         > block, use
         <code
           class="rounded-md border border-border bg-muted/45 px-1 py-0.5 text-[0.9em] text-foreground"
           >(event)="handler()"</code
-        > in the template, and Flowmark wires up native browser listeners for you
+        > in the template, and flowview wires up native browser listeners for you
         — no bundler tricks, no framework runtime.
       </p>
     </header>
@@ -83,7 +83,7 @@ import compiledExample from "../snippets/events-compiled.html.txt?raw";
           Click an action to see the compiled event handlers run.
         </p>
 
-        <script data-flowmark>
+        <script data-flowview>
           function save(event) {
             const output = document.querySelector("#event-output");
             const button = event.currentTarget;
@@ -208,8 +208,8 @@ import compiledExample from "../snippets/events-compiled.html.txt?raw";
           Validate handlers at build time
         </h2>
         <p class="text-muted-foreground">
-          Flowmark checks that every `(event)="handler()"` reference resolves to
-          a function declared in your `&lt;script data-flowmark&gt;` block — no
+          flowview checks that every `(event)="handler()"` reference resolves to
+          a function declared in your `&lt;script data-flowview&gt;` block — no
           manual wiring, no runtime surprises.
         </p>
       </article>

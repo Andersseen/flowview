@@ -1,0 +1,49 @@
+{
+  "name": "@flowview/compiler",
+  "version": "0.1.1",
+  "description": "WASM compiler for flowview templates.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andersseen/flowview.git",
+    "directory": "packages/compiler"
+  },
+  "bugs": {
+    "url": "https://github.com/andersseen/flowview/issues"
+  },
+  "homepage": "https://github.com/andersseen/flowview/tree/main/packages/compiler#readme",
+  "keywords": [
+    "flowview",
+    "compiler",
+    "template",
+    "wasm",
+    "html"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "pkg"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "pnpm run build:wasm && rm -f pkg/.gitignore && tsup",
+    "build:wasm": "wasm-pack build ../../crates/flowview-wasm --target nodejs --out-dir ../../packages/compiler/pkg --release",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.0.0"
+  }
+}

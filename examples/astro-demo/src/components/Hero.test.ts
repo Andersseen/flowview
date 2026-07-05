@@ -8,7 +8,7 @@ describe("Hero", () => {
     const html = await container.renderToString(Hero, {
       props: {
         context: {
-          title: "Flowmark",
+          title: "flowview",
           tagline: "HTML-like templates with modern control flow.",
           ctaPrimary: { text: "Get started", href: "#getting-started" },
           ctaSecondary: { text: "View on GitHub", href: "https://github.com" },
@@ -16,7 +16,7 @@ describe("Hero", () => {
       },
     });
 
-    expect(html).toContain("Flowmark");
+    expect(html).toContain("flowview");
     expect(html).toContain("HTML-like templates with modern control flow.");
     expect(html).toContain("Get started");
     expect(html).toContain('#getting-started"');
@@ -29,7 +29,7 @@ describe("Hero", () => {
     const html = await container.renderToString(Hero, {
       props: {
         context: {
-          title: "Flowmark",
+          title: "flowview",
           tagline: "Test tagline",
           ctaPrimary: { text: "Primary", href: "#primary" },
         },

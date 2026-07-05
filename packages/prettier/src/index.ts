@@ -8,11 +8,11 @@ const astroPlugin: Plugin =
   (astroPluginModule as unknown as Plugin);
 
 /**
- * Prettier plugin for Flowmark templates inside Astro files.
+ * Prettier plugin for flowview templates inside Astro files.
  *
  * It wraps prettier-plugin-astro so that `.astro` files format exactly as
- * before, except that `<template flowmark …>` regions are preserved
- * byte-for-byte. Flowmark control-flow syntax (`@if`, `@for`, `{{ … }}`) is
+ * before, except that `<template flowview …>` regions are preserved
+ * byte-for-byte. flowview control-flow syntax (`@if`, `@for`, `{{ … }}`) is
  * not HTML that Prettier understands, so reflowing it corrupts templates;
  * this plugin removes the need for `<!-- prettier-ignore -->` comments.
  *
@@ -33,7 +33,7 @@ interface AstroNode {
   };
 }
 
-function isFlowmarkTemplate(node: unknown): node is AstroNode {
+function isFlowviewTemplate(node: unknown): node is AstroNode {
   const candidate = node as AstroNode | null;
   return (
     typeof candidate === "object" &&
@@ -41,7 +41,7 @@ function isFlowmarkTemplate(node: unknown): node is AstroNode {
     candidate.type === "element" &&
     candidate.name === "template" &&
     Array.isArray(candidate.attributes) &&
-    candidate.attributes.some((attribute) => attribute.name === "flowmark")
+    candidate.attributes.some((attribute) => attribute.name === "flowview")
   );
 }
 
@@ -54,11 +54,11 @@ function rawSourceRange(node: AstroNode): [number, number] | undefined {
   return [start, end];
 }
 
-function hasFlowmarkAncestor(path: AstPath<unknown>): boolean {
+function hasFlowviewAncestor(path: AstPath<unknown>): boolean {
   for (let depth = 0; ; depth += 1) {
     const parent = path.getParentNode(depth);
     if (parent === null || parent === undefined) return false;
-    if (isFlowmarkTemplate(parent)) return true;
+    if (isFlowviewTemplate(parent)) return true;
   }
 }
 
@@ -67,7 +67,7 @@ const astroPrinter = astroPlugin.printers?.["astro"] as Printer<unknown>;
 /**
  * prettier-plugin-astro arms module-level state when it prints a
  * `<!-- prettier-ignore -->` comment and consumes it on the next node it
- * prints. If that next node is a Flowmark template we must delegate instead
+ * prints. If that next node is a flowview template we must delegate instead
  * of short-circuiting, so the Astro printer consumes its own flag (it
  * preserves the node verbatim anyway). Otherwise the armed flag leaks into
  * the next file formatted by the same process and crashes it.
@@ -92,12 +92,12 @@ function isPrecededByPrettierIgnore(path: AstPath<unknown>): boolean {
   return false;
 }
 
-const flowmarkAstroPrinter: Printer<unknown> = {
+const flowviewAstroPrinter: Printer<unknown> = {
   ...astroPrinter,
 
   print(path, options, print, args): Doc {
     const node = path.node as unknown;
-    if (isFlowmarkTemplate(node) && !isPrecededByPrettierIgnore(path)) {
+    if (isFlowviewTemplate(node) && !isPrecededByPrettierIgnore(path)) {
       const range = rawSourceRange(node);
       if (range !== undefined) {
         const raw = (options.originalText as string).slice(range[0], range[1]);
@@ -109,8 +109,8 @@ const flowmarkAstroPrinter: Printer<unknown> = {
 
   embed(path: AstPath<unknown>, options: Options) {
     // Never let the Astro printer format expressions or raw text inside a
-    // Flowmark region; the region is emitted verbatim by `print` above.
-    if (isFlowmarkTemplate(path.node) || hasFlowmarkAncestor(path)) {
+    // flowview region; the region is emitted verbatim by `print` above.
+    if (isFlowviewTemplate(path.node) || hasFlowviewAncestor(path)) {
       return null;
     }
     return astroPrinter.embed?.(path, options) ?? null;
@@ -124,7 +124,7 @@ const plugin: Plugin = {
   parsers: astroPlugin.parsers,
   printers: {
     ...astroPlugin.printers,
-    astro: flowmarkAstroPrinter,
+    astro: flowviewAstroPrinter,
   },
 };
 

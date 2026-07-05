@@ -1,11 +1,11 @@
 export const demoContext = {
   store: {
-    name: "Flowmark Gear",
+    name: "flowview Gear",
     currency: "$",
   },
   title: "Inventory Dashboard",
   description:
-    "A server-rendered product catalog built with Flowmark control flow inside Astro.",
+    "A server-rendered product catalog built with flowview control flow inside Astro.",
   products: [
     {
       id: 1,

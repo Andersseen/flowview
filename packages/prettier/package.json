@@ -1,9 +1,26 @@
 {
   "name": "@flowview/prettier",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.1.1",
+  "description": "Prettier plugin helpers for flowview templates in Astro files.",
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andersseen/flowview.git",
+    "directory": "packages/prettier"
+  },
+  "bugs": {
+    "url": "https://github.com/andersseen/flowview/issues"
+  },
+  "homepage": "https://github.com/andersseen/flowview/tree/main/packages/prettier#readme",
+  "keywords": [
+    "flowview",
+    "prettier",
+    "astro",
+    "template",
+    "formatter"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -13,6 +30,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "test": "vitest run",

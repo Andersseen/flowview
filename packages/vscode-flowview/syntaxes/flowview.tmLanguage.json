@@ -1,0 +1,151 @@
+{
+  "name": "flowview",
+  "scopeName": "source.flowview",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#escape" },
+    { "include": "#interpolation" },
+    { "include": "#control-keyword" },
+    { "include": "#control-expression" },
+    { "include": "#block" },
+    { "include": "text.html.basic" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.html.flowview",
+          "begin": "<!--",
+          "end": "-->"
+        }
+      ]
+    },
+    "escape": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.flowview",
+          "match": "\\\\[@{}\\\\]"
+        }
+      ]
+    },
+    "interpolation": {
+      "patterns": [
+        {
+          "name": "meta.interpolation.flowview",
+          "begin": "\\{\\{",
+          "beginCaptures": {
+            "0": { "name": "punctuation.section.embedded.begin.flowview" }
+          },
+          "end": "\\}\\}",
+          "endCaptures": {
+            "0": { "name": "punctuation.section.embedded.end.flowview" }
+          },
+          "patterns": [{ "include": "source.js" }]
+        }
+      ]
+    },
+    "control-keyword": {
+      "patterns": [
+        {
+          "match": "(@)(else if)\\b",
+          "captures": {
+            "1": { "name": "punctuation.definition.keyword.flowview" },
+            "2": { "name": "keyword.control.flowview" }
+          }
+        },
+        {
+          "match": "(@)(if)\\b",
+          "captures": {
+            "1": { "name": "punctuation.definition.keyword.flowview" },
+            "2": { "name": "keyword.control.flowview" }
+          }
+        },
+        {
+          "match": "(@)(else)\\b",
+          "captures": {
+            "1": { "name": "punctuation.definition.keyword.flowview" },
+            "2": { "name": "keyword.control.flowview" }
+          }
+        },
+        {
+          "match": "(@)(for)\\b",
+          "captures": {
+            "1": { "name": "punctuation.definition.keyword.flowview" },
+            "2": { "name": "keyword.control.flowview" }
+          }
+        },
+        {
+          "match": "(@)(empty)\\b",
+          "captures": {
+            "1": { "name": "punctuation.definition.keyword.flowview" },
+            "2": { "name": "keyword.control.flowview" }
+          }
+        },
+        {
+          "match": "(@)(switch)\\b",
+          "captures": {
+            "1": { "name": "punctuation.definition.keyword.flowview" },
+            "2": { "name": "keyword.control.flowview" }
+          }
+        },
+        {
+          "match": "(@)(case)\\b",
+          "captures": {
+            "1": { "name": "punctuation.definition.keyword.flowview" },
+            "2": { "name": "keyword.control.flowview" }
+          }
+        },
+        {
+          "match": "(@)(default)\\b",
+          "captures": {
+            "1": { "name": "punctuation.definition.keyword.flowview" },
+            "2": { "name": "keyword.control.flowview" }
+          }
+        }
+      ]
+    },
+    "control-expression": {
+      "name": "meta.control.expression.flowview",
+      "begin": "(?<=@(if|else if|for|switch|case)\\b)\\s*(\\()",
+      "end": "\\)",
+      "beginCaptures": {
+        "2": { "name": "punctuation.section.parens.begin.flowview" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.section.parens.end.flowview" }
+      },
+      "patterns": [
+        { "include": "#nested-parens" },
+        { "include": "#control-operator" },
+        { "include": "source.js" }
+      ]
+    },
+    "nested-parens": {
+      "begin": "\\(",
+      "end": "\\)",
+      "beginCaptures": {
+        "0": { "name": "punctuation.section.parens.begin.flowview" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.section.parens.end.flowview" }
+      },
+      "patterns": [{ "include": "#nested-parens" }, { "include": "source.js" }]
+    },
+    "control-operator": {
+      "match": "\\b(of|track)\\b",
+      "name": "keyword.operator.word.flowview"
+    },
+    "block": {
+      "name": "meta.block.flowview",
+      "begin": "\\{",
+      "beginCaptures": {
+        "0": { "name": "punctuation.section.block.begin.flowview" }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": { "name": "punctuation.section.block.end.flowview" }
+      },
+      "patterns": [{ "include": "$self" }]
+    }
+  }
+}

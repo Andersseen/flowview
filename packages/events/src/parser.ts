@@ -19,7 +19,7 @@ export type HandlerArgument =
   | { type: "event" }
   | { type: "element" };
 
-/** A top-level function declaration found in a `<script data-flowmark>` block. */
+/** A top-level function declaration found in a `<script data-flowview>` block. */
 export interface DeclaredFunction {
   name: string;
   offset: number;
@@ -27,7 +27,7 @@ export interface DeclaredFunction {
 
 const EVENT_NAME_RE = /^[\w-]+$/;
 
-const SOURCE_FILENAME = "flowmark-script.ts";
+const SOURCE_FILENAME = "flowview-script.ts";
 
 function parseSourceFile(source: string): ts.SourceFile {
   return ts.createSourceFile(
@@ -273,7 +273,7 @@ function parseCallShape(source: string): {
   const nameStart = index;
   if (!isIdentifierStart(source[index])) {
     throw new Error(
-      `Flowmark event handler must be a function call, got "${source}".`,
+      `flowview event handler must be a function call, got "${source}".`,
     );
   }
   index = readIdentifier(source, index);
@@ -282,7 +282,7 @@ function parseCallShape(source: string): {
 
   if (source[index] !== "(") {
     throw new Error(
-      `Flowmark event handler "${name}" must be called with parentheses.`,
+      `flowview event handler "${name}" must be called with parentheses.`,
     );
   }
   index += 1;
@@ -306,7 +306,7 @@ function parseCallShape(source: string): {
 
   if (parenDepth !== 0) {
     throw new Error(
-      `Flowmark event handler "${name}" has unbalanced parentheses.`,
+      `flowview event handler "${name}" has unbalanced parentheses.`,
     );
   }
 
@@ -316,7 +316,7 @@ function parseCallShape(source: string): {
 
   if (index !== source.length) {
     throw new Error(
-      `Flowmark event handler "${name}" has unexpected trailing content: "${source.slice(index)}".`,
+      `flowview event handler "${name}" has unexpected trailing content: "${source.slice(index)}".`,
     );
   }
 
@@ -343,7 +343,7 @@ function parseArgumentList(
       index += 1;
     } else if (index < argsSource.length) {
       throw new Error(
-        `Flowmark event handler arguments must be separated by commas, got "${argsSource.slice(index)}".`,
+        `flowview event handler arguments must be separated by commas, got "${argsSource.slice(index)}".`,
       );
     }
   }
@@ -365,13 +365,13 @@ function parseArgument(
 
   if (char === "`") {
     throw new Error(
-      `Flowmark event handler argument template literals are not supported at ${offset}.`,
+      `flowview event handler argument template literals are not supported at ${offset}.`,
     );
   }
 
   if (char === "[" || char === "{" || char === "(") {
     throw new Error(
-      `Flowmark event handler argument must be a simple literal or $event/$el at ${offset}.`,
+      `flowview event handler argument must be a simple literal or $event/$el at ${offset}.`,
     );
   }
 
@@ -388,12 +388,12 @@ function parseArgument(
     if (identifier === "$event") return { type: "event" };
     if (identifier === "$el") return { type: "element" };
     throw new Error(
-      `Flowmark event handler argument "${identifier}" is not supported at ${offset}.`,
+      `flowview event handler argument "${identifier}" is not supported at ${offset}.`,
     );
   }
 
   throw new Error(
-    `Flowmark event handler argument is invalid at ${offset}: "${source[start]}".`,
+    `flowview event handler argument is invalid at ${offset}: "${source[start]}".`,
   );
 }
 
@@ -412,7 +412,7 @@ function argEnd(source: string, start: number): number {
   return index;
 }
 
-/** Enumerates top-level function declarations in a `<script data-flowmark>` block. */
+/** Enumerates top-level function declarations in a `<script data-flowview>` block. */
 export function extractFunctionDeclarations(
   source: string,
 ): DeclaredFunction[] {
@@ -439,7 +439,7 @@ export function extractFunctionDeclarations(
 
 /**
  * Names declared via `const name = () => {}` or `const name = function () {}`
- * instead of a function declaration. Flowmark Events only supports handlers
+ * instead of a function declaration. flowview Events only supports handlers
  * declared with `function name() {}`; this lets callers point at the
  * unsupported form instead of reporting a generic "not found" diagnostic.
  */

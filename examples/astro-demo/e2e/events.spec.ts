@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// Phase 4 hardening for Flowmark Events v2 (delegated runtime + scopes).
+// Phase 4 hardening for flowview Events v2 (delegated runtime + scopes).
 // Each test targets a specific defect the v1 architecture had.
 
 test("routes colliding handler names to the right component scope", async ({

@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a reproducible Flowmark bug
+about: Report a reproducible flowview bug
 title: "bug: "
 labels: bug
 ---
@@ -19,7 +19,7 @@ labels: bug
 
 ## Environment
 
-- Flowmark version or commit:
+- flowview version or commit:
 - Node.js version:
 - Rust version:
 - Operating system:
