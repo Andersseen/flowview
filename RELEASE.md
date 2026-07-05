@@ -5,7 +5,7 @@ This monorepo uses [Changesets](https://github.com/changesets/changesets) to man
 ## Quick scripts from root
 
 ```bash
-# Primary: publish npm packages (@flowview/runtime + @flowview/vite)
+# Primary: publish npm packages (@flowview/runtime + @flowview/events + @flowview/vite)
 pnpm run publish:npm
 
 # Optional: publish Rust crates (flowmark-compiler + flowmark-cli)
@@ -21,12 +21,13 @@ cd /Users/andriipap/Andersseen/Web/Projects/flowmark
 pnpm run publish:npm
 ```
 
-This builds runtime/vite and runs `changeset publish`, which publishes the current `0.1.0` versions.
+This builds runtime/events/vite and runs `changeset publish`, which publishes the current versions.
 
 Verify with:
 
 ```bash
 npm view @flowview/runtime version
+npm view @flowview/events version
 npm view @flowview/vite version
 ```
 

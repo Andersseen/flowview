@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@astrojs/compiler": "^2.13.1",
-    "@flowview/dom": "workspace:*",
+    "@flowview/events": "workspace:*",
     "magic-string": "^0.30.0"
   },
   "devDependencies": {
@@ -34,6 +34,6 @@
   },
   "peerDependencies": {
     "astro": "^5.0.0",
-    "@flowview/dom": "workspace:*"
+    "@flowview/events": "workspace:*"
   }
 }

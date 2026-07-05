@@ -134,7 +134,7 @@ Tareas:
 5. Publicar 0.1.0 de ambos y verificar instalación limpia en un proyecto
    temporal fuera del monorepo (`npm i <scope>/runtime` y compilar un `.flow`
    con `FLOWMARK_COMPILER_PATH` apuntando al binario local).
-6. (Opcional, misma fase si sobra tiempo) publicar también `@flowview/dom`,
+6. (Opcional, misma fase si sobra tiempo) publicar también `@flowview/events`,
    `astro` y `astro-events` — mismo checklist.
 
 **Hecho cuando**: `npm view <scope>/runtime version` devuelve 0.1.0 y el
@@ -213,7 +213,7 @@ Sin orden; cada punto cabe en una sesión corta:
   (tipo del contexto) junto al `.js` — elimina los casts manuales de Fase 2.
 - **`flowmark build`**: subcomando CLI con globs + `--watch`, para consumidores
   sin Vite (haría trivial la vía de la Fase 1 para terceros).
-- **Eventos fuera de Astro**: integración genérica de `@flowview/dom` (plugin
+- **Eventos fuera de Astro**: integración genérica de `@flowview/events` (plugin
   vite u opción del compilador) para poder usar bindings de eventos en
   dev-auth en vez de `<script>` manuales.
 - **Plugin esbuild**: alternativa al de Vite para proyectos wrangler puros.

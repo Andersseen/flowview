@@ -91,7 +91,7 @@ const title = "Hello";
     expect(result?.code).toContain('data-flow-on-click="save"');
     expect(result?.code).toMatch(/data-flow-scope="[0-9a-f]{12}"/);
     expect(result?.code).toContain(
-      'import { registerFlowHandlers } from "@flowview/dom/runtime";',
+      'import { registerFlowHandlers } from "@flowview/events/runtime";',
     );
     expect(result?.code).toContain("registerFlowHandlers(");
     expect(result?.code).toContain("function save(event)");

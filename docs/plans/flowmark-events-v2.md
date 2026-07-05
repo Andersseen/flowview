@@ -17,17 +17,17 @@ CSP problems); Flowmark Events resolves everything at build time.
 
 Files:
 
-- `packages/dom/src/parser.ts` — scans template HTML for `(event)="expr"`
+- `packages/events/src/parser.ts` — scans template HTML for `(event)="expr"`
   bindings (`findEventBindings`, solid, keep it); extracts **function
   declarations from Astro frontmatter as text**
   (`extractFrontmatterFunctions`); rejects functions that capture outer
   variables using the TypeScript compiler API (`analyzeAllCaptures`).
-- `packages/dom/src/compiler.ts` — `compileEvents()`: validates bindings,
+- `packages/events/src/compiler.ts` — `compileEvents()`: validates bindings,
   rewrites them to `data-flow-on-<event>="handlerName"` +
   `data-flow-args="[...json...]"` attributes, and generates a client module
   that RE-DECLARES the extracted frontmatter functions and calls
   `bindFlowEvents({...})`.
-- `packages/dom/src/runtime/index.ts` — `bindFlowEvents()`: scans the whole
+- `packages/events/src/runtime/index.ts` — `bindFlowEvents()`: scans the whole
   document, attaches one native listener per element/event, marks elements
   with `data-flow-bound`.
 - `packages/astro-events/src/index.ts` — Vite plugin (`enforce: "pre"`) that
@@ -39,8 +39,8 @@ Files:
   `examples/astro-demo/src/snippets/events-author.astro.txt` and
   `home-events.astro.txt`, integration registered in
   `examples/astro-demo/astro.config.mjs`.
-- Tests: `packages/dom/src/index.test.ts` (~30), 
-  `packages/dom/src/runtime/index.test.ts` (~13),
+- Tests: `packages/events/src/index.test.ts` (~30), 
+  `packages/events/src/runtime/index.test.ts` (~13),
   `packages/astro-events/src/index.test.ts` (~10).
 
 ## Why v1 must change (defects, verified by reading the code)
@@ -105,20 +105,20 @@ ever crosses the server/client boundary:
    `data-flow-on-click="save" data-flow-scope="<scopeId>"` plus
    `data-flow-args` exactly as v1 does (`$event`, `$el`, JSON literals —
    keep `serializeArguments` and `escapeHtmlAttribute` from
-   `packages/dom/src/compiler.ts` as-is).
+   `packages/events/src/compiler.ts` as-is).
 3. Transform the `<script flowmark>` block: remove the `flowmark` attribute,
    and append two lines at the end of its content (ES imports are hoisted, so
    appending keeps user line numbers stable for sourcemaps):
 
    ```js
-   import { registerFlowHandlers } from "@flowview/dom/runtime";
+   import { registerFlowHandlers } from "@flowview/events/runtime";
    registerFlowHandlers("<scopeId>", { save, removeItem }, ["click"]);
    ```
 
    The third argument is the sorted, de-duplicated list of event names
    actually used in this file's bindings.
 4. Validation (compile errors with located diagnostics, reuse `locate()` from
-   `packages/dom/src/diagnostics.ts`):
+   `packages/events/src/diagnostics.ts`):
    - binding references a name not declared as a top-level function
      declaration in the `<script flowmark>` block;
    - the same function name declared twice;
@@ -178,8 +178,8 @@ export function registerFlowHandlers(
 
 ### Phase 1 — Delegated runtime with scopes
 
-**Touches only** `packages/dom/src/runtime/index.ts` and
-`packages/dom/src/runtime/index.test.ts`.
+**Touches only** `packages/events/src/runtime/index.ts` and
+`packages/events/src/runtime/index.test.ts`.
 
 Tasks:
 
@@ -199,13 +199,13 @@ Tasks:
    after registration still firing, (c) focus delegation via capture,
    (d) unbind removing only its scope.
 
-Exit criteria: `pnpm --filter @flowview/dom test` green;
-`pnpm --filter @flowview/dom typecheck` green; no changes outside the two
+Exit criteria: `pnpm --filter @flowview/events test` green;
+`pnpm --filter @flowview/events typecheck` green; no changes outside the two
 files.
 
 ### Phase 2 — `<script flowmark>` compile path
 
-**Touches** `packages/dom/src/parser.ts`, `packages/dom/src/compiler.ts`,
+**Touches** `packages/events/src/parser.ts`, `packages/events/src/compiler.ts`,
 `packages/astro-events/src/index.ts`, and their test files.
 
 Tasks:
@@ -213,7 +213,7 @@ Tasks:
 1. In `packages/astro-events`, locate the `<script flowmark>` element via the
    already-parsed `@astrojs/compiler` AST (element named `script` with an
    attribute named `flowmark`). Extract its content and source offsets.
-2. New compiler entry point in `packages/dom` (keep `compileEvents` for the
+2. New compiler entry point in `packages/events` (keep `compileEvents` for the
    legacy path): given template + script content, enumerate top-level
    function declarations with `ts.createSourceFile` (reuse the traversal
    patterns from `extractFrontmatterFunctions`, but WITHOUT extraction —
@@ -240,8 +240,8 @@ legacy path still passes its existing tests untouched.
 
 ### Phase 3 — Migrate demo, remove the legacy path
 
-**Touches** `examples/astro-demo/**`, `packages/dom/src/parser.ts`,
-`packages/dom/src/compiler.ts`, `packages/dom/src/index.ts`,
+**Touches** `examples/astro-demo/**`, `packages/events/src/parser.ts`,
+`packages/events/src/compiler.ts`, `packages/events/src/index.ts`,
 `packages/astro-events/src/index.ts`, README.md, docs/flowmark-spec.md.
 
 Tasks:
@@ -284,7 +284,7 @@ Exit criteria: `pnpm run test:e2e:demo` green in CI.
 Server-value arguments bridging both compilers:
 `(click)="removeItem({{ item.id }})"` inside a Flowmark `@for` — the HTML
 compiler interpolates the serialized value into `data-flow-args`. Requires
-coordinated changes in `flowmark-compiler` and `@flowview/dom`; design
+coordinated changes in `flowmark-compiler` and `@flowview/events`; design
 separately once Phases 1-4 ship.
 
 ## Decisions already made (do not re-litigate mid-phase)

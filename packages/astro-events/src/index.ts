@@ -12,7 +12,7 @@ import {
   findEventBindings,
   FlowmarkDomError,
   type FlowmarkDomDiagnostic,
-} from "@flowview/dom";
+} from "@flowview/events";
 import type { AstroIntegration } from "astro";
 import type { Plugin } from "vite";
 
@@ -54,7 +54,7 @@ export default function flowmarkEvents(
 }
 
 function flowmarkEventsVitePlugin(options: FlowmarkAstroEventsOptions): Plugin {
-  const runtimeImport = options.runtimeImport ?? "@flowview/dom/runtime";
+  const runtimeImport = options.runtimeImport ?? "@flowview/events/runtime";
 
   return {
     name: "@flowview/astro-events:transform",

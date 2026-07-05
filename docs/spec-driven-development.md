@@ -55,7 +55,7 @@ let you write modern template syntax and get plain, dependency-free output:
    Cloudflare Workers, Astro, static generation.
 
 2. **The Events compiler** ("Flowmark Events", TypeScript,
-   `packages/dom` + `packages/astro-events`): lets you write Angular-style
+   `packages/events` + `packages/astro-events`): lets you write Angular-style
    event bindings (`<button (click)="save($event)">`) in Astro files.
    It compiles them into `data-flow-on-*` attributes plus a tiny client
    module that binds real `addEventListener` calls. No framework runtime.
@@ -107,7 +107,7 @@ flowmark/
 │   │                             # <template flowmark={...} is:raw>
 │   │                             # regions in .astro (uses official Astro
 │   │                             # parser; emits source maps)
-│   ├── dom/                      # @flowview/dom: Events compiler core
+│   ├── dom/                      # @flowview/events: Events compiler core
 │   │   └── src/
 │   │       ├── parser.ts         # event-attribute scanner + frontmatter
 │   │       │                     # function extraction (TypeScript AST) +
@@ -134,9 +134,9 @@ Key data flows:
   Astro parser finds `<template flowmark is:raw>` → region compiled through
   the same Rust pipeline → content-addressed virtual module + source map.
 - **`(click)="save($event)"` in Astro:** `@flowview/astro-events` →
-  `@flowview/dom` compiler → template rewritten with `data-flow-on-*` →
+  `@flowview/events` compiler → template rewritten with `data-flow-on-*` →
   client module generated from frontmatter `function` declarations →
-  `@flowview/dom/runtime` binds listeners once per element/event.
+  `@flowview/events/runtime` binds listeners once per element/event.
 
 ---
 
@@ -316,7 +316,7 @@ contract.
 ship broken client code. Correctness of diagnostics is a core promise.
 
 **What:** Use the TypeScript AST (already a dependency of
-`packages/dom/src/parser.ts`) for real lexical scope analysis: an
+`packages/events/src/parser.ts`) for real lexical scope analysis: an
 identifier is a capture **iff** it resolves to a frontmatter binding
 outside the handler and is not a declared parameter/local. Unknown
 identifiers that don't resolve to frontmatter bindings are _not_ errors
@@ -328,7 +328,7 @@ functions, `import`ed frontmatter values (must error), `const` frontmatter
 data used in a handler (must error) → replace `KNOWN_GLOBALS` logic with
 scope resolution → keep diagnostic wording and locations stable.
 
-**Exit checks:** `pnpm --filter @flowview/dom test`,
+**Exit checks:** `pnpm --filter @flowview/events test`,
 `pnpm --filter @flowview/astro-events test`, `pnpm run typecheck`.
 No allowlist sets remain in `parser.ts`.
 
@@ -409,7 +409,7 @@ positions for both `.flow` and embedded templates.
 - Test at the **lowest layer that can express the behavior**: parsing and
   codegen in `crates/flowmark-compiler` unit tests; escaping in
   `packages/runtime`; transform wiring in `packages/vite`/`astro`; event
-  semantics in `packages/dom`; integration slicing in
+  semantics in `packages/events`; integration slicing in
   `packages/astro-events`; end-to-end only in `examples/`.
 - Bug fix ⇒ regression test that fails before the fix, in the same commit.
 - Prefer tests that **execute generated code** and assert on rendered
@@ -430,7 +430,7 @@ positions for both `.flow` and embedded templates.
 | Runtime only          | `pnpm --filter @flowview/runtime test`                  |
 | Vite plugin           | `pnpm --filter @flowview/vite test`                     |
 | Astro integration     | `pnpm --filter @flowview/astro test`                    |
-| Events core           | `pnpm --filter @flowview/dom test`                      |
+| Events core           | `pnpm --filter @flowview/events test`                      |
 | Events Astro          | `pnpm --filter @flowview/astro-events test`             |
 | Demo gate             | `pnpm --filter @flowview/astro-demo run check`          |
 

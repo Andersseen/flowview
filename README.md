@@ -46,7 +46,7 @@ reliable.
 - A tiny TypeScript runtime package: `@flowview/runtime`
 - A Vite plugin: `@flowview/vite`
 - An Astro integration: `@flowview/astro`
-- A separate events compiler: Flowmark Events (`@flowview/dom`, `@flowview/astro-events`)
+- A separate events compiler: Flowmark Events (`@flowview/events`, `@flowview/astro-events`)
 - A Prettier plugin: `@flowview/prettier` (formats `.astro` files while preserving Flowmark regions)
 - A framework-agnostic template experiment
 - A monorepo with a working Astro demo
@@ -279,7 +279,7 @@ pnpm run test:e2e:demo
 
 Flowmark Events is the separate compiler and Astro integration for Angular-style
 event bindings such as `(click)="save($event)"`. It is not part of the core HTML
-compiler. The implementation packages are currently named `@flowview/dom` and
+compiler. The implementation packages are currently named `@flowview/events` and
 `@flowview/astro-events`.
 
 Handlers are declared in a `<script data-flowmark>` block, which is ordinary
@@ -305,7 +305,7 @@ At build time, `@flowview/astro-events` validates that every `(event)="handler()
 binding resolves to a function declared in that block, rewrites the bindings to
 `data-flow-on-<event>` / `data-flow-scope` / `data-flow-args` attributes, and
 appends a `registerFlowHandlers(scope, handlers, events)` call to the script.
-The runtime (`@flowview/dom/runtime`) attaches one delegated `document`
+The runtime (`@flowview/events/runtime`) attaches one delegated `document`
 listener per event type and resolves the handler at dispatch time, so elements
 added to the DOM later (view transitions, `@for` re-renders) work without
 rebinding. `data-flowmark` (not `flowmark`) is required because `<script>`

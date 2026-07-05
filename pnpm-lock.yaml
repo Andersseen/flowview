@@ -44,9 +44,9 @@ importers:
       '@flowview/astro-events':
         specifier: workspace:*
         version: link:../../packages/astro-events
-      '@flowview/dom':
+      '@flowview/events':
         specifier: workspace:*
-        version: link:../../packages/dom
+        version: link:../../packages/events
       '@flowview/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
@@ -112,9 +112,9 @@ importers:
       '@astrojs/compiler':
         specifier: ^2.13.1
         version: 2.13.1
-      '@flowview/dom':
+      '@flowview/events':
         specifier: workspace:*
-        version: link:../dom
+        version: link:../events
       magic-string:
         specifier: ^0.30.0
         version: 0.30.21
@@ -138,7 +138,7 @@ importers:
         specifier: ^3.0.0
         version: 3.2.6(@types/debug@4.1.13)(@types/node@26.0.0)(jiti@2.7.0)(jsdom@26.1.0)(lightningcss@1.32.0)(yaml@2.9.0)
 
-  packages/dom:
+  packages/events:
     dependencies:
       typescript:
         specifier: ^5.9.0

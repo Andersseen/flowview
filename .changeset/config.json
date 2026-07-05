@@ -9,7 +9,6 @@
   "updateInternalDependencies": "patch",
   "ignore": [
     "@flowview/astro-demo",
-    "@flowview/dom",
     "@flowview/astro",
     "@flowview/astro-events",
     "@flowview/prettier",

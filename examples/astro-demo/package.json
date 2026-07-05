@@ -21,7 +21,7 @@
     "@andersseen/web-components": "^0.0.8",
     "@flowview/astro": "workspace:*",
     "@flowview/astro-events": "workspace:*",
-    "@flowview/dom": "workspace:*",
+    "@flowview/events": "workspace:*",
     "@flowview/runtime": "workspace:*",
     "astro": "^5.7.10"
   },

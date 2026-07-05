@@ -36,7 +36,7 @@ Estructura:
   también `compileFlowmark()`, `resolveCompilerPath()`, `clearCompileCache()`.
   Tiene `client.d.ts` para tipar imports `.flow` (solo vía Vite).
 - `packages/astro` / `packages/astro-events` — integraciones Astro.
-- `packages/dom` (`@flowview/dom`) — compilador/runtime de eventos
+- `packages/events` (`@flowview/events`) — compilador/runtime de eventos
   (`compileScriptEvents`, `findEventBindings`...). **Solo tiene integración
   para Astro** (`astro-events`); no hay vía genérica Vite/esbuild para eventos.
 - `packages/prettier`, `packages/vscode-flowmark` — tooling.
@@ -113,7 +113,7 @@ Ruta: `/Users/andriipap/Andersseen/Web/Projects/devflare/apps/dev-auth`
   `--runtime ./ruta-local` es un atajo válido.
 - Vía precompilada: no se genera `.d.ts` (el `client.d.ts` del plugin solo
   cubre imports `.flow` en Vite) → declarar tipos a mano o generar `.d.ts`.
-- Eventos (`@flowview/dom`) fuera de Astro: no soportado; en dev-auth se sigue
+- Eventos (`@flowview/events`) fuera de Astro: no soportado; en dev-auth se sigue
   con `<script>` normales de momento.
 
 ## Rutas de referencia rápidas

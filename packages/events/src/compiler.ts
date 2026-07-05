@@ -12,7 +12,7 @@ import {
   type HandlerArgument,
 } from "./parser.js";
 
-const DEFAULT_RUNTIME_IMPORT = "@flowview/dom/runtime";
+const DEFAULT_RUNTIME_IMPORT = "@flowview/events/runtime";
 
 export interface CompileScriptEventsRequest {
   filename: string;
