@@ -1,6 +1,6 @@
 {
   "name": "@flowview/vite-events",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "sideEffects": false,
   "description": "flowview Events plugin for plain Vite projects (no Astro required).",
