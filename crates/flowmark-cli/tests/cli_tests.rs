@@ -7,7 +7,7 @@ fn cli_compiles_valid_template() {
     cmd.arg("compile")
         .arg("-")
         .arg("--runtime")
-        .arg("@flowmark/runtime")
+        .arg("@flowview/runtime")
         .write_stdin("<h1>{{ context.title }}</h1>");
     let output = cmd.output().unwrap();
     let stdout = str::from_utf8(&output.stdout).unwrap();
@@ -53,7 +53,7 @@ fn cli_writes_output_to_file() {
         .arg("--out")
         .arg(&output)
         .arg("--runtime")
-        .arg("@flowmark/runtime");
+        .arg("@flowview/runtime");
     let result = cmd.output().unwrap();
     assert!(
         result.status.success(),

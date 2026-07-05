@@ -1,5 +1,5 @@
 {
-  "name": "@flowmark/astro-demo",
+  "name": "@flowview/astro-demo",
   "type": "module",
   "version": "0.1.0",
   "private": true,
@@ -19,10 +19,10 @@
     "@andersseen/layout": "^0.0.1",
     "@andersseen/motion": "^0.1.1",
     "@andersseen/web-components": "^0.0.8",
-    "@flowmark/astro": "workspace:*",
-    "@flowmark/astro-events": "workspace:*",
-    "@flowmark/dom": "workspace:*",
-    "@flowmark/runtime": "workspace:*",
+    "@flowview/astro": "workspace:*",
+    "@flowview/astro-events": "workspace:*",
+    "@flowview/dom": "workspace:*",
+    "@flowview/runtime": "workspace:*",
     "astro": "^5.7.10"
   },
   "devDependencies": {

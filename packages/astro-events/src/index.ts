@@ -12,7 +12,7 @@ import {
   findEventBindings,
   FlowmarkDomError,
   type FlowmarkDomDiagnostic,
-} from "@flowmark/dom";
+} from "@flowview/dom";
 import type { AstroIntegration } from "astro";
 import type { Plugin } from "vite";
 
@@ -40,7 +40,7 @@ export default function flowmarkEvents(
   options: FlowmarkAstroEventsOptions = {},
 ): AstroIntegration {
   return {
-    name: "@flowmark/astro-events",
+    name: "@flowview/astro-events",
     hooks: {
       "astro:config:setup": ({ updateConfig }) => {
         updateConfig({
@@ -54,16 +54,16 @@ export default function flowmarkEvents(
 }
 
 function flowmarkEventsVitePlugin(options: FlowmarkAstroEventsOptions): Plugin {
-  const runtimeImport = options.runtimeImport ?? "@flowmark/dom/runtime";
+  const runtimeImport = options.runtimeImport ?? "@flowview/dom/runtime";
 
   return {
-    name: "@flowmark/astro-events:transform",
+    name: "@flowview/astro-events:transform",
     enforce: "pre",
 
     configResolved(config) {
       const plugins = config.plugins as Plugin[];
       const ownIndex = plugins.findIndex(
-        (plugin) => plugin.name === "@flowmark/astro-events:transform",
+        (plugin) => plugin.name === "@flowview/astro-events:transform",
       );
       const astroIndex = plugins.findIndex(
         (plugin) => plugin.name === "astro:build",

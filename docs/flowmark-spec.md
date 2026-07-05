@@ -307,7 +307,7 @@ v1 includes basic editor support:
 
 - `.flow` syntax highlighting.
 - Snippets for `@if`, `@for`, `@empty`, and `@switch`.
-- A Prettier plugin (`@flowmark/prettier`) that wraps prettier-plugin-astro
+- A Prettier plugin (`@flowview/prettier`) that wraps prettier-plugin-astro
   and preserves Flowmark template regions byte-for-byte, so no
   `prettier-ignore` comments are needed.
 - Embedded highlighting for `<template flowmark is:raw>` inside `.astro`.

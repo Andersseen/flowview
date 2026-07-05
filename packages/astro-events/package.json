@@ -1,5 +1,5 @@
 {
-  "name": "@flowmark/astro-events",
+  "name": "@flowview/astro-events",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@astrojs/compiler": "^2.13.1",
-    "@flowmark/dom": "workspace:*",
+    "@flowview/dom": "workspace:*",
     "magic-string": "^0.30.0"
   },
   "devDependencies": {
@@ -34,6 +34,6 @@
   },
   "peerDependencies": {
     "astro": "^5.0.0",
-    "@flowmark/dom": "workspace:*"
+    "@flowview/dom": "workspace:*"
   }
 }

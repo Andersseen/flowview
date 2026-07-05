@@ -13,7 +13,7 @@ describe("GettingStarted", () => {
           steps: [
             {
               label: "Install",
-              code: "npm install @flowmark/astro",
+              code: "npm install @flowview/astro",
               description: "Install the package.",
             },
             {
@@ -29,7 +29,7 @@ describe("GettingStarted", () => {
     expect(html).toContain("Get started");
     expect(html).toContain("Add Flowmark to your project.");
     expect(html).toContain("Install");
-    expect(html).toContain("npm install @flowmark/astro");
+    expect(html).toContain("npm install @flowview/astro");
     expect(html).toContain("Configure");
     expect(html).toContain("integrations: [flowmark()]");
     expect(html).toContain("bash");

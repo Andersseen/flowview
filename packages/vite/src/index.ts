@@ -46,11 +46,11 @@ interface FlowmarkCompileResult {
 const compileCache = new Map<string, Promise<FlowmarkCompileResult>>();
 
 export default function flowmark(options: FlowmarkViteOptions = {}): Plugin {
-  const runtimeImport = options.runtimeImport ?? "@flowmark/runtime";
+  const runtimeImport = options.runtimeImport ?? "@flowview/runtime";
   const compilerPath = resolveCompilerPath(options.compilerPath);
 
   return {
-    name: "@flowmark/vite",
+    name: "@flowview/vite",
     enforce: "pre",
 
     configResolved() {

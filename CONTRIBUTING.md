@@ -64,7 +64,7 @@ For language and Astro integration changes, also run:
 
 ```sh
 pnpm run build:demo
-pnpm --filter @flowmark/astro-demo run test:unit
+pnpm --filter @flowview/astro-demo run test:unit
 pnpm run test:e2e:demo
 ```
 
@@ -72,6 +72,6 @@ Playwright browser binaries are not committed. Install them locally before
 running the demo end-to-end suite:
 
 ```sh
-pnpm --filter @flowmark/astro-demo exec playwright install chromium
-pnpm --filter @flowmark/astro-demo run test:e2e
+pnpm --filter @flowview/astro-demo exec playwright install chromium
+pnpm --filter @flowview/astro-demo run test:e2e
 ```

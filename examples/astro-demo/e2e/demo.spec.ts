@@ -48,7 +48,7 @@ test("renders the Flowmark control flow page", async ({ page }) => {
     page.getByRole("heading", { name: "Get started" }),
   ).toBeVisible();
   await expect(
-    page.getByText("npm install @flowmark/astro @flowmark/runtime"),
+    page.getByText("npm install @flowview/astro @flowview/runtime"),
   ).toBeVisible();
   await expect(page.locator("footer")).toContainText("Flowmark");
 });

@@ -10,13 +10,13 @@ export const gettingStartedContext: GettingStartedContext = {
   steps: [
     {
       label: "Install",
-      code: "npm install @flowmark/astro @flowmark/runtime",
+      code: "npm install @flowview/astro @flowview/runtime",
       description: "Add the Astro integration and runtime to your project.",
       className: "bento-install",
     },
     {
       label: "Configure",
-      code: `import flowmark from "@flowmark/astro";
+      code: `import flowmark from "@flowview/astro";
 
 export default defineConfig({
   integrations: [flowmark()],

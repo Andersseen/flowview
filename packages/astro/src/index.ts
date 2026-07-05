@@ -9,7 +9,7 @@ import flowmarkVite, {
   compileFlowmark,
   resolveCompilerPath,
   type FlowmarkViteOptions,
-} from "@flowmark/vite";
+} from "@flowview/vite";
 import type { AstroIntegration } from "astro";
 import MagicString from "magic-string";
 import type { Plugin } from "vite";
@@ -53,7 +53,7 @@ export default function flowmark(
   options: FlowmarkAstroOptions = {},
 ): AstroIntegration {
   return {
-    name: "@flowmark/astro",
+    name: "@flowview/astro",
     hooks: {
       "astro:config:setup": ({ updateConfig }) => {
         updateConfig({
@@ -67,19 +67,19 @@ export default function flowmark(
 }
 
 function flowmarkAstroPlugin(options: FlowmarkAstroOptions): Plugin {
-  const runtimeImport = options.runtimeImport ?? "@flowmark/runtime";
+  const runtimeImport = options.runtimeImport ?? "@flowview/runtime";
   const compilerPath = resolveCompilerPath(options.compilerPath);
   const virtualModules = new Map<string, VirtualTemplate>();
   const virtualIdsByFile = new Map<string, Set<string>>();
 
   return {
-    name: "@flowmark/astro:embedded",
+    name: "@flowview/astro:embedded",
     enforce: "pre",
 
     configResolved(config) {
       const plugins = config.plugins as Plugin[];
       const ownIndex = plugins.findIndex(
-        (plugin) => plugin.name === "@flowmark/astro:embedded",
+        (plugin) => plugin.name === "@flowview/astro:embedded",
       );
       const astroIndex = plugins.findIndex(
         (plugin) => plugin.name === "astro:build",

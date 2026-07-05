@@ -31,7 +31,7 @@ describe("compileScriptEvents", () => {
     expect(html).toContain('data-flow-scope="abc123"');
     expect(result.events).toEqual(["click"]);
     expect(result.scriptAppend).toContain(
-      'import { registerFlowHandlers } from "@flowmark/dom/runtime";',
+      'import { registerFlowHandlers } from "@flowview/dom/runtime";',
     );
     expect(result.scriptAppend).toContain(
       'registerFlowHandlers("abc123", { save }, ["click"]);',

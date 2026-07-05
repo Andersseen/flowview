@@ -25,7 +25,7 @@ const TEMPLATE = `<template flowmark={context} is:raw>
   </ol>
 </template>`;
 
-describe("@flowmark/prettier", () => {
+describe("@flowview/prettier", () => {
   it("preserves flowmark template regions byte-for-byte", async () => {
     const source = `---
 const context = { releases: [] };

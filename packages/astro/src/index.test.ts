@@ -18,7 +18,7 @@ function createEmbeddedPlugin(): Plugin {
   });
 
   const plugin = plugins.find(
-    (candidate) => candidate.name === "@flowmark/astro:embedded",
+    (candidate) => candidate.name === "@flowview/astro:embedded",
   );
   if (plugin === undefined) {
     throw new Error("Flowmark embedded plugin was not registered");

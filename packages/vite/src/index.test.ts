@@ -16,7 +16,7 @@ describe("compileFlowmark", () => {
   it("compiles stdin without temporary files", async () => {
     const { code } = await compileFlowmark("<p>Hello {{ context.name }}</p>", {
       filename: "greeting.flow",
-      runtimeImport: "@flowmark/runtime",
+      runtimeImport: "@flowview/runtime",
       compilerPath,
     });
 
@@ -31,7 +31,7 @@ describe("compileFlowmark", () => {
       compileFlowmark("@if () { <p>Invalid</p> }", {
         filename: "component.astro",
         lineOffset: 11,
-        runtimeImport: "@flowmark/runtime",
+        runtimeImport: "@flowview/runtime",
         compilerPath,
       }),
     ).rejects.toMatchObject({
@@ -50,7 +50,7 @@ describe("compileFlowmark", () => {
       "@if (context.visible) {<p>{{ context.label }}</p>} @else {<p>hidden</p>}@for (item of context.items; track item.id) {<span>{{ item.name }}</span>} @empty {<span>empty</span>}@switch (context.status) {@case ('ready') {<strong>ready</strong>}@default {<strong>other</strong>}}",
       {
         filename: "control-flow.flow",
-        runtimeImport: "@flowmark/runtime",
+        runtimeImport: "@flowview/runtime",
         compilerPath,
       },
     );

@@ -111,7 +111,7 @@ ever crosses the server/client boundary:
    appending keeps user line numbers stable for sourcemaps):
 
    ```js
-   import { registerFlowHandlers } from "@flowmark/dom/runtime";
+   import { registerFlowHandlers } from "@flowview/dom/runtime";
    registerFlowHandlers("<scopeId>", { save, removeItem }, ["click"]);
    ```
 
@@ -199,8 +199,8 @@ Tasks:
    after registration still firing, (c) focus delegation via capture,
    (d) unbind removing only its scope.
 
-Exit criteria: `pnpm --filter @flowmark/dom test` green;
-`pnpm --filter @flowmark/dom typecheck` green; no changes outside the two
+Exit criteria: `pnpm --filter @flowview/dom test` green;
+`pnpm --filter @flowview/dom typecheck` green; no changes outside the two
 files.
 
 ### Phase 2 — `<script flowmark>` compile path
@@ -284,7 +284,7 @@ Exit criteria: `pnpm run test:e2e:demo` green in CI.
 Server-value arguments bridging both compilers:
 `(click)="removeItem({{ item.id }})"` inside a Flowmark `@for` — the HTML
 compiler interpolates the serialized value into `data-flow-args`. Requires
-coordinated changes in `flowmark-compiler` and `@flowmark/dom`; design
+coordinated changes in `flowmark-compiler` and `@flowview/dom`; design
 separately once Phases 1-4 ship.
 
 ## Decisions already made (do not re-litigate mid-phase)

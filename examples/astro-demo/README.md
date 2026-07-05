@@ -54,7 +54,7 @@ const { context = heroContext } = Astro.props;
 </template>
 ```
 
-During build, the `@flowmark/astro` integration:
+During build, the `@flowview/astro` integration:
 
 1. Finds the `<template flowmark>` region.
 2. Sends the inner source to the Rust compiler.

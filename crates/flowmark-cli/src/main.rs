@@ -34,7 +34,7 @@ enum Command {
         out: Option<String>,
 
         /// Runtime module import path
-        #[arg(long, default_value = "@flowmark/runtime")]
+        #[arg(long, default_value = "@flowview/runtime")]
         runtime: String,
 
         /// Filename shown in generated diagnostics (useful when compiling stdin)

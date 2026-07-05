@@ -100,14 +100,14 @@ flowmark/
 │   └── flowmark-cli/             # `flowmark` binary: file/stdin → JS,
 │                                 # JSON diagnostics, --line-offset, names
 ├── packages/
-│   ├── runtime/                  # @flowmark/runtime: escapeHtml, renderValue
-│   ├── vite/                     # @flowmark/vite: .flow imports; spawns the
+│   ├── runtime/                  # @flowview/runtime: escapeHtml, renderValue
+│   ├── vite/                     # @flowview/vite: .flow imports; spawns the
 │   │                             # `flowmark` CLI (workspace target/ or PATH)
-│   ├── astro/                    # @flowmark/astro: inline
+│   ├── astro/                    # @flowview/astro: inline
 │   │                             # <template flowmark={...} is:raw>
 │   │                             # regions in .astro (uses official Astro
 │   │                             # parser; emits source maps)
-│   ├── dom/                      # @flowmark/dom: Events compiler core
+│   ├── dom/                      # @flowview/dom: Events compiler core
 │   │   └── src/
 │   │       ├── parser.ts         # event-attribute scanner + frontmatter
 │   │       │                     # function extraction (TypeScript AST) +
@@ -115,7 +115,7 @@ flowmark/
 │   │       ├── compiler.ts       # compileEvents(): html + client module
 │   │       ├── diagnostics.ts    # located diagnostics
 │   │       └── runtime/          # bindFlowEvents (dedup-safe)
-│   ├── astro-events/             # @flowmark/astro-events: Astro integration
+│   ├── astro-events/             # @flowview/astro-events: Astro integration
 │   │                             # for (event)="..." (magic-string source maps)
 │   └── vscode-flowmark/          # editor grammar + snippets
 ├── examples/
@@ -130,13 +130,13 @@ Key data flows:
 
 - **`.flow` file → JS module:** Vite plugin → spawns `flowmark` CLI →
   Rust compiler → JS source (no source map yet) → Vite module graph.
-- **Inline Astro template → JS:** `@flowmark/astro` pre-transform →
+- **Inline Astro template → JS:** `@flowview/astro` pre-transform →
   Astro parser finds `<template flowmark is:raw>` → region compiled through
   the same Rust pipeline → content-addressed virtual module + source map.
-- **`(click)="save($event)"` in Astro:** `@flowmark/astro-events` →
-  `@flowmark/dom` compiler → template rewritten with `data-flow-on-*` →
+- **`(click)="save($event)"` in Astro:** `@flowview/astro-events` →
+  `@flowview/dom` compiler → template rewritten with `data-flow-on-*` →
   client module generated from frontmatter `function` declarations →
-  `@flowmark/dom/runtime` binds listeners once per element/event.
+  `@flowview/dom/runtime` binds listeners once per element/event.
 
 ---
 
@@ -210,14 +210,14 @@ What is already genuinely solid (recent hardening phases A–D):
 - CLI supports stdin, display names, line offsets, JSON diagnostics.
 - Events frontmatter extraction uses the TypeScript AST (not regex);
   capture analysis exists; the events runtime deduplicates listeners;
-  `@flowmark/astro-events` emits magic-string source maps.
+  `@flowview/astro-events` emits magic-string source maps.
 - Exact whitespace preservation; explicit closing-brace rules; validated
   loop bindings; documented escaping limits per HTML context.
 
 What keeps it from serious production use today (§8 addresses these):
 
 1. **You cannot install it.** Every package is `"private": true`, versions
-   are `0.1.0`, and `@flowmark/vite` works by spawning a `flowmark` binary
+   are `0.1.0`, and `@flowview/vite` works by spawning a `flowmark` binary
    found in the monorepo `target/` directory or on `PATH`. Outside this
    repo, nothing works without manually building the Rust CLI.
 2. **No source maps from the Rust compiler.** `.flow` → JS has no mapping,
@@ -246,7 +246,7 @@ What keeps it from serious production use today (§8 addresses these):
 
 ## 7. Quality bar ("usable in serious projects" means…)
 
-A team should be able to: `pnpm add @flowmark/vite @flowmark/runtime`,
+A team should be able to: `pnpm add @flowview/vite @flowview/runtime`,
 add the plugin, import a `.flow` file, and ship — on macOS, Linux, Windows,
 and CI — without installing Rust. When a template is wrong they see a
 correct file/line/column with a stable code. When a runtime error occurs in
@@ -266,14 +266,14 @@ do the steps in order and run the exit checks before moving on.
 
 **Why:** Nothing else matters if only this monorepo can run Flowmark.
 
-**What:** Give `@flowmark/vite` (and the CLI) a distribution story that does
+**What:** Give `@flowview/vite` (and the CLI) a distribution story that does
 not require a local Rust toolchain.
 
 **How (decision to make first, record it in `docs/decisions/`):**
 
 - Option A (recommended): compile `flowmark-compiler` to WASM
   (`wasm32-wasip1` or wasm-bindgen) and call it in-process from
-  `@flowmark/vite` / `@flowmark/astro`. Kills process-spawn overhead (fixes
+  `@flowview/vite` / `@flowview/astro`. Kills process-spawn overhead (fixes
   §6.4 too), works on every platform, no postinstall downloads.
 - Option B: prebuilt native binaries per platform published as optional
   npm dependencies (the esbuild/swc pattern), CLI resolution kept.
@@ -292,7 +292,7 @@ resolution behavior changed.
 ### WS2 — Source maps from the Rust compiler
 
 **Why:** Spec §Compiler Contract lists source maps as planned; serious
-debugging needs them; `@flowmark/vite` currently returns `map: null`
+debugging needs them; `@flowview/vite` currently returns `map: null`
 implicitly.
 
 **What:** Emit a source map (mappings from generated JS positions back to
@@ -301,7 +301,7 @@ template positions) alongside generated code. Respect the existing
 
 **Steps:** extend `codegen.rs` to track output positions per emitted node →
 add a `--source-map` CLI flag emitting JSON (code + map) → plumb through
-`@flowmark/vite` and `@flowmark/astro` `transform` results → tests: a
+`@flowview/vite` and `@flowview/astro` `transform` results → tests: a
 runtime error thrown inside an `@for` body resolves to the correct template
 line in Node with source-map support enabled.
 
@@ -328,8 +328,8 @@ functions, `import`ed frontmatter values (must error), `const` frontmatter
 data used in a handler (must error) → replace `KNOWN_GLOBALS` logic with
 scope resolution → keep diagnostic wording and locations stable.
 
-**Exit checks:** `pnpm --filter @flowmark/dom test`,
-`pnpm --filter @flowmark/astro-events test`, `pnpm run typecheck`.
+**Exit checks:** `pnpm --filter @flowview/dom test`,
+`pnpm --filter @flowview/astro-events test`, `pnpm run typecheck`.
 No allowlist sets remain in `parser.ts`.
 
 ### WS4 — Adversarial testing: fuzzing, properties, corpus
@@ -427,12 +427,12 @@ positions for both `.flow` and embedded templates.
 | Rust: tests           | `cargo test --workspace`                                |
 | JS: all package tests | `pnpm -r --if-present test`                             |
 | JS: types             | `pnpm run typecheck`                                    |
-| Runtime only          | `pnpm --filter @flowmark/runtime test`                  |
-| Vite plugin           | `pnpm --filter @flowmark/vite test`                     |
-| Astro integration     | `pnpm --filter @flowmark/astro test`                    |
-| Events core           | `pnpm --filter @flowmark/dom test`                      |
-| Events Astro          | `pnpm --filter @flowmark/astro-events test`             |
-| Demo gate             | `pnpm --filter @flowmark/astro-demo run check`          |
+| Runtime only          | `pnpm --filter @flowview/runtime test`                  |
+| Vite plugin           | `pnpm --filter @flowview/vite test`                     |
+| Astro integration     | `pnpm --filter @flowview/astro test`                    |
+| Events core           | `pnpm --filter @flowview/dom test`                      |
+| Events Astro          | `pnpm --filter @flowview/astro-events test`             |
+| Demo gate             | `pnpm --filter @flowview/astro-demo run check`          |
 
 **Full gate (run before declaring any task done):**
 

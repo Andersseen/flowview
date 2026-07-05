@@ -1,9 +1,27 @@
 {
-  "name": "@flowmark/vite",
+  "name": "@flowview/vite",
   "version": "0.1.0",
-  "private": true,
+  "description": "Vite plugin for Flowmark templates.",
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andersseen/flowmark.git",
+    "directory": "packages/vite"
+  },
+  "bugs": {
+    "url": "https://github.com/andersseen/flowmark/issues"
+  },
+  "homepage": "https://github.com/andersseen/flowmark/tree/main/packages/vite#readme",
+  "keywords": [
+    "flowmark",
+    "template",
+    "compiler",
+    "vite",
+    "plugin",
+    "html"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -17,13 +35,16 @@
     "dist",
     "client.d.ts"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@flowmark/runtime": "workspace:*"
+    "@flowview/runtime": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",

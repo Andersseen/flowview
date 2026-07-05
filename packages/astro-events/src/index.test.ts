@@ -18,7 +18,7 @@ function createPlugin(): Plugin {
   });
 
   const plugin = plugins.find(
-    (candidate) => candidate.name === "@flowmark/astro-events:transform",
+    (candidate) => candidate.name === "@flowview/astro-events:transform",
   );
   if (plugin === undefined) {
     throw new Error("Flowmark events plugin was not registered");
@@ -52,7 +52,7 @@ async function transformAstroResult(
   return { code: result.code, map: result.map };
 }
 
-describe("@flowmark/astro-events integration", () => {
+describe("@flowview/astro-events integration", () => {
   it("ignores Astro files without event bindings", async () => {
     const result = await transformAstro(`---
 const title = "Hello";
@@ -91,7 +91,7 @@ const title = "Hello";
     expect(result?.code).toContain('data-flow-on-click="save"');
     expect(result?.code).toMatch(/data-flow-scope="[0-9a-f]{12}"/);
     expect(result?.code).toContain(
-      'import { registerFlowHandlers } from "@flowmark/dom/runtime";',
+      'import { registerFlowHandlers } from "@flowview/dom/runtime";',
     );
     expect(result?.code).toContain("registerFlowHandlers(");
     expect(result?.code).toContain("function save(event)");

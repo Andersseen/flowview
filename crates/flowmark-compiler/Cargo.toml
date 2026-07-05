@@ -3,6 +3,10 @@ name = "flowmark-compiler"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+description = "HTML template compiler with Angular-inspired control flow."
+repository = "https://github.com/andersseen/flowmark"
+keywords = ["template", "compiler", "html", "control-flow"]
+categories = ["template-engine"]
 
 [lib]
 name = "flowmark_compiler"

@@ -19,7 +19,7 @@ const astroPlugin: Plugin =
  * Usage (replaces prettier-plugin-astro in the plugins list):
  *
  * ```json
- * { "plugins": ["@flowmark/prettier"] }
+ * { "plugins": ["@flowview/prettier"] }
  * ```
  */
 

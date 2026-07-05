@@ -1,13 +1,13 @@
 use flowmark_compiler::{compile, CompileOptions};
 
 fn compile_source(source: &str) -> String {
-    compile(source, CompileOptions::new("@flowmark/runtime"))
+    compile(source, CompileOptions::new("@flowview/runtime"))
         .unwrap()
         .code
 }
 
 fn expect_error(source: &str) -> Vec<String> {
-    compile(source, CompileOptions::new("@flowmark/runtime"))
+    compile(source, CompileOptions::new("@flowview/runtime"))
         .err()
         .unwrap()
         .into_iter()
@@ -16,7 +16,7 @@ fn expect_error(source: &str) -> Vec<String> {
 }
 
 fn expect_warnings(source: &str) -> Vec<flowmark_compiler::Diagnostic> {
-    compile(source, CompileOptions::new("@flowmark/runtime"))
+    compile(source, CompileOptions::new("@flowview/runtime"))
         .unwrap()
         .warnings
 }
@@ -589,7 +589,7 @@ fn ast_dynamic_attribute_is_recognized() {
 
 #[test]
 fn diagnostic_contains_precise_span_and_code() {
-    let diagnostics = compile("@if () {}", CompileOptions::new("@flowmark/runtime"))
+    let diagnostics = compile("@if () {}", CompileOptions::new("@flowview/runtime"))
         .err()
         .unwrap();
 
