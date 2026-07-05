@@ -1,3 +1,32 @@
+<script data-flowview>
+  let removed = 0;
+
+  function save(event) {
+    const output = document.querySelector("#click-output");
+    if (output) output.textContent = `Saved from a ${event.type} event`;
+  }
+
+  function onInput(event) {
+    const output = document.querySelector("#input-output");
+    if (output) output.textContent = event.target.value;
+  }
+
+  function addRow() {
+    const template = document.querySelector("#row-template");
+    const rows = document.querySelector("#rows");
+    if (template instanceof HTMLTemplateElement && rows) {
+      rows.appendChild(template.content.cloneNode(true));
+    }
+  }
+
+  function removeRow(element) {
+    element.closest("li")?.remove();
+    removed += 1;
+    const output = document.querySelector("#removed-count");
+    if (output) output.textContent = String(removed);
+  }
+</script>
+
 <main>
   <h1>flowview + Hono</h1>
   <p>
@@ -42,33 +71,4 @@
       <li><button (click)="removeRow($el)">Remove</button></li>
     </template>
   </section>
-
-  <script data-flowview>
-    let removed = 0;
-
-    function save(event) {
-      const output = document.querySelector("#click-output");
-      if (output) output.textContent = `Saved from a ${event.type} event`;
-    }
-
-    function onInput(event) {
-      const output = document.querySelector("#input-output");
-      if (output) output.textContent = event.target.value;
-    }
-
-    function addRow() {
-      const template = document.querySelector("#row-template");
-      const rows = document.querySelector("#rows");
-      if (template instanceof HTMLTemplateElement && rows) {
-        rows.appendChild(template.content.cloneNode(true));
-      }
-    }
-
-    function removeRow(element) {
-      element.closest("li")?.remove();
-      removed += 1;
-      const output = document.querySelector("#removed-count");
-      if (output) output.textContent = String(removed);
-    }
-  </script>
 </main>
