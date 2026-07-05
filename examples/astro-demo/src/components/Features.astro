@@ -9,11 +9,11 @@ export interface Props {
 const { context = featuresContext } = Astro.props;
 ---
 
-<template flowmark={context} is:raw>
+<template flowview={context} is:raw>
   <section class="page-frame py-16" aria-labelledby="features-heading">
     <div class="text-center">
       <h2 id="features-heading" class="text-3xl font-bold text-foreground">
-        Why Flowmark?
+        Why flowview?
       </h2>
       <p class="mt-2 text-muted-foreground">
         A template language designed for clarity and performance.

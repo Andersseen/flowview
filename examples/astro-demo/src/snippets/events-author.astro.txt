@@ -6,7 +6,7 @@
   Remove
 </button>
 
-<script data-flowmark>
+<script data-flowview>
   function save(event) {
     const output = document.querySelector("#event-output");
     output.textContent = `Saved from a ${event.type} event`;

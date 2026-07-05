@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install WASM toolchain
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo install wasm-pack --locked
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Rust compiler
+        run: cargo build --workspace
+
+      - name: Build packages
+        run: |
+          pnpm run build:runtime
+          pnpm run build:dom
+          pnpm run build:compiler
+          pnpm run build:vite
+          pnpm run build:astro
+          pnpm run build:astro-events
+          pnpm run build:prettier
+
+      - name: Test packages
+        run: |
+          pnpm run test:runtime
+          pnpm run test:dom
+          pnpm run test:compiler
+          pnpm run test:vite
+          pnpm run test:astro
+          pnpm run test:astro-events
+          pnpm run test:prettier
+
+      - name: Create release PR or publish
+        uses: changesets/action@v1
+        with:
+          publish: pnpm exec changeset publish
+          title: "chore: version packages"
+          commit: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

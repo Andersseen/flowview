@@ -10,17 +10,17 @@ import MagicString, { type SourceMap } from "magic-string";
 import {
   compileScriptEvents,
   findEventBindings,
-  FlowmarkDomError,
-  type FlowmarkDomDiagnostic,
-} from "@flowmark/dom";
+  FlowviewDomError,
+  type FlowviewDomDiagnostic,
+} from "@flowview/events";
 import type { AstroIntegration } from "astro";
 import type { Plugin } from "vite";
 
-export interface FlowmarkAstroEventsOptions {
+export interface FlowviewAstroEventsOptions {
   runtimeImport?: string;
 }
 
-class FlowmarkAstroEventsError extends Error {
+class FlowviewAstroEventsError extends Error {
   readonly loc: { line: number; column: number };
 
   constructor(
@@ -30,22 +30,22 @@ class FlowmarkAstroEventsError extends Error {
     code: string,
   ) {
     super(message);
-    this.name = "FlowmarkAstroEventsError";
+    this.name = "FlowviewAstroEventsError";
     const { line, column } = lineAndColumn(code, offset);
     this.loc = { line, column };
   }
 }
 
-export default function flowmarkEvents(
-  options: FlowmarkAstroEventsOptions = {},
+export default function flowviewEvents(
+  options: FlowviewAstroEventsOptions = {},
 ): AstroIntegration {
   return {
-    name: "@flowmark/astro-events",
+    name: "@flowview/astro-events",
     hooks: {
       "astro:config:setup": ({ updateConfig }) => {
         updateConfig({
           vite: {
-            plugins: [flowmarkEventsVitePlugin(options)],
+            plugins: [flowviewEventsVitePlugin(options)],
           },
         });
       },
@@ -53,17 +53,17 @@ export default function flowmarkEvents(
   };
 }
 
-function flowmarkEventsVitePlugin(options: FlowmarkAstroEventsOptions): Plugin {
-  const runtimeImport = options.runtimeImport ?? "@flowmark/dom/runtime";
+function flowviewEventsVitePlugin(options: FlowviewAstroEventsOptions): Plugin {
+  const runtimeImport = options.runtimeImport ?? "@flowview/events/runtime";
 
   return {
-    name: "@flowmark/astro-events:transform",
+    name: "@flowview/astro-events:transform",
     enforce: "pre",
 
     configResolved(config) {
       const plugins = config.plugins as Plugin[];
       const ownIndex = plugins.findIndex(
-        (plugin) => plugin.name === "@flowmark/astro-events:transform",
+        (plugin) => plugin.name === "@flowview/astro-events:transform",
       );
       const astroIndex = plugins.findIndex(
         (plugin) => plugin.name === "astro:build",
@@ -84,7 +84,7 @@ function flowmarkEventsVitePlugin(options: FlowmarkAstroEventsOptions): Plugin {
         if (result === null) return null;
         return { code: result.code, map: result.map };
       } catch (error) {
-        if (error instanceof FlowmarkAstroEventsError) {
+        if (error instanceof FlowviewAstroEventsError) {
           const locatedError = {
             message: error.message,
             id: cleanId,
@@ -95,7 +95,7 @@ function flowmarkEventsVitePlugin(options: FlowmarkAstroEventsOptions): Plugin {
           }
           throw locatedError;
         }
-        if (error instanceof FlowmarkDomError) {
+        if (error instanceof FlowviewDomError) {
           const first = error.diagnostics[0];
           if (first) {
             const message = error.diagnostics
@@ -138,11 +138,11 @@ function transformAstroSource(
 
   if (findEventBindings(templateSource).length === 0) return null;
 
-  const scriptBlocks = findScriptFlowmarkBlocks(ast, code, filename, toIndex);
+  const scriptBlocks = findScriptFlowviewBlocks(ast, code, filename, toIndex);
 
   if (scriptBlocks.length > 1) {
-    throw new FlowmarkAstroEventsError(
-      "At most one <script data-flowmark> block is allowed per file.",
+    throw new FlowviewAstroEventsError(
+      "At most one <script data-flowview> block is allowed per file.",
       filename,
       scriptBlocks[1]!.elementStart,
       code,
@@ -160,10 +160,10 @@ function transformAstroSource(
     );
   }
 
-  throw new FlowmarkAstroEventsError(
-    "Flowmark Events bindings were found but no <script data-flowmark> " +
+  throw new FlowviewAstroEventsError(
+    "flowview Events bindings were found but no <script data-flowview> " +
       "block declares their handlers. Declare event handlers in a " +
-      "<script data-flowmark> block; declaring them in Astro frontmatter " +
+      "<script data-flowview> block; declaring them in Astro frontmatter " +
       "is no longer supported.",
     filename,
     templateStart,
@@ -176,7 +176,7 @@ function transformWithScriptBlock(
   filename: string,
   templateStart: number,
   templateSource: string,
-  block: ScriptFlowmarkBlock,
+  block: ScriptFlowviewBlock,
   runtimeImport: string,
 ): TransformSourceResult {
   const scope = createHash("sha256")
@@ -195,13 +195,13 @@ function transformWithScriptBlock(
       runtimeImport,
     });
   } catch (error) {
-    if (error instanceof FlowmarkDomError) {
+    if (error instanceof FlowviewDomError) {
       const translated = translateDiagnostics(
         error.diagnostics,
         code,
         templateStart,
       );
-      throw new FlowmarkDomError(error.message, translated);
+      throw new FlowviewDomError(error.message, translated);
     }
     throw error;
   }
@@ -216,7 +216,7 @@ function transformWithScriptBlock(
     );
   }
 
-  s.overwrite(block.flowmarkAttributeStart, block.flowmarkAttributeEnd, "");
+  s.overwrite(block.flowviewAttributeStart, block.flowviewAttributeEnd, "");
 
   if (result.scriptAppend !== "") {
     s.appendLeft(block.scriptContentEnd, result.scriptAppend);
@@ -228,10 +228,10 @@ function transformWithScriptBlock(
   };
 }
 
-interface ScriptFlowmarkBlock {
+interface ScriptFlowviewBlock {
   elementStart: number;
-  flowmarkAttributeStart: number;
-  flowmarkAttributeEnd: number;
+  flowviewAttributeStart: number;
+  flowviewAttributeEnd: number;
   scriptSource: string;
   scriptContentStart: number;
   scriptContentEnd: number;
@@ -252,22 +252,22 @@ function createByteOffsetConverter(
     buffer.subarray(0, byteOffset).toString("utf8").length;
 }
 
-function findScriptFlowmarkBlocks(
+function findScriptFlowviewBlocks(
   ast: AstroNode,
   code: string,
   filename: string,
   toIndex: (byteOffset: number) => number,
-): ScriptFlowmarkBlock[] {
-  const blocks: ScriptFlowmarkBlock[] = [];
+): ScriptFlowviewBlock[] {
+  const blocks: ScriptFlowviewBlock[] = [];
 
   const visit = (node: AstroNode): void => {
     if (node.type === "element" && node.name === "script") {
-      const flowmarkAttribute = node.attributes.find(
-        (attribute) => attribute.name === "data-flowmark",
+      const flowviewAttribute = node.attributes.find(
+        (attribute) => attribute.name === "data-flowview",
       );
-      if (flowmarkAttribute !== undefined) {
+      if (flowviewAttribute !== undefined) {
         blocks.push(
-          buildScriptBlock(node, flowmarkAttribute, code, filename, toIndex),
+          buildScriptBlock(node, flowviewAttribute, code, filename, toIndex),
         );
       }
     }
@@ -284,33 +284,33 @@ function findScriptFlowmarkBlocks(
 
 function buildScriptBlock(
   element: ElementNode,
-  flowmarkAttribute: AttributeNode,
+  flowviewAttribute: AttributeNode,
   code: string,
   filename: string,
   toIndex: (byteOffset: number) => number,
-): ScriptFlowmarkBlock {
+): ScriptFlowviewBlock {
   const elementStart = toIndex(element.position?.start.offset ?? 0);
 
-  if (flowmarkAttribute.kind !== "empty") {
-    throw new FlowmarkAstroEventsError(
-      "The `data-flowmark` attribute on <script> must not have a value.",
+  if (flowviewAttribute.kind !== "empty") {
+    throw new FlowviewAstroEventsError(
+      "The `data-flowview` attribute on <script> must not have a value.",
       filename,
-      flowmarkAttribute.position === undefined
+      flowviewAttribute.position === undefined
         ? elementStart
-        : toIndex(flowmarkAttribute.position.start.offset),
+        : toIndex(flowviewAttribute.position.start.offset),
       code,
     );
   }
 
   const attributeStart =
-    flowmarkAttribute.position === undefined
+    flowviewAttribute.position === undefined
       ? elementStart
-      : toIndex(flowmarkAttribute.position.start.offset);
+      : toIndex(flowviewAttribute.position.start.offset);
   // Also remove the single preceding space so stripping the attribute
   // leaves `<script>` rather than `<script >`.
-  const flowmarkAttributeStart =
+  const flowviewAttributeStart =
     code[attributeStart - 1] === " " ? attributeStart - 1 : attributeStart;
-  const flowmarkAttributeEnd = attributeStart + flowmarkAttribute.name.length;
+  const flowviewAttributeEnd = attributeStart + flowviewAttribute.name.length;
 
   const textChild = element.children.find(
     (child): child is TextNode => child.type === "text",
@@ -326,8 +326,8 @@ function buildScriptBlock(
 
   return {
     elementStart,
-    flowmarkAttributeStart,
-    flowmarkAttributeEnd,
+    flowviewAttributeStart,
+    flowviewAttributeEnd,
     scriptSource: textChild?.value ?? "",
     scriptContentStart:
       textChild?.position?.start.offset === undefined
@@ -378,10 +378,10 @@ function lineAndColumn(
 }
 
 function translateDiagnostics(
-  diagnostics: FlowmarkDomDiagnostic[],
+  diagnostics: FlowviewDomDiagnostic[],
   source: string,
   offset: number,
-): FlowmarkDomDiagnostic[] {
+): FlowviewDomDiagnostic[] {
   const { line: baseLine, column: baseColumn } = lineAndColumn(source, offset);
 
   return diagnostics.map((diagnostic) => ({

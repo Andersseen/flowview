@@ -9,7 +9,7 @@ export interface Props {
 const { context = heroContext } = Astro.props;
 ---
 
-<template flowmark={context} is:raw>
+<template flowview={context} is:raw>
   <header class="hero-panel">
     <div class="page-frame grid gap-8 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
       <div class="max-w-3xl">

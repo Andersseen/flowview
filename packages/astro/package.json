@@ -1,9 +1,26 @@
 {
-  "name": "@flowmark/astro",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@flowview/astro",
+  "version": "0.1.1",
+  "description": "Astro integration for flowview templates.",
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andersseen/flowview.git",
+    "directory": "packages/astro"
+  },
+  "bugs": {
+    "url": "https://github.com/andersseen/flowview/issues"
+  },
+  "homepage": "https://github.com/andersseen/flowview/tree/main/packages/astro#readme",
+  "keywords": [
+    "flowview",
+    "astro",
+    "template",
+    "compiler",
+    "integration"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -13,6 +30,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
@@ -20,8 +40,8 @@
   },
   "dependencies": {
     "@astrojs/compiler": "^2.13.1",
-    "@flowmark/runtime": "workspace:*",
-    "@flowmark/vite": "workspace:*",
+    "@flowview/runtime": "workspace:^",
+    "@flowview/vite": "workspace:^",
     "magic-string": "^0.30.21"
   },
   "devDependencies": {

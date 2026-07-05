@@ -1,11 +1,11 @@
 ---
 const context = {
-  name: "Flowmark",
-  markup: `<img src=x onerror="globalThis.__flowmarkXss = true">`,
+  name: "flowview",
+  markup: `<img src=x onerror="globalThis.__flowviewXss = true">`,
 };
 ---
 
-<template flowmark={context} is:raw>
+<template flowview={context} is:raw>
   <main>
     <p id="space"><span>Hello </span>{{ context.name }}</p>
     <pre id="pre">first

@@ -3,7 +3,7 @@
 
 <button (click)="save($event)">Save</button>
 
-<script data-flowmark>
+<script data-flowview>
   function save(event) {
     console.log(event.type);
   }

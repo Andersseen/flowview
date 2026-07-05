@@ -1,0 +1,43 @@
+{
+  "name": "flowview Astro Injection",
+  "scopeName": "flowview.astro.injection",
+  "injectionSelector": "L:source.astro -comment -string",
+  "patterns": [
+    {
+      "name": "meta.embedded.block.flowview.astro",
+      "begin": "(<)(template)(?=[\\s>])(?=[^>]*\\bflowview\\b)((?:\\\"(?:\\\\.|[^\\\"])*\\\"|'(?:\\\\.|[^'])*'|\\{(?:[^{}]|\\{[^{}]*\\})*\\}|[^>])*)(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.template.astro.flowview" },
+        "3": { "name": "meta.tag.attributes.astro" },
+        "4": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "end": "(</)(template)(\\s*>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.template.astro.flowview" },
+        "3": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "contentName": "meta.embedded.flowview",
+      "patterns": [{ "include": "source.flowview" }]
+    },
+    {
+      "name": "meta.embedded.block.flowview.astro",
+      "begin": "(<)(flowview)\\b((?:[^>]|\\n)*?\\bis:raw\\b(?:[^>]|\\n)*?)(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "support.class.component.astro.flowview" },
+        "3": { "name": "meta.tag.attributes.astro" },
+        "4": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "end": "(</)(flowview)(>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "support.class.component.astro.flowview" },
+        "3": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "contentName": "meta.embedded.flowview",
+      "patterns": [{ "include": "source.flowview" }]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "flowview block": {
+    "prefix": "flowview",
+    "body": [
+      "<template flowview={${1:context}} is:raw>",
+      "  <main>",
+      "    <h1>{{ context.${2:title} }}</h1>",
+      "    $0",
+      "  </main>",
+      "</template>"
+    ],
+    "description": "Inline flowview block inside Astro"
+  }
+}

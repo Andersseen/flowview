@@ -9,7 +9,7 @@ describe("ExampleSection", () => {
       props: {
         context: {
           title: "Real-world example",
-          description: "A changelog rendered with Flowmark.",
+          description: "A changelog rendered with flowview.",
           releases: [
             {
               id: "v1",
@@ -34,7 +34,7 @@ describe("ExampleSection", () => {
     });
 
     expect(html).toContain("Real-world example");
-    expect(html).toContain("A changelog rendered with Flowmark.");
+    expect(html).toContain("A changelog rendered with flowview.");
     expect(html).toContain("Initial release");
     expect(html).toContain("v1.0.0");
     expect(html).toContain("Feature");
@@ -48,7 +48,7 @@ describe("ExampleSection", () => {
       props: {
         context: {
           title: "Real-world example",
-          description: "A changelog rendered with Flowmark.",
+          description: "A changelog rendered with flowview.",
           releases: [],
         },
       },

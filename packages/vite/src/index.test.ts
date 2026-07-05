@@ -2,21 +2,21 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { build } from "vite";
-import flowmark, { compileFlowmark, resolveCompilerPath } from "./index";
+import flowview, { compileFlowview, resolveCompilerPath } from "./index";
 
 const compilerPath = fileURLToPath(
-  new URL("../../../target/debug/flowmark", import.meta.url),
+  new URL("../../../target/debug/flowview", import.meta.url),
 );
 
-describe("compileFlowmark", () => {
+describe("compileFlowview", () => {
   it("discovers the workspace compiler without configuration", () => {
     expect(resolveCompilerPath()).toBe(compilerPath);
   });
 
   it("compiles stdin without temporary files", async () => {
-    const { code } = await compileFlowmark("<p>Hello {{ context.name }}</p>", {
+    const { code } = await compileFlowview("<p>Hello {{ context.name }}</p>", {
       filename: "greeting.flow",
-      runtimeImport: "@flowmark/runtime",
+      runtimeImport: "@flowview/runtime",
       compilerPath,
     });
 
@@ -26,12 +26,23 @@ describe("compileFlowmark", () => {
     expect(code).toContain("renderValue(context.name)");
   });
 
+  it("falls back to the npm WASM compiler when no binary is resolved", async () => {
+    const { code } = await compileFlowview("<p>Hello {{ context.name }}</p>", {
+      filename: "greeting.flow",
+      runtimeImport: "@flowview/runtime",
+      compilerPath: "",
+    });
+
+    expect(code).toContain("output += 'Hello ';");
+    expect(code).toContain("renderValue(context.name)");
+  });
+
   it("preserves display filenames and line offsets in diagnostics", async () => {
     await expect(
-      compileFlowmark("@if () { <p>Invalid</p> }", {
+      compileFlowview("@if () { <p>Invalid</p> }", {
         filename: "component.astro",
         lineOffset: 11,
-        runtimeImport: "@flowmark/runtime",
+        runtimeImport: "@flowview/runtime",
         compilerPath,
       }),
     ).rejects.toMatchObject({
@@ -46,11 +57,11 @@ describe("compileFlowmark", () => {
   });
 
   it("executes all current control-flow blocks with escaped values", async () => {
-    const { code, warnings } = await compileFlowmark(
+    const { code, warnings } = await compileFlowview(
       "@if (context.visible) {<p>{{ context.label }}</p>} @else {<p>hidden</p>}@for (item of context.items; track item.id) {<span>{{ item.name }}</span>} @empty {<span>empty</span>}@switch (context.status) {@case ('ready') {<strong>ready</strong>}@default {<strong>other</strong>}}",
       {
         filename: "control-flow.flow",
-        runtimeImport: "@flowmark/runtime",
+        runtimeImport: "@flowview/runtime",
         compilerPath,
       },
     );
@@ -61,12 +72,12 @@ describe("compileFlowmark", () => {
     expect(
       render({
         visible: true,
-        label: "<Flowmark>",
+        label: "<flowview>",
         items: [{ id: 1, name: "First & safe" }],
         status: "ready",
       }),
     ).toBe(
-      "<p>&lt;Flowmark&gt;</p><span>First &amp; safe</span><strong>ready</strong>",
+      "<p>&lt;flowview&gt;</p><span>First &amp; safe</span><strong>ready</strong>",
     );
 
     expect(render({ visible: false, items: [], status: "unknown" })).toBe(
@@ -84,7 +95,7 @@ describe("compileFlowmark", () => {
     const result = await build({
       root: fixtureRoot,
       logLevel: "silent",
-      plugins: [flowmark({ compilerPath, runtimeImport })],
+      plugins: [flowview({ compilerPath, runtimeImport })],
       build: {
         write: false,
         rollupOptions: {
@@ -100,7 +111,7 @@ describe("compileFlowmark", () => {
       .map((entry) => entry.code)
       .join("\n");
 
-    expect(bundle).toContain("Flowmark");
+    expect(bundle).toContain("flowview");
     expect(bundle).toContain("Hello");
   });
 });

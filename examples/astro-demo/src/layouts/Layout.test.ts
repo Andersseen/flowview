@@ -7,7 +7,7 @@ describe("Layout", () => {
     const container = await AstroContainer.create();
     const html = await container.renderToString(Layout, {
       props: {
-        title: "Flowmark Test",
+        title: "flowview Test",
         description: "Unit test description",
         siteUrl: "https://test.example",
       },
@@ -16,11 +16,11 @@ describe("Layout", () => {
       },
     });
 
-    expect(html).toContain("<title>Flowmark Test</title>");
+    expect(html).toContain("<title>flowview Test</title>");
     expect(html).toContain(
       'name="description" content="Unit test description"',
     );
-    expect(html).toContain('property="og:title" content="Flowmark Test"');
+    expect(html).toContain('property="og:title" content="flowview Test"');
     expect(html).toContain('rel="canonical" href="https://test.example/"');
     expect(html).toContain(
       'rel="icon" type="image/svg+xml" href="/favicon.svg"',
@@ -28,7 +28,7 @@ describe("Layout", () => {
     expect(html).toContain("Skip to content");
     expect(html).toContain('id="main-content"');
     expect(html).toContain("<and-navbar");
-    expect(html).toContain("Flowmark");
+    expect(html).toContain("flowview");
     expect(html).toContain("Page content");
   });
 });

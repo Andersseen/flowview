@@ -37,7 +37,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build Flowmark compiler and runtime
+      - name: Build flowview compiler and runtime
         run: pnpm run build
 
       - name: Build Astro demo
@@ -47,4 +47,4 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: pnpm exec wrangler pages deploy examples/astro-demo/dist --project-name=flowmark-demo
+        run: pnpm exec wrangler pages deploy examples/astro-demo/dist --project-name=flowview-demo

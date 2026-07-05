@@ -1,0 +1,21 @@
+[package]
+name = "flowview-wasm"
+version = "0.1.1"
+edition = "2021"
+license = "MIT"
+description = "WASM wrapper for the flowview template compiler."
+repository = "https://github.com/andersseen/flowview"
+keywords = ["template", "compiler", "html", "wasm"]
+categories = ["template-engine", "wasm"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+flowview-compiler = { version = "0.1.0", path = "../flowview-compiler" }
+serde = { version = "1.0", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+wasm-bindgen = "0.2"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

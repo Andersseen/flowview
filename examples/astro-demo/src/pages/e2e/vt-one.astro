@@ -6,7 +6,7 @@ import { ClientRouter } from "astro:transitions";
   <head>
     <meta charset="UTF-8" />
     <meta name="robots" content="noindex" />
-    <title>Flowmark Events e2e — view transitions (one)</title>
+    <title>flowview Events e2e — view transitions (one)</title>
     <ClientRouter />
   </head>
   <body>
@@ -15,7 +15,7 @@ import { ClientRouter } from "astro:transitions";
     <output data-testid="out-one">idle</output>
     <a href="/e2e/vt-two" data-testid="to-two">Go to two</a>
 
-    <script data-flowmark>
+    <script data-flowview>
       function ping() {
         const output = document.querySelector('[data-testid="out-one"]');
         if (output) output.textContent = "one-pinged";

@@ -1,13 +1,13 @@
-# Flowmark Landing Page
+# flowview Landing Page
 
-This is the official landing page for **Flowmark**, built as an Astro site that dogfoods the Flowmark template language.
+This is the official landing page for **flowview**, built as an Astro site that dogfoods the flowview template language.
 
-Every static section of the page (Hero, Features, Syntax Showcase, Getting Started, Footer) is rendered by a Flowmark `<template flowmark>` region. The live inventory demo further shows `@if`, `@else if`, `@for`, `@empty`, and `@switch` in action.
+Every static section of the page (Hero, Features, Syntax Showcase, Getting Started, Footer) is rendered by a flowview `<template flowview>` region. The live inventory demo further shows `@if`, `@else if`, `@for`, `@empty`, and `@switch` in action.
 
 ## Stack
 
 - [Astro](https://astro.build/) — static site generator
-- [Flowmark](https://github.com/andersseen/flowmark) — template language compiled to plain JavaScript
+- [flowview](https://github.com/andersseen/flowview) — template language compiled to plain JavaScript
 - [@andersseen/web-components](https://github.com/Andersseen/and-web-components) — themeable web components
 - [@andersseen/layout](https://github.com/Andersseen/and-web-components) — layout and typography primitives
 - [@andersseen/motion](https://github.com/Andersseen/and-web-components) — animation utilities
@@ -15,14 +15,14 @@ Every static section of the page (Hero, Features, Syntax Showcase, Getting Start
 
 ## The context + template pattern
 
-Each Flowmark section receives its data through a typed `context` object:
+Each flowview section receives its data through a typed `context` object:
 
 ```ts
 // src/data/hero.ts
 import type { HeroContext } from "./types";
 
 export const heroContext: HeroContext = {
-  title: "Flowmark",
+  title: "flowview",
   tagline: "HTML-like templates with modern control flow.",
   badge: "Framework-agnostic templates",
   ctaPrimary: { text: "Get started", href: "#getting-started" },
@@ -43,7 +43,7 @@ export interface Props {
 const { context = heroContext } = Astro.props;
 ---
 
-<template flowmark={context} is:raw>
+<template flowview={context} is:raw>
   <header>
     <h1>{{ context.title }}</h1>
     <p>{{ context.tagline }}</p>
@@ -54,9 +54,9 @@ const { context = heroContext } = Astro.props;
 </template>
 ```
 
-During build, the `@flowmark/astro` integration:
+During build, the `@flowview/astro` integration:
 
-1. Finds the `<template flowmark>` region.
+1. Finds the `<template flowview>` region.
 2. Sends the inner source to the Rust compiler.
 3. Replaces the region with `<Fragment set:html={render(context)} />`.
 4. Astro evaluates the generated render function and emits static HTML.

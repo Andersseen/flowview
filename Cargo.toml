@@ -1,7 +1,8 @@
 [workspace]
 members = [
-  "crates/flowmark-compiler",
-  "crates/flowmark-cli",
+  "crates/flowview-compiler",
+  "crates/flowview-cli",
+  "crates/flowview-wasm",
 ]
 resolver = "2"
 

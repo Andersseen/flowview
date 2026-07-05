@@ -1,8 +1,8 @@
 /**
- * Centralized data layer for the Flowmark landing page.
+ * Centralized data layer for the flowview landing page.
  *
  * Each exported `*Context` object is designed to be passed to a
- * `<template flowmark={context} is:raw>` region. See the
+ * `<template flowview={context} is:raw>` region. See the
  * component files in `src/components/` for concrete usage.
  */
 

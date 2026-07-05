@@ -1,4 +1,4 @@
-# Flowmark — Spec-Driven Development Guide
+# flowview — Spec-Driven Development Guide
 
 > **Audience:** AI agents and contributors working on this repository, including
 > small or limited models. This file is the single entry point. Read it fully
@@ -25,7 +25,7 @@ Follow this loop for every task. Do not skip steps.
 5. **Run the validation commands (§10)** relevant to what you touched, plus
    the full gate before declaring done.
 6. **Update documentation in the same change** if behavior visible to users
-   changed: `README.md`, `docs/flowmark-spec.md`, and `CHANGELOG.md`
+   changed: `README.md`, `docs/flowview-spec.md`, and `CHANGELOG.md`
    (top of the `Unreleased` section, past tense, one line).
 7. **Definition of done (§11)** must hold before you finish.
 
@@ -44,24 +44,24 @@ Rules that override everything else:
 
 ## 2. The idea (why this project exists)
 
-Flowmark is **not a framework**. It is two small, independent compilers that
+flowview is **not a framework**. It is two small, independent compilers that
 let you write modern template syntax and get plain, dependency-free output:
 
-1. **The HTML compiler** (Rust, `crates/flowmark-compiler`): turns HTML-like
+1. **The HTML compiler** (Rust, `crates/flowview-compiler`): turns HTML-like
    templates with Angular-inspired control flow (`@if`, `@for`, `@switch`,
    `{{ interpolation }}`) into a plain JavaScript function
    `render(context): string`. Server-first. No virtual DOM, no hydration,
    no components. The output runs anywhere JavaScript runs: Node.js, Hono,
    Cloudflare Workers, Astro, static generation.
 
-2. **The Events compiler** ("Flowmark Events", TypeScript,
-   `packages/dom` + `packages/astro-events`): lets you write Angular-style
+2. **The Events compiler** ("flowview Events", TypeScript,
+   `packages/events` + `packages/astro-events`): lets you write Angular-style
    event bindings (`<button (click)="save($event)">`) in Astro files.
    It compiles them into `data-flow-on-*` attributes plus a tiny client
    module that binds real `addEventListener` calls. No framework runtime.
 
 The bet: modern control-flow authoring syntax is productive, but today it is
-locked inside full UI frameworks. Flowmark extracts that authoring experience
+locked inside full UI frameworks. flowview extracts that authoring experience
 into compilers with **tiny runtimes and no framework assumptions**, so the
 syntax can be used from any host.
 
@@ -75,18 +75,18 @@ No framework assumptions.
 ```
 
 The normative language specification lives in
-[`docs/flowmark-spec.md`](./flowmark-spec.md). That file defines _what_ the
+[`docs/flowview-spec.md`](./flowview-spec.md). That file defines _what_ the
 compiler must do; this file defines _how we work_ and _what to improve next_.
-If the two ever conflict about language behavior, `flowmark-spec.md` wins.
+If the two ever conflict about language behavior, `flowview-spec.md` wins.
 
 ---
 
 ## 3. Architecture map (where everything lives)
 
 ```
-flowmark/
+flowview/
 ├── crates/
-│   ├── flowmark-compiler/        # HTML compiler (Rust library)
+│   ├── flowview-compiler/        # HTML compiler (Rust library)
 │   │   └── src/
 │   │       ├── lib.rs            # public compile() entry point
 │   │       ├── cursor.rs         # low-level source cursor
@@ -97,17 +97,17 @@ flowmark/
 │   │       ├── validation.rs     # semantic validation
 │   │       ├── codegen.rs        # JS render-function generation
 │   │       └── diagnostics.rs    # structured diagnostics (FMxxxx codes)
-│   └── flowmark-cli/             # `flowmark` binary: file/stdin → JS,
+│   └── flowview-cli/             # `flowview` binary: file/stdin → JS,
 │                                 # JSON diagnostics, --line-offset, names
 ├── packages/
-│   ├── runtime/                  # @flowmark/runtime: escapeHtml, renderValue
-│   ├── vite/                     # @flowmark/vite: .flow imports; spawns the
-│   │                             # `flowmark` CLI (workspace target/ or PATH)
-│   ├── astro/                    # @flowmark/astro: inline
-│   │                             # <template flowmark={...} is:raw>
+│   ├── runtime/                  # @flowview/runtime: escapeHtml, renderValue
+│   ├── vite/                     # @flowview/vite: .flow imports; spawns the
+│   │                             # `flowview` CLI (workspace target/ or PATH)
+│   ├── astro/                    # @flowview/astro: inline
+│   │                             # <template flowview={...} is:raw>
 │   │                             # regions in .astro (uses official Astro
 │   │                             # parser; emits source maps)
-│   ├── dom/                      # @flowmark/dom: Events compiler core
+│   ├── dom/                      # @flowview/events: Events compiler core
 │   │   └── src/
 │   │       ├── parser.ts         # event-attribute scanner + frontmatter
 │   │       │                     # function extraction (TypeScript AST) +
@@ -115,28 +115,28 @@ flowmark/
 │   │       ├── compiler.ts       # compileEvents(): html + client module
 │   │       ├── diagnostics.ts    # located diagnostics
 │   │       └── runtime/          # bindFlowEvents (dedup-safe)
-│   ├── astro-events/             # @flowmark/astro-events: Astro integration
+│   ├── astro-events/             # @flowview/astro-events: Astro integration
 │   │                             # for (event)="..." (magic-string source maps)
-│   └── vscode-flowmark/          # editor grammar + snippets
+│   └── vscode-flowview/          # editor grammar + snippets
 ├── examples/
 │   ├── basic/                    # minimal .flow + Vite fixture
 │   └── astro-demo/               # full Astro demo (deployed)
 └── docs/
-    ├── flowmark-spec.md          # normative HTML-compiler v1 spec
+    ├── flowview-spec.md          # normative HTML-compiler v1 spec
     └── spec-driven-development.md# this file
 ```
 
 Key data flows:
 
-- **`.flow` file → JS module:** Vite plugin → spawns `flowmark` CLI →
+- **`.flow` file → JS module:** Vite plugin → spawns `flowview` CLI →
   Rust compiler → JS source (no source map yet) → Vite module graph.
-- **Inline Astro template → JS:** `@flowmark/astro` pre-transform →
-  Astro parser finds `<template flowmark is:raw>` → region compiled through
+- **Inline Astro template → JS:** `@flowview/astro` pre-transform →
+  Astro parser finds `<template flowview is:raw>` → region compiled through
   the same Rust pipeline → content-addressed virtual module + source map.
-- **`(click)="save($event)"` in Astro:** `@flowmark/astro-events` →
-  `@flowmark/dom` compiler → template rewritten with `data-flow-on-*` →
+- **`(click)="save($event)"` in Astro:** `@flowview/astro-events` →
+  `@flowview/events` compiler → template rewritten with `data-flow-on-*` →
   client module generated from frontmatter `function` declarations →
-  `@flowmark/dom/runtime` binds listeners once per element/event.
+  `@flowview/events/runtime` binds listeners once per element/event.
 
 ---
 
@@ -145,7 +145,7 @@ Key data flows:
 Language and output contracts. Every change must preserve all of them.
 
 1. **The language surface is frozen** to what
-   [`flowmark-spec.md` §Language Surface](./flowmark-spec.md) lists:
+   [`flowview-spec.md` §Language Surface](./flowview-spec.md) lists:
    text, HTML-like elements, quoted attributes, `{{ expr }}`,
    `@if/@else if/@else`, `@for` + `track` + `@empty`,
    `@switch/@case/@default`, escapes (`\@if`, `\{{`, `\}`), and `context`
@@ -210,14 +210,14 @@ What is already genuinely solid (recent hardening phases A–D):
 - CLI supports stdin, display names, line offsets, JSON diagnostics.
 - Events frontmatter extraction uses the TypeScript AST (not regex);
   capture analysis exists; the events runtime deduplicates listeners;
-  `@flowmark/astro-events` emits magic-string source maps.
+  `@flowview/astro-events` emits magic-string source maps.
 - Exact whitespace preservation; explicit closing-brace rules; validated
   loop bindings; documented escaping limits per HTML context.
 
 What keeps it from serious production use today (§8 addresses these):
 
 1. **You cannot install it.** Every package is `"private": true`, versions
-   are `0.1.0`, and `@flowmark/vite` works by spawning a `flowmark` binary
+   are `0.1.0`, and `@flowview/vite` works by spawning a `flowview` binary
    found in the monorepo `target/` directory or on `PATH`. Outside this
    repo, nothing works without manually building the Rust CLI.
 2. **No source maps from the Rust compiler.** `.flow` → JS has no mapping,
@@ -235,7 +235,7 @@ What keeps it from serious production use today (§8 addresses these):
    fuzzing, no property-based testing, no large real-world HTML corpus run
    through the parser. For a parser whose whole value is trustworthiness,
    this is the biggest confidence gap.
-6. **No conformance mapping.** `flowmark-spec.md` makes normative claims,
+6. **No conformance mapping.** `flowview-spec.md` makes normative claims,
    but nothing links each claim to the test(s) that enforce it, so spec
    drift is detected only by humans.
 7. **Editor diagnostics don't exist** (grammar + snippets only). The CLI
@@ -246,7 +246,7 @@ What keeps it from serious production use today (§8 addresses these):
 
 ## 7. Quality bar ("usable in serious projects" means…)
 
-A team should be able to: `pnpm add @flowmark/vite @flowmark/runtime`,
+A team should be able to: `pnpm add @flowview/vite @flowview/runtime`,
 add the plugin, import a `.flow` file, and ship — on macOS, Linux, Windows,
 and CI — without installing Rust. When a template is wrong they see a
 correct file/line/column with a stable code. When a runtime error occurs in
@@ -264,16 +264,16 @@ do the steps in order and run the exit checks before moving on.
 
 ### WS1 — Distribution: make the compiler installable (highest priority)
 
-**Why:** Nothing else matters if only this monorepo can run Flowmark.
+**Why:** Nothing else matters if only this monorepo can run flowview.
 
-**What:** Give `@flowmark/vite` (and the CLI) a distribution story that does
+**What:** Give `@flowview/vite` (and the CLI) a distribution story that does
 not require a local Rust toolchain.
 
 **How (decision to make first, record it in `docs/decisions/`):**
 
-- Option A (recommended): compile `flowmark-compiler` to WASM
+- Option A (recommended): compile `flowview-compiler` to WASM
   (`wasm32-wasip1` or wasm-bindgen) and call it in-process from
-  `@flowmark/vite` / `@flowmark/astro`. Kills process-spawn overhead (fixes
+  `@flowview/vite` / `@flowview/astro`. Kills process-spawn overhead (fixes
   §6.4 too), works on every platform, no postinstall downloads.
 - Option B: prebuilt native binaries per platform published as optional
   npm dependencies (the esbuild/swc pattern), CLI resolution kept.
@@ -286,13 +286,13 @@ CI job that exercises the packaged flow on Linux/macOS/Windows.
 
 **Exit checks:** a fresh Vite project outside this repo, with no Rust
 installed, builds a `.flow` import in dev and production. All existing
-suites still pass. `docs/flowmark-spec.md` §Vite Plugin updated if
+suites still pass. `docs/flowview-spec.md` §Vite Plugin updated if
 resolution behavior changed.
 
 ### WS2 — Source maps from the Rust compiler
 
 **Why:** Spec §Compiler Contract lists source maps as planned; serious
-debugging needs them; `@flowmark/vite` currently returns `map: null`
+debugging needs them; `@flowview/vite` currently returns `map: null`
 implicitly.
 
 **What:** Emit a source map (mappings from generated JS positions back to
@@ -301,7 +301,7 @@ template positions) alongside generated code. Respect the existing
 
 **Steps:** extend `codegen.rs` to track output positions per emitted node →
 add a `--source-map` CLI flag emitting JSON (code + map) → plumb through
-`@flowmark/vite` and `@flowmark/astro` `transform` results → tests: a
+`@flowview/vite` and `@flowview/astro` `transform` results → tests: a
 runtime error thrown inside an `@for` body resolves to the correct template
 line in Node with source-map support enabled.
 
@@ -316,7 +316,7 @@ contract.
 ship broken client code. Correctness of diagnostics is a core promise.
 
 **What:** Use the TypeScript AST (already a dependency of
-`packages/dom/src/parser.ts`) for real lexical scope analysis: an
+`packages/events/src/parser.ts`) for real lexical scope analysis: an
 identifier is a capture **iff** it resolves to a frontmatter binding
 outside the handler and is not a declared parameter/local. Unknown
 identifiers that don't resolve to frontmatter bindings are _not_ errors
@@ -328,8 +328,8 @@ functions, `import`ed frontmatter values (must error), `const` frontmatter
 data used in a handler (must error) → replace `KNOWN_GLOBALS` logic with
 scope resolution → keep diagnostic wording and locations stable.
 
-**Exit checks:** `pnpm --filter @flowmark/dom test`,
-`pnpm --filter @flowmark/astro-events test`, `pnpm run typecheck`.
+**Exit checks:** `pnpm --filter @flowview/events test`,
+`pnpm --filter @flowview/astro-events test`, `pnpm run typecheck`.
 No allowlist sets remain in `parser.ts`.
 
 ### WS4 — Adversarial testing: fuzzing, properties, corpus
@@ -366,7 +366,7 @@ regression tests before this workstream closes.
 **Why:** §6.6 — "spec-driven" requires the spec to be executable, or drift
 is invisible.
 
-**What:** Give every normative requirement in `flowmark-spec.md` a stable ID
+**What:** Give every normative requirement in `flowview-spec.md` a stable ID
 (`SPEC-HTML-001` …) and annotate the enforcing tests (Rust: test name
 comment; TS: `describe`/`it` naming). Add a checker script
 (`scripts/spec-coverage.mjs`) that lists IDs without tests and fails CI on
@@ -407,9 +407,9 @@ positions for both `.flow` and embedded templates.
 ## 9. Testing doctrine
 
 - Test at the **lowest layer that can express the behavior**: parsing and
-  codegen in `crates/flowmark-compiler` unit tests; escaping in
+  codegen in `crates/flowview-compiler` unit tests; escaping in
   `packages/runtime`; transform wiring in `packages/vite`/`astro`; event
-  semantics in `packages/dom`; integration slicing in
+  semantics in `packages/events`; integration slicing in
   `packages/astro-events`; end-to-end only in `examples/`.
 - Bug fix ⇒ regression test that fails before the fix, in the same commit.
 - Prefer tests that **execute generated code** and assert on rendered
@@ -427,12 +427,12 @@ positions for both `.flow` and embedded templates.
 | Rust: tests           | `cargo test --workspace`                                |
 | JS: all package tests | `pnpm -r --if-present test`                             |
 | JS: types             | `pnpm run typecheck`                                    |
-| Runtime only          | `pnpm --filter @flowmark/runtime test`                  |
-| Vite plugin           | `pnpm --filter @flowmark/vite test`                     |
-| Astro integration     | `pnpm --filter @flowmark/astro test`                    |
-| Events core           | `pnpm --filter @flowmark/dom test`                      |
-| Events Astro          | `pnpm --filter @flowmark/astro-events test`             |
-| Demo gate             | `pnpm --filter @flowmark/astro-demo run check`          |
+| Runtime only          | `pnpm --filter @flowview/runtime test`                  |
+| Vite plugin           | `pnpm --filter @flowview/vite test`                     |
+| Astro integration     | `pnpm --filter @flowview/astro test`                    |
+| Events core           | `pnpm --filter @flowview/events test`                   |
+| Events Astro          | `pnpm --filter @flowview/astro-events test`             |
+| Demo gate             | `pnpm --filter @flowview/astro-demo run check`          |
 
 **Full gate (run before declaring any task done):**
 
@@ -454,7 +454,7 @@ A change is done when all of these hold:
 3. No invariant (§4) is violated; no non-goal (§5) crept in.
 4. `CHANGELOG.md` has a one-line entry under `Unreleased`.
 5. User-visible behavior changes are reflected in `README.md` and
-   `docs/flowmark-spec.md`, and spec/README/code agree with each other.
+   `docs/flowview-spec.md`, and spec/README/code agree with each other.
 6. Diagnostics affected by the change still report correct locations for
    both standalone `.flow` and Astro-embedded templates.
 7. No new dependencies, no expanded public API, unless the active

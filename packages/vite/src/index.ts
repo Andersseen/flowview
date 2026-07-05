@@ -2,22 +2,27 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import {
+  compileFlowview as compileFlowviewWasm,
+  FlowviewCompilerError,
+  type FlowviewCompilerDiagnostic,
+} from "@flowview/compiler";
 import type { Plugin } from "vite";
 
-export interface FlowmarkViteOptions {
+export interface FlowviewViteOptions {
   runtimeImport?: string;
-  /** Optional path to a custom `flowmark` CLI binary. */
+  /** Optional path to a custom `flowview` CLI binary. */
   compilerPath?: string;
 }
 
-export interface FlowmarkCompileRequest {
+export interface FlowviewCompileRequest {
   filename: string;
   lineOffset?: number;
   runtimeImport: string;
   compilerPath?: string;
 }
 
-export interface FlowmarkDiagnostic {
+export interface FlowviewDiagnostic {
   message: string;
   severity: "error" | "warning";
   code?: string | null;
@@ -28,29 +33,29 @@ export interface FlowmarkDiagnostic {
   end: number;
 }
 
-export class FlowmarkCompileError extends Error {
-  readonly diagnostics: FlowmarkDiagnostic[];
+export class FlowviewCompileError extends Error {
+  readonly diagnostics: FlowviewDiagnostic[];
 
-  constructor(message: string, diagnostics: FlowmarkDiagnostic[] = []) {
+  constructor(message: string, diagnostics: FlowviewDiagnostic[] = []) {
     super(message);
-    this.name = "FlowmarkCompileError";
+    this.name = "FlowviewCompileError";
     this.diagnostics = diagnostics;
   }
 }
 
-interface FlowmarkCompileResult {
+interface FlowviewCompileResult {
   code: string;
-  warnings: FlowmarkDiagnostic[];
+  warnings: FlowviewDiagnostic[];
 }
 
-const compileCache = new Map<string, Promise<FlowmarkCompileResult>>();
+const compileCache = new Map<string, Promise<FlowviewCompileResult>>();
 
-export default function flowmark(options: FlowmarkViteOptions = {}): Plugin {
-  const runtimeImport = options.runtimeImport ?? "@flowmark/runtime";
+export default function flowview(options: FlowviewViteOptions = {}): Plugin {
+  const runtimeImport = options.runtimeImport ?? "@flowview/runtime";
   const compilerPath = resolveCompilerPath(options.compilerPath);
 
   return {
-    name: "@flowmark/vite",
+    name: "@flowview/vite",
     enforce: "pre",
 
     configResolved() {
@@ -69,7 +74,7 @@ export default function flowmark(options: FlowmarkViteOptions = {}): Plugin {
       if (!filename.endsWith(".flow")) return null;
 
       try {
-        const { code: compiled, warnings } = await compileFlowmark(code, {
+        const { code: compiled, warnings } = await compileFlowview(code, {
           filename,
           runtimeImport,
           compilerPath,
@@ -85,7 +90,7 @@ export default function flowmark(options: FlowmarkViteOptions = {}): Plugin {
         };
       } catch (error) {
         if (
-          error instanceof FlowmarkCompileError &&
+          error instanceof FlowviewCompileError &&
           error.diagnostics.length > 0
         ) {
           const first = error.diagnostics[0]!;
@@ -117,10 +122,10 @@ export default function flowmark(options: FlowmarkViteOptions = {}): Plugin {
   };
 }
 
-export function compileFlowmark(
+export function compileFlowview(
   source: string,
-  request: FlowmarkCompileRequest,
-): Promise<FlowmarkCompileResult> {
+  request: FlowviewCompileRequest,
+): Promise<FlowviewCompileResult> {
   const compilerPath = resolveCompilerPath(request.compilerPath);
   const normalizedRequest = { ...request, compilerPath };
   const cacheKey = createHash("sha256")
@@ -141,12 +146,16 @@ export function compileFlowmark(
 
 function runCompiler(
   source: string,
-  request: Required<Pick<FlowmarkCompileRequest, "compilerPath">> &
-    FlowmarkCompileRequest,
-): Promise<FlowmarkCompileResult> {
+  request: FlowviewCompileRequest,
+): Promise<FlowviewCompileResult> {
+  const compilerPath = request.compilerPath;
+  if (!compilerPath) {
+    return runWasmCompiler(source, request);
+  }
+
   return new Promise((resolve, reject) => {
     const child = spawn(
-      request.compilerPath,
+      compilerPath,
       [
         "compile",
         "-",
@@ -178,9 +187,9 @@ function runCompiler(
       settled = true;
       if (error.code === "ENOENT") {
         reject(
-          new FlowmarkCompileError(
-            `Flowmark compiler was not found at "${request.compilerPath}". ` +
-              "Install the Flowmark CLI, run `cargo build --workspace` in the monorepo, " +
+          new FlowviewCompileError(
+            `flowview compiler was not found at "${request.compilerPath}". ` +
+              "Install the flowview CLI, run `cargo build --workspace` in the monorepo, " +
               "or provide compilerPath explicitly.",
           ),
         );
@@ -188,7 +197,7 @@ function runCompiler(
       }
       reject(error);
     });
-    child.on("close", (exitCode) => {
+    child.on("close", (exitCode: number | null) => {
       if (settled) return;
       settled = true;
       if (exitCode === 0) {
@@ -199,10 +208,10 @@ function runCompiler(
 
       const diagnostics = parseDiagnostics(stderr);
       reject(
-        new FlowmarkCompileError(
+        new FlowviewCompileError(
           diagnostics.length > 0
             ? formatDiagnostic(diagnostics[0]!)
-            : `Failed to compile Flowmark template ${request.filename}\n${stderr}`,
+            : `Failed to compile flowview template ${request.filename}\n${stderr}`,
           diagnostics,
         ),
       );
@@ -215,7 +224,33 @@ function runCompiler(
   });
 }
 
-function parseDiagnostics(stderr: string): FlowmarkDiagnostic[] {
+function runWasmCompiler(
+  source: string,
+  request: FlowviewCompileRequest,
+): Promise<FlowviewCompileResult> {
+  return Promise.resolve().then(() => {
+    try {
+      const result = compileFlowviewWasm(source, {
+        filename: request.filename,
+        runtimeImport: request.runtimeImport,
+      });
+      return {
+        code: result.code,
+        warnings: applyLineOffset(result.warnings, request.lineOffset),
+      };
+    } catch (error) {
+      if (error instanceof FlowviewCompilerError) {
+        throw new FlowviewCompileError(
+          error.message,
+          applyLineOffset(error.diagnostics, request.lineOffset),
+        );
+      }
+      throw error;
+    }
+  });
+}
+
+function parseDiagnostics(stderr: string): FlowviewDiagnostic[] {
   const lines = stderr.trim().split("\n");
   let line: string | undefined;
   for (let index = lines.length - 1; index >= 0; index -= 1) {
@@ -228,7 +263,7 @@ function parseDiagnostics(stderr: string): FlowmarkDiagnostic[] {
 
   try {
     const parsed = JSON.parse(line) as {
-      diagnostics?: FlowmarkDiagnostic[];
+      diagnostics?: FlowviewDiagnostic[];
     };
     return parsed.diagnostics ?? [];
   } catch {
@@ -236,13 +271,13 @@ function parseDiagnostics(stderr: string): FlowmarkDiagnostic[] {
   }
 }
 
-function formatDiagnostic(diagnostic: FlowmarkDiagnostic): string {
+function formatDiagnostic(diagnostic: FlowviewDiagnostic): string {
   const code = diagnostic.code ? ` [${diagnostic.code}]` : "";
   return `${diagnostic.message}${code}`;
 }
 
 function formatDiagnosticWithLocation(
-  diagnostic: FlowmarkDiagnostic,
+  diagnostic: FlowviewDiagnostic,
   filename: string,
 ): string {
   const code = diagnostic.code ? ` [${diagnostic.code}]` : "";
@@ -252,11 +287,11 @@ function formatDiagnosticWithLocation(
 /** Resolve the compiler automatically for normal usage and monorepo development. */
 export function resolveCompilerPath(compilerPath?: string): string {
   if (compilerPath) return compilerPath;
-  if (process.env.FLOWMARK_COMPILER_PATH) {
-    return process.env.FLOWMARK_COMPILER_PATH;
+  if (process.env.FLOWVIEW_COMPILER_PATH) {
+    return process.env.FLOWVIEW_COMPILER_PATH;
   }
 
-  const executable = process.platform === "win32" ? "flowmark.exe" : "flowmark";
+  const executable = process.platform === "win32" ? "flowview.exe" : "flowview";
   const workspaceCandidates = [
     fileURLToPath(
       new URL(`../../../target/debug/${executable}`, import.meta.url),
@@ -266,9 +301,17 @@ export function resolveCompilerPath(compilerPath?: string): string {
     ),
   ];
 
-  return (
-    workspaceCandidates.find((candidate) => existsSync(candidate)) ?? executable
-  );
+  return workspaceCandidates.find((candidate) => existsSync(candidate)) ?? "";
+}
+
+function applyLineOffset(
+  diagnostics: readonly FlowviewCompilerDiagnostic[],
+  lineOffset = 0,
+): FlowviewDiagnostic[] {
+  return diagnostics.map((diagnostic) => ({
+    ...diagnostic,
+    line: diagnostic.line + lineOffset,
+  }));
 }
 
 function stripQuery(id: string): string {

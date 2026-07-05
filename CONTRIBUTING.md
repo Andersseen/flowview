@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in Flowmark. This project is still early, so the best
+Thanks for your interest in flowview. This project is still early, so the best
 contributions are small, well-scoped changes that make the compiler easier to
 trust.
 
@@ -33,8 +33,8 @@ pnpm run demo
 
 ## Repository Layout
 
-- `crates/flowmark-compiler`: Rust compiler library
-- `crates/flowmark-cli`: Rust CLI
+- `crates/flowview-compiler`: Rust compiler library
+- `crates/flowview-cli`: Rust CLI
 - `packages/runtime`: TypeScript runtime helpers
 - `examples/astro-demo`: Astro demo site
 - `examples/basic`: small `.flow` examples
@@ -64,7 +64,7 @@ For language and Astro integration changes, also run:
 
 ```sh
 pnpm run build:demo
-pnpm --filter @flowmark/astro-demo run test:unit
+pnpm --filter @flowview/astro-demo run test:unit
 pnpm run test:e2e:demo
 ```
 
@@ -72,6 +72,6 @@ Playwright browser binaries are not committed. Install them locally before
 running the demo end-to-end suite:
 
 ```sh
-pnpm --filter @flowmark/astro-demo exec playwright install chromium
-pnpm --filter @flowmark/astro-demo run test:e2e
+pnpm --filter @flowview/astro-demo exec playwright install chromium
+pnpm --filter @flowview/astro-demo run test:e2e
 ```

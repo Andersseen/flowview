@@ -7,7 +7,7 @@ export { renderValue } from "./render-value";
 export type RenderContext = Record<string, unknown>;
 
 /**
- * Type of a generated Flowmark render function.
+ * Type of a generated flowview render function.
  */
 export type RenderFunction<C extends RenderContext = RenderContext> = (
   context: C,

@@ -16,6 +16,6 @@
     element.setAttribute("disabled", "true");
   }
 
-  import { registerFlowHandlers } from "@flowmark/dom/runtime";
+  import { registerFlowHandlers } from "@flowview/events/runtime";
   registerFlowHandlers("a1b2c3d4e5f6", { removeItem, save }, ["click"]);
 </script>

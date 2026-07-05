@@ -1,6 +1,6 @@
-# Flowmark
+# flowview
 
-Flowmark is a small Rust compiler for HTML-like templates with
+flowview is a small Rust compiler for HTML-like templates with
 Angular-inspired control flow syntax. It is not a framework. It transforms
 `.flow` files into plain JavaScript render functions.
 
@@ -17,7 +17,7 @@ Angular-inspired control flow syntax. It is not a framework. It transforms
 ```
 
 ```js
-import { renderValue } from "@flowmark/runtime";
+import { renderValue } from "@flowview/runtime";
 
 export function render(context) {
   let output = "";
@@ -29,36 +29,36 @@ export function render(context) {
 
 ## Status
 
-Flowmark is experimental and pre-stable. The public shape is intentionally
+flowview is experimental and pre-stable. The public shape is intentionally
 small, but syntax and generated output may still change before a stable release.
 
-The current milestone is the inline Astro authoring path: Flowmark control flow
-inside `<template flowmark={...} is:raw>` regions in normal `.astro`
+The current milestone is the inline Astro authoring path: flowview control flow
+inside `<template flowview={...} is:raw>` regions in normal `.astro`
 files.
 Standalone `.flow` imports remain supported, but broader Vite and server-runtime
 usage is a later milestone after the Astro integration and core syntax are
 reliable.
 
-## What Flowmark Is
+## What flowview Is
 
-- A Rust compiler crate: `flowmark-compiler`
-- A Rust CLI: `flowmark`
-- A tiny TypeScript runtime package: `@flowmark/runtime`
-- A Vite plugin: `@flowmark/vite`
-- An Astro integration: `@flowmark/astro`
-- A separate events compiler: Flowmark Events (`@flowmark/dom`, `@flowmark/astro-events`)
-- A Prettier plugin: `@flowmark/prettier` (formats `.astro` files while preserving Flowmark regions)
+- A Rust compiler crate: `flowview-compiler`
+- A Rust CLI: `flowview`
+- A tiny TypeScript runtime package: `@flowview/runtime`
+- A Vite plugin: `@flowview/vite`
+- An Astro integration: `@flowview/astro`
+- A separate events compiler: flowview Events (`@flowview/events`, `@flowview/astro-events`)
+- A Prettier plugin: `@flowview/prettier` (formats `.astro` files while preserving flowview regions)
 - A framework-agnostic template experiment
 - A monorepo with a working Astro demo
 
-## What Flowmark Is Not
+## What flowview Is Not
 
-Flowmark does not provide:
+flowview does not provide:
 
 - Components
 - Hydration
 - Signals
-- DOM events in the HTML compiler (browser events are handled by the separate Flowmark Events compiler)
+- DOM events in the HTML compiler (browser events are handled by the separate flowview Events compiler)
 - Directives
 - Dependency injection
 - A virtual DOM
@@ -68,13 +68,13 @@ Flowmark does not provide:
 ## Why It Exists
 
 Modern control-flow syntax such as `@if`, `@for`, and `@switch` is productive
-inside templates, but it is usually tied to a full UI framework. Flowmark
+inside templates, but it is usually tied to a full UI framework. flowview
 explores whether that authoring style can compile into plain JavaScript render
 functions that are easy to run from any host environment.
 
 ## Supported Syntax
 
-Flowmark currently supports:
+flowview currently supports:
 
 - Plain text and HTML-like markup
 - Escaped interpolation: `{{ context.title }}`
@@ -92,11 +92,11 @@ Flowmark currently supports:
 Iterables are normalized with `Array.from`, so arrays, sets, maps, generators,
 and array-like objects can be rendered.
 
-`track` is accepted as reserved syntax for future integrations. Since Flowmark
+`track` is accepted as reserved syntax for future integrations. Since flowview
 currently renders strings and does not diff DOM nodes, `track` has no runtime
 effect today.
 
-The render data is always available inside a Flowmark template as `context`.
+The render data is always available inside a flowview template as `context`.
 There is no implicit `ctx` alias. In Astro, `context={value}` supplies the value
 and the template reads it as `context.*`.
 
@@ -109,15 +109,15 @@ a word, such as `contact@if.example`, is also plain text.
 
 ## Security Model
 
-`.flow` files are trusted source code. Flowmark preserves expressions as
+`.flow` files are trusted source code. flowview preserves expressions as
 JavaScript source strings and emits them into the generated render function.
 Do not compile user-submitted templates unless you sandbox the generated code
 yourself.
 
 Values interpolated from `context` are escaped by default through
-`@flowmark/runtime`.
+`@flowview/runtime`.
 
-HTML escaping is safe for normal text and quoted HTML attribute values. Flowmark
+HTML escaping is safe for normal text and quoted HTML attribute values. flowview
 rejects interpolation in unquoted attributes and rejects mixed text plus
 interpolation inside a single quoted attribute value. Escaping is not URL, CSS,
 or JavaScript sanitization. Do not interpolate untrusted values into
@@ -127,15 +127,15 @@ attributes without validation appropriate to that context.
 ## Repository Layout
 
 ```text
-flowmark/
+flowview/
 ├── crates/
-│   ├── flowmark-compiler/   # Rust compiler library
-│   └── flowmark-cli/        # Rust CLI binary
+│   ├── flowview-compiler/   # Rust compiler library
+│   └── flowview-cli/        # Rust CLI binary
 ├── packages/
 │   ├── runtime/             # TypeScript runtime helpers
 │   ├── vite/                # Standalone .flow imports
 │   ├── astro/               # Astro integration
-│   └── vscode-flowmark/     # Editor support
+│   └── vscode-flowview/     # Editor support
 ├── examples/
 │   ├── basic/               # Small .flow examples
 │   └── astro-demo/          # Astro demo site
@@ -176,16 +176,16 @@ pnpm run build:demo
 ## Use With Vite
 
 ```ts
-import flowmark from "@flowmark/vite";
+import flowview from "@flowview/vite";
 
 export default {
-  plugins: [flowmark()],
+  plugins: [flowview()],
 };
 ```
 
 The plugin compiles `.flow` imports at build time using the prebuilt CLI. In
 the monorepo it discovers the local Rust binary automatically; installed usage
-resolves `flowmark` from `PATH`. `compilerPath` remains available as an advanced
+resolves `flowview` from `PATH`. `compilerPath` remains available as an advanced
 override.
 
 TypeScript projects that import `.flow` files can add the bundled module
@@ -194,15 +194,15 @@ declaration to their `tsconfig.json`:
 ```json
 {
   "compilerOptions": {
-    "types": ["@flowmark/vite/client"]
+    "types": ["@flowview/vite/client"]
   }
 }
 ```
 
 ## Use With Hono or Plain Node.js
 
-Flowmark generates a plain `render(context)` function, so it works with any
-server runtime. Add `@flowmark/vite` to your Vite build, import the compiled
+flowview generates a plain `render(context)` function, so it works with any
+server runtime. Add `@flowview/vite` to your Vite build, import the compiled
 `.flow` file, and call `render` inside the request handler.
 
 ### Hono
@@ -215,7 +215,7 @@ const app = new Hono();
 
 app.get("/", (context) => {
   const html = render({
-    title: "Hello from Flowmark",
+    title: "Hello from flowview",
     items: ["a", "b", "c"],
   });
   return context.html(html);
@@ -244,7 +244,7 @@ import { render } from "./page.flow";
 
 export default {
   async fetch() {
-    const html = render({ title: "Hello from Flowmark" });
+    const html = render({ title: "Hello from flowview" });
     return new Response(html, {
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
@@ -271,18 +271,18 @@ pnpm run test:demo
 The Astro demo also has a Playwright suite:
 
 ```sh
-pnpm --filter @flowmark/astro-demo exec playwright install chromium
+pnpm --filter @flowview/astro-demo exec playwright install chromium
 pnpm run test:e2e:demo
 ```
 
-## Flowmark Events
+## flowview Events
 
-Flowmark Events is the separate compiler and Astro integration for Angular-style
+flowview Events is the separate compiler and Astro integration for Angular-style
 event bindings such as `(click)="save($event)"`. It is not part of the core HTML
-compiler. The implementation packages are currently named `@flowmark/dom` and
-`@flowmark/astro-events`.
+compiler. The implementation packages are currently named `@flowview/events` and
+`@flowview/astro-events`.
 
-Handlers are declared in a `<script data-flowmark>` block, which is ordinary
+Handlers are declared in a `<script data-flowview>` block, which is ordinary
 client-side JavaScript: normal imports, module-level state, and closures all
 work exactly as they would in any other `<script>` tag.
 
@@ -290,7 +290,7 @@ work exactly as they would in any other `<script>` tag.
 <button (click)="save($event)">Save</button>
 <button (click)="removeItem('item-1', $el)">Remove</button>
 
-<script data-flowmark>
+<script data-flowview>
   function save(event) {
     console.log(event.type);
   }
@@ -301,18 +301,18 @@ work exactly as they would in any other `<script>` tag.
 </script>
 ```
 
-At build time, `@flowmark/astro-events` validates that every `(event)="handler()"`
+At build time, `@flowview/astro-events` validates that every `(event)="handler()"`
 binding resolves to a function declared in that block, rewrites the bindings to
 `data-flow-on-<event>` / `data-flow-scope` / `data-flow-args` attributes, and
 appends a `registerFlowHandlers(scope, handlers, events)` call to the script.
-The runtime (`@flowmark/dom/runtime`) attaches one delegated `document`
+The runtime (`@flowview/events/runtime`) attaches one delegated `document`
 listener per event type and resolves the handler at dispatch time, so elements
 added to the DOM later (view transitions, `@for` re-renders) work without
-rebinding. `data-flowmark` (not `flowmark`) is required because `<script>`
+rebinding. `data-flowview` (not `flowview`) is required because `<script>`
 attributes are strictly typed in Astro's JSX namespace, and only `data-*`
 attributes are permitted to hold arbitrary custom markers.
 
-At most one `<script data-flowmark>` block is allowed per `.astro` file, and
+At most one `<script data-flowview>` block is allowed per `.astro` file, and
 every `(event)="handler()"` binding in that file must resolve to a function
 declared in it; declaring handlers in Astro frontmatter is no longer
 supported.
@@ -323,13 +323,13 @@ supported.
 pnpm run demo
 ```
 
-The demo is also the [official Flowmark landing page](examples/astro-demo/).
+The demo is also the [official flowview landing page](examples/astro-demo/).
 It uses Astro, Tailwind CSS 4, `@andersseen/web-components`, and the local
-`@flowmark/astro` integration. Inline Flowmark templates can be authored with
-the editor-compatible `<template flowmark is:raw>` wrapper:
+`@flowview/astro` integration. Inline flowview templates can be authored with
+the editor-compatible `<template flowview is:raw>` wrapper:
 
 ```text
-<template flowmark={context} is:raw>
+<template flowview={context} is:raw>
   <main>
     <h1>{{ context.title }}</h1>
     @if (context.featured) {
@@ -339,48 +339,48 @@ the editor-compatible `<template flowmark is:raw>` wrapper:
 </template>
 ```
 
-The integration transforms embedded Flowmark templates before Astro parses the
+The integration transforms embedded flowview templates before Astro parses the
 page. `is:raw` is included in the recommended Astro authoring form so Astro's
-Language Server treats the custom syntax as inert; the Flowmark integration
+Language Server treats the custom syntax as inert; the flowview integration
 replaces the entire element before the application build. The integration
 discovers the monorepo compiler automatically and otherwise uses the prebuilt
-`flowmark` CLI from `PATH`. `compilerPath` is only needed as an advanced
+`flowview` CLI from `PATH`. `compilerPath` is only needed as an advanced
 override. The integration never runs Cargo and sends templates over stdin, so
 it does not create temporary source files.
 
 ## Editor Support
 
 The repository includes a local VS Code language support package at
-`packages/vscode-flowmark`. It contributes:
+`packages/vscode-flowview`. It contributes:
 
 - `.flow` syntax highlighting
-- Flowmark snippets
-- basic highlighting for `<template flowmark>` blocks inside `.astro` files
+- flowview snippets
+- basic highlighting for `<template flowview>` blocks inside `.astro` files
 
 ## Run The CLI
 
 Compile a `.flow` file to stdout:
 
 ```sh
-cargo run -p flowmark-cli -- compile examples/basic/for.flow
+cargo run -p flowview-cli -- compile examples/basic/for.flow
 ```
 
 The CLI also accepts stdin, which is the supported integration boundary:
 
 ```sh
-printf '<h1>{{ context.title }}</h1>' | flowmark compile - --display-name inline.flow
+printf '<h1>{{ context.title }}</h1>' | flowview compile - --display-name inline.flow
 ```
 
 Compile to a file:
 
 ```sh
-cargo run -p flowmark-cli -- compile examples/basic/for.flow --out for.js
+cargo run -p flowview-cli -- compile examples/basic/for.flow --out for.js
 ```
 
 Use a custom runtime import path:
 
 ```sh
-cargo run -p flowmark-cli -- compile examples/basic/for.flow --runtime "#flowmark/runtime"
+cargo run -p flowview-cli -- compile examples/basic/for.flow --runtime "#flowview/runtime"
 ```
 
 ## Contributing
@@ -389,7 +389,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines.
 
 ## Specification
 
-See [docs/flowmark-spec.md](./docs/flowmark-spec.md) for the draft
+See [docs/flowview-spec.md](./docs/flowview-spec.md) for the draft
 specification and integration roadmap.
 
 ## Security

@@ -1,7 +1,7 @@
 import type { FeaturesContext } from "./types";
 
 /**
- * Context for the Features Flowmark template.
+ * Context for the Features flowview template.
  */
 export const featuresContext: FeaturesContext = {
   items: [
@@ -23,7 +23,7 @@ export const featuresContext: FeaturesContext = {
       id: "framework-agnostic",
       title: "Framework agnostic",
       description:
-        "Use Flowmark as standalone .flow files with Vite or embed regions directly inside Astro components.",
+        "Use flowview as standalone .flow files with Vite or embed regions directly inside Astro components.",
       badge: "Astro + Vite",
     },
     {

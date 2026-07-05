@@ -2,7 +2,7 @@ import { site } from "./site";
 import type { FooterContext } from "./types";
 
 /**
- * Context for the Footer Flowmark template.
+ * Context for the Footer flowview template.
  */
 export const footerContext: FooterContext = {
   brand: site.title,
@@ -11,5 +11,5 @@ export const footerContext: FooterContext = {
     { label: "GitHub", href: site.github, external: true },
     { label: "Docs", href: site.docs, external: true },
   ],
-  copyright: `© ${new Date().getFullYear()} Flowmark. Built with Astro, Flowmark, Tailwind 4, and Andersseen Web Components.`,
+  copyright: `© ${new Date().getFullYear()} flowview. Built with Astro, flowview, Tailwind 4, and Andersseen Web Components.`,
 };

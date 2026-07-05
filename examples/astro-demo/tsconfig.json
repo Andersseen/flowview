@@ -3,7 +3,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@flowmark/runtime": ["../../packages/runtime/src/index.ts"]
+      "@flowview/runtime": ["../../packages/runtime/src/index.ts"]
     }
   }
 }

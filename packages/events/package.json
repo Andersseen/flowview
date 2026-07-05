@@ -1,0 +1,54 @@
+{
+  "name": "@flowview/events",
+  "version": "0.1.1",
+  "description": "flowview Events compiler and runtime for client-side bindings.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andersseen/flowview.git",
+    "directory": "packages/events"
+  },
+  "bugs": {
+    "url": "https://github.com/andersseen/flowview/issues"
+  },
+  "homepage": "https://github.com/andersseen/flowview/tree/main/packages/events#readme",
+  "keywords": [
+    "flowview",
+    "template",
+    "events",
+    "dom",
+    "compiler"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime/index.d.ts",
+      "import": "./dist/runtime/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "typescript": "^5.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "jsdom": "^26.0.0",
+    "tsup": "^8.5.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -1,6 +1,0 @@
-{
-  "name": "Flowmark Astro Raw Template Injection",
-  "scopeName": "flowmark.astro.raw.injection",
-  "injectionSelector": "L:meta.scope.tag.template.astro meta.raw.astro source.unknown",
-  "patterns": [{ "include": "source.flowmark" }]
-}

@@ -1,10 +1,26 @@
 {
-  "name": "@flowmark/astro-events",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@flowview/astro-events",
+  "version": "0.1.1",
   "type": "module",
   "sideEffects": false,
-  "description": "Flowmark Events integration for Astro.",
+  "description": "flowview Events integration for Astro.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andersseen/flowview.git",
+    "directory": "packages/astro-events"
+  },
+  "bugs": {
+    "url": "https://github.com/andersseen/flowview/issues"
+  },
+  "homepage": "https://github.com/andersseen/flowview/tree/main/packages/astro-events#readme",
+  "keywords": [
+    "flowview",
+    "astro",
+    "events",
+    "dom",
+    "integration"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -14,6 +30,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
@@ -21,7 +40,7 @@
   },
   "dependencies": {
     "@astrojs/compiler": "^2.13.1",
-    "@flowmark/dom": "workspace:*",
+    "@flowview/events": "workspace:^",
     "magic-string": "^0.30.0"
   },
   "devDependencies": {
@@ -34,6 +53,6 @@
   },
   "peerDependencies": {
     "astro": "^5.0.0",
-    "@flowmark/dom": "workspace:*"
+    "@flowview/events": "^0.1.1"
   }
 }
