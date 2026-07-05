@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@flowview/astro-demo", "vscode-flowview"]
+  "ignore": ["@flowview/astro-demo", "hono-demo", "vscode-flowview"]
 }

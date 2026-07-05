@@ -6,6 +6,18 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+- Added `@flowview/vite-events`, bringing flowview Events'
+  `(click)="handler()"` bindings to plain Vite projects (Hono, Node.js,
+  Cloudflare Workers) without requiring Astro. Bindings are rewritten to
+  `data-flow-on-*` attributes before `@flowview/vite` compiles the template,
+  and the `<script data-flowview>` block is served as a
+  `virtual:flowview-events/` module for the client build.
+- Added `examples/hono-demo`, a worked Vite + Hono example for flowview
+  Events without Astro, with a Playwright suite covering click, input, and
+  post-load DOM delegation.
+- Exported `hashScope` from `@flowview/events`, the file-path hashing helper
+  used to compute `data-flow-scope` ids, so new integrations don't need their
+  own copy.
 - Added `@flowview/prettier`, a Prettier plugin that wraps
   prettier-plugin-astro and preserves `<template flowview …>` regions
   byte-for-byte, removing the need for `<!-- prettier-ignore -->` comments.

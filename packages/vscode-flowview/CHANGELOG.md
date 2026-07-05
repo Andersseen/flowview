@@ -1,6 +1,6 @@
 # Change Log
 
-## Unreleased
+## 0.2.0
 
 - Use theme-compatible TextMate scopes for every flowview control keyword.
 - Mark interpolations and control expressions as embedded JavaScript regions.

@@ -54,6 +54,7 @@ jobs:
           pnpm run build:vite
           pnpm run build:astro
           pnpm run build:astro-events
+          pnpm run build:vite-events
           pnpm run build:prettier
 
       - name: Test packages
@@ -64,6 +65,7 @@ jobs:
           pnpm run test:vite
           pnpm run test:astro
           pnpm run test:astro-events
+          pnpm run test:vite-events
           pnpm run test:prettier
 
       - name: Create release PR or publish
