@@ -18,3 +18,5 @@ export {
   type FlowviewDomLocation,
   locate,
 } from "./diagnostics.js";
+
+export { hashScope } from "./scope.js";
