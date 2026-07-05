@@ -1,0 +1,74 @@
+<script data-flowview>
+  let removed = 0;
+
+  function save(event) {
+    const output = document.querySelector("#click-output");
+    if (output) output.textContent = `Saved from a ${event.type} event`;
+  }
+
+  function onInput(event) {
+    const output = document.querySelector("#input-output");
+    if (output) output.textContent = event.target.value;
+  }
+
+  function addRow() {
+    const template = document.querySelector("#row-template");
+    const rows = document.querySelector("#rows");
+    if (template instanceof HTMLTemplateElement && rows) {
+      rows.appendChild(template.content.cloneNode(true));
+    }
+  }
+
+  function removeRow(element) {
+    element.closest("li")?.remove();
+    removed += 1;
+    const output = document.querySelector("#removed-count");
+    if (output) output.textContent = String(removed);
+  }
+</script>
+
+<main>
+  <h1>flowview + Hono</h1>
+  <p>
+    A server-rendered page compiled by the flowview HTML compiler, with
+    (click)/(input) handlers compiled by flowview Events — no Astro involved.
+  </p>
+
+  <section>
+    <h2>Click</h2>
+    <button (click)="save($event)">Save</button>
+    <p id="click-output">Click Save to see the compiled handler run.</p>
+  </section>
+
+  <section>
+    <h2>Input</h2>
+    <input
+      id="text-input"
+      (input)="onInput($event)"
+      placeholder="Type to trigger (input)"
+    />
+    <p id="input-output">empty</p>
+  </section>
+
+  <section>
+    <h2>Server-rendered list (flowview \@for)</h2>
+    <ul id="items">
+      @for (item of context.items; track item) {
+        <li>{{ item }}</li>
+      } @empty {
+        <li>No items yet.</li>
+      }
+    </ul>
+  </section>
+
+  <section>
+    <h2>Rows added after load (proves delegation survives DOM mutation)</h2>
+    <button id="add-row" (click)="addRow()">Add row</button>
+    <ul id="rows"></ul>
+    <p id="removed-count">0</p>
+
+    <template id="row-template">
+      <li><button (click)="removeRow($el)">Remove</button></li>
+    </template>
+  </section>
+</main>

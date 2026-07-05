@@ -277,10 +277,11 @@ pnpm run test:e2e:demo
 
 ## flowview Events
 
-flowview Events is the separate compiler and Astro integration for Angular-style
-event bindings such as `(click)="save($event)"`. It is not part of the core HTML
-compiler. The implementation packages are currently named `@flowview/events` and
-`@flowview/astro-events`.
+flowview Events is the separate compiler for Angular-style event bindings such
+as `(click)="save($event)"`. It is not part of the core HTML compiler. The
+core package is `@flowview/events`; `@flowview/astro-events` wires it into
+Astro, and `@flowview/vite-events` wires it into a plain Vite project (Hono,
+Node.js, Cloudflare Workers — no Astro required).
 
 Handlers are declared in a `<script data-flowview>` block, which is ordinary
 client-side JavaScript: normal imports, module-level state, and closures all
@@ -312,10 +313,42 @@ rebinding. `data-flowview` (not `flowview`) is required because `<script>`
 attributes are strictly typed in Astro's JSX namespace, and only `data-*`
 attributes are permitted to hold arbitrary custom markers.
 
-At most one `<script data-flowview>` block is allowed per `.astro` file, and
-every `(event)="handler()"` binding in that file must resolve to a function
-declared in it; declaring handlers in Astro frontmatter is no longer
+At most one `<script data-flowview>` block is allowed per `.astro` or `.flow`
+file, and every `(event)="handler()"` binding in that file must resolve to a
+function declared in it; declaring handlers in Astro frontmatter is no longer
 supported.
+
+### Use flowview Events without Astro (Vite + Hono)
+
+`@flowview/vite-events` brings the same authoring model to a plain Vite
+project. It must run _before_ `@flowview/vite`, since bindings have to be
+rewritten to `data-flow-on-*` attributes before the Rust compiler ever parses
+the `.flow` file:
+
+```ts
+import flowviewEvents from "@flowview/vite-events";
+import flowview from "@flowview/vite";
+
+export default {
+  plugins: [flowviewEvents(), flowview()],
+};
+```
+
+The `<script data-flowview>` block is stripped out of the rendered HTML and
+served as a virtual module instead, so it needs a real client entry to import
+it into the browser bundle:
+
+```ts
+// src/entry-client.ts
+import "virtual:flowview-events/src/pages/index.flow.ts";
+```
+
+Getting that entry's `<script>` tag into the HTML response is a standard Vite
+SSR concern, not something the plugin automates: inject a literal
+`<script type="module" src="/src/entry-client.ts">` in dev, and in production
+look up the hashed filename in `dist/client/.vite/manifest.json`. See
+`examples/hono-demo` for the full, working wiring — dev server, production
+build, and manifest lookup included.
 
 ## Run The Astro Demo
 
@@ -347,6 +380,21 @@ discovers the monorepo compiler automatically and otherwise uses the prebuilt
 `flowview` CLI from `PATH`. `compilerPath` is only needed as an advanced
 override. The integration never runs Cargo and sends templates over stdin, so
 it does not create temporary source files.
+
+## Run The Hono Demo
+
+```sh
+pnpm run demo:hono
+```
+
+The demo is [`examples/hono-demo`](examples/hono-demo/), a plain Vite + Hono
+project with no Astro involved. It's the worked example for
+`@flowview/vite-events`: a `.flow` page with `(click)`/`(input)` bindings, a
+dev server built from Vite's middleware-mode + `@hono/node-server`, and a
+production build with manifest-based script injection. See its
+[README](examples/hono-demo/README.md) for how the pieces fit together, and
+`pnpm --filter hono-demo build && pnpm --filter hono-demo start` to run the
+production build.
 
 ## Editor Support
 

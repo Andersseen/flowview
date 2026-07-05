@@ -1,0 +1,55 @@
+{
+  "name": "@flowview/vite-events",
+  "version": "0.1.0",
+  "type": "module",
+  "sideEffects": false,
+  "description": "flowview Events plugin for plain Vite projects (no Astro required).",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andersseen/flowview.git",
+    "directory": "packages/vite-events"
+  },
+  "bugs": {
+    "url": "https://github.com/andersseen/flowview/issues"
+  },
+  "homepage": "https://github.com/andersseen/flowview/tree/main/packages/vite-events#readme",
+  "keywords": [
+    "flowview",
+    "vite",
+    "events",
+    "dom",
+    "plugin"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@flowview/events": "workspace:^"
+  },
+  "devDependencies": {
+    "@flowview/vite": "workspace:^",
+    "@types/node": "^26.0.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.0",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.0 || ^7.0.0"
+  }
+}

@@ -72,6 +72,9 @@ jobs:
       - name: Test Astro integration
         run: pnpm run test:astro
 
+      - name: Test Vite Events integration
+        run: pnpm run test:vite-events
+
       - name: Test Prettier plugin
         run: pnpm run test:prettier
 
@@ -80,6 +83,18 @@ jobs:
 
       - name: Check TypeScript types
         run: pnpm run typecheck
+
+      - name: Typecheck and unit test hono-demo
+        run: pnpm run test:hono-demo
+
+      - name: Build hono-demo
+        run: pnpm run build:hono-demo
+
+      - name: Install Chromium for hono-demo
+        run: pnpm --filter hono-demo exec playwright install --with-deps chromium
+
+      - name: Run hono-demo end-to-end tests
+        run: pnpm run test:e2e:hono-demo
 
   astro-demo:
     runs-on: ubuntu-latest
