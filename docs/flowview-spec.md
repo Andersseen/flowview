@@ -192,7 +192,7 @@ Each diagnostic includes:
 - End byte offset.
 - Optional diagnostic code.
 
-Diagnostic codes are stable, e.g. `FM0011` for invalid JavaScript expressions.
+Diagnostic codes are stable, e.g. `FV0011` for invalid JavaScript expressions.
 
 ## Code Generation
 

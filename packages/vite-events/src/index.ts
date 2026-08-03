@@ -4,7 +4,7 @@ import {
   applyTemplateEdits,
   compileScriptEvents,
   findEventBindings,
-  FlowviewDomError,
+  FlowviewEventsError,
   hashScope,
   type TemplateEdit,
 } from "@flowview/events";
@@ -199,7 +199,7 @@ function toLocatedError(
       loc: lineAndColumn(code, error.offset),
     };
   }
-  if (error instanceof FlowviewDomError) {
+  if (error instanceof FlowviewEventsError) {
     const first = error.diagnostics[0];
     const message = error.diagnostics.map((d) => d.message).join("\n");
     return {

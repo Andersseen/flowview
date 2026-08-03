@@ -96,18 +96,20 @@ flowview/
 │   │       ├── javascript.rs     # embedded-JS expression scanner/validator
 │   │       ├── validation.rs     # semantic validation
 │   │       ├── codegen.rs        # JS render-function generation
-│   │       └── diagnostics.rs    # structured diagnostics (FMxxxx codes)
+│   │       └── diagnostics.rs    # structured diagnostics (FVxxxx codes)
 │   └── flowview-cli/             # `flowview` binary: file/stdin → JS,
 │                                 # JSON diagnostics, --line-offset, names
 ├── packages/
 │   ├── runtime/                  # @flowview/runtime: escapeHtml, renderValue
+│   ├── compiler/                 # @flowview/compiler: WASM wrapper for the
+│   │                             # Rust compiler used by the Vite/Astro plugins
 │   ├── vite/                     # @flowview/vite: .flow imports; spawns the
 │   │                             # `flowview` CLI (workspace target/ or PATH)
 │   ├── astro/                    # @flowview/astro: inline
 │   │                             # <template flowview={...} is:raw>
 │   │                             # regions in .astro (uses official Astro
 │   │                             # parser; emits source maps)
-│   ├── dom/                      # @flowview/events: Events compiler core
+│   ├── events/                   # @flowview/events: Events compiler core
 │   │   └── src/
 │   │       ├── parser.ts         # event-attribute scanner + frontmatter
 │   │       │                     # function extraction (TypeScript AST) +
@@ -117,6 +119,10 @@ flowview/
 │   │       └── runtime/          # bindFlowEvents (dedup-safe)
 │   ├── astro-events/             # @flowview/astro-events: Astro integration
 │   │                             # for (event)="..." (magic-string source maps)
+│   ├── vite-events/              # @flowview/vite-events: Vite integration for
+│   │                             # (event)="..." in standalone .flow files
+│   ├── prettier/                 # @flowview/prettier: format .astro files
+│   │                             # while preserving flowview regions
 │   └── vscode-flowview/          # editor grammar + snippets
 ├── examples/
 │   ├── basic/                    # minimal .flow + Vite fixture
@@ -160,7 +166,7 @@ Language and output contracts. Every change must preserve all of them.
    modules as-is (after validation). Never build anything that implies
    untrusted-template safety.
 6. **Diagnostics are structured**: message, severity, filename, line,
-   column, byte offsets, stable `FMxxxx` code. Embedded templates report
+   column, byte offsets, stable `FVxxxx` code. Embedded templates report
    host-file (page-relative) locations via line offsets.
 7. **Invalid embedded JavaScript fails at compile time**, validated with a
    real JS parser, located at the original template position.

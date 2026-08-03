@@ -241,7 +241,7 @@ fn track_expression_emits_warning() {
     let warnings = expect_warnings("@for (item of context.items; track item.id) { <p></p> }");
     assert_eq!(warnings.len(), 1);
     assert!(warnings[0].message.contains("track"));
-    assert_eq!(warnings[0].code.as_deref(), Some("FM0015"));
+    assert_eq!(warnings[0].code.as_deref(), Some("FV0015"));
     assert_eq!(
         warnings[0].severity,
         flowview_compiler::DiagnosticSeverity::Warning
@@ -596,7 +596,7 @@ fn diagnostic_contains_precise_span_and_code() {
     assert!(
         diagnostics
             .iter()
-            .any(|d| d.code == Some("FM0007".to_string())),
+            .any(|d| d.code == Some("FV0007".to_string())),
         "expected empty expression code"
     );
     assert!(
@@ -629,19 +629,19 @@ fn diagnostic_formatter_outputs_human_and_json() {
     let diagnostics =
         vec![
             flowview_compiler::diagnostics::Diagnostic::new("example error", 2, 5, 10, 15)
-                .with_code("FM9999")
+                .with_code("FV9999")
                 .with_severity(DiagnosticSeverity::Error),
         ];
 
     let formatter = DiagnosticFormatter::new(&diagnostics, filename, 0);
     let human = formatter.format_human();
     assert!(human.contains("test.flow:2:5"));
-    assert!(human.contains("FM9999"));
+    assert!(human.contains("FV9999"));
     assert!(human.contains("example error"));
 
     let json = formatter.format_json();
     assert!(json.contains(filename));
-    assert!(json.contains("FM9999"));
+    assert!(json.contains("FV9999"));
     assert!(json.contains("example error"));
 }
 

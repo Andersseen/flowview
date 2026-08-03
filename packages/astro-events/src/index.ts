@@ -10,8 +10,8 @@ import MagicString, { type SourceMap } from "magic-string";
 import {
   compileScriptEvents,
   findEventBindings,
-  FlowviewDomError,
-  type FlowviewDomDiagnostic,
+  FlowviewEventsError,
+  type FlowviewEventsDiagnostic,
 } from "@flowview/events";
 import type { AstroIntegration } from "astro";
 import type { Plugin } from "vite";
@@ -95,7 +95,7 @@ function flowviewEventsVitePlugin(options: FlowviewAstroEventsOptions): Plugin {
           }
           throw locatedError;
         }
-        if (error instanceof FlowviewDomError) {
+        if (error instanceof FlowviewEventsError) {
           const first = error.diagnostics[0];
           if (first) {
             const message = error.diagnostics
@@ -195,13 +195,13 @@ function transformWithScriptBlock(
       runtimeImport,
     });
   } catch (error) {
-    if (error instanceof FlowviewDomError) {
+    if (error instanceof FlowviewEventsError) {
       const translated = translateDiagnostics(
         error.diagnostics,
         code,
         templateStart,
       );
-      throw new FlowviewDomError(error.message, translated);
+      throw new FlowviewEventsError(error.message, translated);
     }
     throw error;
   }
@@ -378,10 +378,10 @@ function lineAndColumn(
 }
 
 function translateDiagnostics(
-  diagnostics: FlowviewDomDiagnostic[],
+  diagnostics: FlowviewEventsDiagnostic[],
   source: string,
   offset: number,
-): FlowviewDomDiagnostic[] {
+): FlowviewEventsDiagnostic[] {
   const { line: baseLine, column: baseColumn } = lineAndColumn(source, offset);
 
   return diagnostics.map((diagnostic) => ({

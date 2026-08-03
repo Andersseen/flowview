@@ -1,7 +1,7 @@
 import {
   locate,
-  FlowviewDomError,
-  type FlowviewDomDiagnostic,
+  FlowviewEventsError,
+  type FlowviewEventsDiagnostic,
 } from "./diagnostics.js";
 import {
   extractFunctionDeclarations,
@@ -44,7 +44,7 @@ export function compileScriptEvents(
   request: CompileScriptEventsRequest,
 ): CompileScriptEventsResult {
   const runtimeImport = request.runtimeImport ?? DEFAULT_RUNTIME_IMPORT;
-  const diagnostics: FlowviewDomDiagnostic[] = [];
+  const diagnostics: FlowviewEventsDiagnostic[] = [];
 
   const bindings = findEventBindings(request.template);
   const declaredByName = new Map<string, DeclaredFunction[]>();
@@ -136,7 +136,7 @@ export function compileScriptEvents(
   }
 
   if (diagnostics.some((d) => d.severity === "error")) {
-    throw new FlowviewDomError(
+    throw new FlowviewEventsError(
       `flowview Events compilation failed for ${request.filename}`,
       diagnostics,
     );

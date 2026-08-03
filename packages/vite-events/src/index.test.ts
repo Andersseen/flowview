@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileFlowview } from "@flowview/vite";
-import { FlowviewDomError } from "@flowview/events";
+import { FlowviewEventsError } from "@flowview/events";
 import { describe, expect, it } from "vitest";
 import type { Plugin } from "vite";
 import flowviewEvents, {
@@ -73,11 +73,11 @@ describe("compileFlowviewEvents", () => {
     expect(result?.code).toContain("<p>Outro</p>");
   });
 
-  it("reports a missing handler as a FlowviewDomError", () => {
+  it("reports a missing handler as a FlowviewEventsError", () => {
     const source = `<button (click)="save()">Save</button>\n<script data-flowview>\nfunction other() {}\n</script>`;
 
     expect(() => compileFlowviewEvents(source, { filename: "a.flow" })).toThrow(
-      FlowviewDomError,
+      FlowviewEventsError,
     );
   });
 
@@ -88,8 +88,8 @@ describe("compileFlowviewEvents", () => {
       compileFlowviewEvents(source, { filename: "a.flow" });
       expect.unreachable();
     } catch (error) {
-      expect(error).toBeInstanceOf(FlowviewDomError);
-      expect((error as FlowviewDomError).diagnostics[0]?.message).toContain(
+      expect(error).toBeInstanceOf(FlowviewEventsError);
+      expect((error as FlowviewEventsError).diagnostics[0]?.message).toContain(
         "must be declared as a function",
       );
     }
@@ -102,8 +102,8 @@ describe("compileFlowviewEvents", () => {
       compileFlowviewEvents(source, { filename: "a.flow" });
       expect.unreachable();
     } catch (error) {
-      expect(error).toBeInstanceOf(FlowviewDomError);
-      expect((error as FlowviewDomError).diagnostics[0]?.message).toContain(
+      expect(error).toBeInstanceOf(FlowviewEventsError);
+      expect((error as FlowviewEventsError).diagnostics[0]?.message).toContain(
         "declared more than once",
       );
     }

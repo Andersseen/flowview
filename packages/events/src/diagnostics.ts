@@ -1,9 +1,9 @@
-export interface FlowviewDomLocation {
+export interface FlowviewEventsLocation {
   line: number;
   column: number;
 }
 
-export interface FlowviewDomDiagnostic {
+export interface FlowviewEventsDiagnostic {
   message: string;
   severity: "error" | "warning";
   filename: string;
@@ -11,17 +11,17 @@ export interface FlowviewDomDiagnostic {
   column: number;
 }
 
-export class FlowviewDomError extends Error {
-  readonly diagnostics: FlowviewDomDiagnostic[];
+export class FlowviewEventsError extends Error {
+  readonly diagnostics: FlowviewEventsDiagnostic[];
 
-  constructor(message: string, diagnostics: FlowviewDomDiagnostic[] = []) {
+  constructor(message: string, diagnostics: FlowviewEventsDiagnostic[] = []) {
     super(message);
-    this.name = "FlowviewDomError";
+    this.name = "FlowviewEventsError";
     this.diagnostics = diagnostics;
   }
 }
 
-export function locate(source: string, offset: number): FlowviewDomLocation {
+export function locate(source: string, offset: number): FlowviewEventsLocation {
   let line = 1;
   let column = 1;
   for (let index = 0; index < offset && index < source.length; index += 1) {

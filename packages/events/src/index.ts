@@ -13,9 +13,9 @@ export {
 } from "./parser.js";
 
 export {
-  FlowviewDomError,
-  type FlowviewDomDiagnostic,
-  type FlowviewDomLocation,
+  FlowviewEventsError,
+  type FlowviewEventsDiagnostic,
+  type FlowviewEventsLocation,
   locate,
 } from "./diagnostics.js";
 

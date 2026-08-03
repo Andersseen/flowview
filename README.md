@@ -130,15 +130,22 @@ attributes without validation appropriate to that context.
 flowview/
 ├── crates/
 │   ├── flowview-compiler/   # Rust compiler library
-│   └── flowview-cli/        # Rust CLI binary
+│   ├── flowview-cli/        # Rust CLI binary
+│   └── flowview-wasm/       # WASM wrapper for the compiler
 ├── packages/
 │   ├── runtime/             # TypeScript runtime helpers
+│   ├── compiler/            # WASM wrapper used by the plugins
 │   ├── vite/                # Standalone .flow imports
 │   ├── astro/               # Astro integration
+│   ├── events/              # Browser event bindings compiler
+│   ├── astro-events/        # Astro integration for event bindings
+│   ├── vite-events/         # Vite integration for event bindings
+│   ├── prettier/            # Prettier plugin for .astro files
 │   └── vscode-flowview/     # Editor support
 ├── examples/
 │   ├── basic/               # Small .flow examples
-│   └── astro-demo/          # Astro demo site
+│   ├── astro-demo/          # Astro demo site
+│   └── hono-demo/          # Vite + Hono demo site
 ├── Cargo.toml
 ├── package.json
 └── pnpm-workspace.yaml

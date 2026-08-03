@@ -22,7 +22,7 @@ fn cli_reports_human_errors_by_default() {
     assert!(!output.status.success());
     let stderr = str::from_utf8(&output.stderr).unwrap();
     assert!(stderr.contains("error"));
-    assert!(stderr.contains("FM0011"));
+    assert!(stderr.contains("FV0011"));
 }
 
 #[test]
@@ -37,7 +37,7 @@ fn cli_reports_json_errors_when_asked() {
     assert!(!output.status.success());
     let stderr = str::from_utf8(&output.stderr).unwrap();
     assert!(stderr.contains("\"diagnostics\""));
-    assert!(stderr.contains("FM0011"));
+    assert!(stderr.contains("FV0011"));
 }
 
 #[test]

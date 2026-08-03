@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyTemplateEdits,
   compileScriptEvents,
-  FlowviewDomError,
+  FlowviewEventsError,
 } from "./index.js";
 
 describe("compileScriptEvents", () => {
@@ -86,7 +86,7 @@ describe("compileScriptEvents", () => {
       `\nfunction other() {}\n`,
     );
 
-    let caught: FlowviewDomError | undefined;
+    let caught: FlowviewEventsError | undefined;
     try {
       compileScriptEvents({
         filename: "test.astro",
@@ -96,10 +96,10 @@ describe("compileScriptEvents", () => {
         scriptSource,
       });
     } catch (error) {
-      caught = error as FlowviewDomError;
+      caught = error as FlowviewEventsError;
     }
 
-    expect(caught).toBeInstanceOf(FlowviewDomError);
+    expect(caught).toBeInstanceOf(FlowviewEventsError);
     expect(caught?.diagnostics[0]?.message).toContain(
       "was used in the template but was not found in the <script data-flowview> block",
     );
@@ -111,7 +111,7 @@ describe("compileScriptEvents", () => {
       `\nconst save = () => {};\n`,
     );
 
-    let caught: FlowviewDomError | undefined;
+    let caught: FlowviewEventsError | undefined;
     try {
       compileScriptEvents({
         filename: "test.astro",
@@ -121,10 +121,10 @@ describe("compileScriptEvents", () => {
         scriptSource,
       });
     } catch (error) {
-      caught = error as FlowviewDomError;
+      caught = error as FlowviewEventsError;
     }
 
-    expect(caught).toBeInstanceOf(FlowviewDomError);
+    expect(caught).toBeInstanceOf(FlowviewEventsError);
     expect(caught?.diagnostics[0]?.message).toContain(
       "must be declared as a function",
     );
@@ -136,7 +136,7 @@ describe("compileScriptEvents", () => {
       `\nfunction save() {}\nfunction save() {}\n`,
     );
 
-    let caught: FlowviewDomError | undefined;
+    let caught: FlowviewEventsError | undefined;
     try {
       compileScriptEvents({
         filename: "test.astro",
@@ -146,10 +146,10 @@ describe("compileScriptEvents", () => {
         scriptSource,
       });
     } catch (error) {
-      caught = error as FlowviewDomError;
+      caught = error as FlowviewEventsError;
     }
 
-    expect(caught).toBeInstanceOf(FlowviewDomError);
+    expect(caught).toBeInstanceOf(FlowviewEventsError);
     expect(caught?.diagnostics[0]?.message).toContain(
       "declared more than once in the <script data-flowview> block",
     );
@@ -169,7 +169,7 @@ describe("compileScriptEvents", () => {
         scriptOffset,
         scriptSource,
       }),
-    ).toThrow(FlowviewDomError);
+    ).toThrow(FlowviewEventsError);
   });
 
   it("keeps diagnostic locations correct when the script is not at the start of the template", () => {
@@ -182,7 +182,7 @@ describe("compileScriptEvents", () => {
       .slice(0, secondDeclarationOffset)
       .split("\n").length;
 
-    let caught: FlowviewDomError | undefined;
+    let caught: FlowviewEventsError | undefined;
     try {
       compileScriptEvents({
         filename: "test.astro",
@@ -192,10 +192,10 @@ describe("compileScriptEvents", () => {
         scriptSource,
       });
     } catch (error) {
-      caught = error as FlowviewDomError;
+      caught = error as FlowviewEventsError;
     }
 
-    expect(caught).toBeInstanceOf(FlowviewDomError);
+    expect(caught).toBeInstanceOf(FlowviewEventsError);
     expect(caught?.diagnostics[0]?.line).toBe(expectedLine);
   });
 });

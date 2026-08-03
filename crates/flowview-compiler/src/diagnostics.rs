@@ -34,21 +34,21 @@ pub enum DiagnosticCode {
 impl DiagnosticCode {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::InvalidSyntax => "FM0001",
-            Self::UnexpectedToken => "FM0002",
-            Self::ExpectedToken => "FM0003",
-            Self::UnclosedInterpolation => "FM0004",
-            Self::EmptyInterpolation => "FM0005",
-            Self::UnclosedExpression => "FM0006",
-            Self::EmptyExpression => "FM0007",
-            Self::UnclosedBlock => "FM0008",
-            Self::InvalidForSyntax => "FM0009",
-            Self::InvalidBinding => "FM0010",
-            Self::InvalidJavaScriptExpression => "FM0011",
-            Self::InvalidAttribute => "FM0012",
-            Self::InvalidHtml => "FM0013",
-            Self::ReservedBinding => "FM0014",
-            Self::TrackIgnored => "FM0015",
+            Self::InvalidSyntax => "FV0001",
+            Self::UnexpectedToken => "FV0002",
+            Self::ExpectedToken => "FV0003",
+            Self::UnclosedInterpolation => "FV0004",
+            Self::EmptyInterpolation => "FV0005",
+            Self::UnclosedExpression => "FV0006",
+            Self::EmptyExpression => "FV0007",
+            Self::UnclosedBlock => "FV0008",
+            Self::InvalidForSyntax => "FV0009",
+            Self::InvalidBinding => "FV0010",
+            Self::InvalidJavaScriptExpression => "FV0011",
+            Self::InvalidAttribute => "FV0012",
+            Self::InvalidHtml => "FV0013",
+            Self::ReservedBinding => "FV0014",
+            Self::TrackIgnored => "FV0015",
         }
     }
 }
