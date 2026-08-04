@@ -1,6 +1,6 @@
 {
   "name": "@flowview/astro",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Astro integration for flowview templates.",
   "license": "MIT",
   "type": "module",
