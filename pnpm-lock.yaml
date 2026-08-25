@@ -44,6 +44,9 @@ importers:
       '@flowview/astro-events':
         specifier: workspace:*
         version: link:../../packages/astro-events
+      '@flowview/dom':
+        specifier: workspace:*
+        version: link:../../packages/dom
       '@flowview/events':
         specifier: workspace:*
         version: link:../../packages/events
@@ -155,6 +158,9 @@ importers:
       '@flowview/events':
         specifier: workspace:^
         version: link:../events
+      '@flowview/vite-events':
+        specifier: workspace:^
+        version: link:../vite-events
       magic-string:
         specifier: ^0.30.0
         version: 0.30.21
@@ -183,6 +189,27 @@ importers:
       '@types/node':
         specifier: ^26.0.0
         version: 26.0.0
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.26)(tsx@4.23.0)(typescript@5.9.3)(yaml@2.9.0)
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@26.0.0)(jiti@2.7.0)(jsdom@26.1.0)(lightningcss@1.33.0)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/dom:
+    devDependencies:
+      '@flowview/events':
+        specifier: workspace:*
+        version: link:../events
+      '@flowview/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      jsdom:
+        specifier: ^26.0.0
+        version: 26.1.0
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.26)(tsx@4.23.0)(typescript@5.9.3)(yaml@2.9.0)

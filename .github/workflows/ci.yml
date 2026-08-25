@@ -63,6 +63,11 @@ jobs:
       - name: Build runtime
         run: pnpm run build:runtime
 
+      - name: Build and test DOM runtime
+        run: |
+          pnpm run build:dom
+          pnpm run test:dom
+
       - name: Run TypeScript tests
         run: pnpm run test:runtime
 

@@ -44,6 +44,7 @@ reliable.
 - A Rust compiler crate: `flowview-compiler`
 - A Rust CLI: `flowview`
 - A tiny TypeScript runtime package: `@flowview/runtime`
+- A tiny browser DOM runtime package: `@flowview/dom`
 - A Vite plugin: `@flowview/vite`
 - An Astro integration: `@flowview/astro`
 - A separate events compiler: flowview Events (`@flowview/events`, `@flowview/astro-events`)
@@ -134,6 +135,7 @@ flowview/
 │   └── flowview-wasm/       # WASM wrapper for the compiler
 ├── packages/
 │   ├── runtime/             # TypeScript runtime helpers
+│   ├── dom/                 # Browser DOM view helper
 │   ├── compiler/            # WASM wrapper used by the plugins
 │   ├── vite/                # Standalone .flow imports
 │   ├── astro/               # Astro integration
@@ -204,6 +206,38 @@ declaration to their `tsconfig.json`:
     "types": ["@flowview/vite/client"]
   }
 }
+```
+
+## Use In The Browser
+
+`@flowview/dom` connects an already-compiled flowview render function to a
+native DOM element. It does not own state, add reactivity, diff DOM nodes, or
+compile templates at runtime.
+
+```ts
+import { createView } from "@flowview/dom";
+import { render } from "./items.flow";
+
+const view = createView("#items", render);
+
+view.render({
+  items: [],
+});
+
+view.update({
+  items: [{ id: 1, name: "Ship flowview" }],
+});
+```
+
+Both `render()` and `update()` currently replace the target contents with the
+compiled HTML. They are separate public concepts so the update strategy can
+improve later without changing application code.
+
+When a `.flow` file uses flowview Events, import its virtual events module from
+the client entry so delegated handlers are registered once:
+
+```ts
+import "virtual:flowview-events/src/views/items.flow.ts";
 ```
 
 ## Use With Hono or Plain Node.js
