@@ -39,11 +39,13 @@ async function transformAstroResult(
   filename = "/src/pages/example.astro",
 ): Promise<{ code: string; map: unknown } | null> {
   const transform = createPlugin().transform;
-  if (typeof transform !== "function") {
+  const handler =
+    typeof transform === "function" ? transform : transform?.handler;
+  if (typeof handler !== "function") {
     throw new Error("flowview events plugin has no transform hook");
   }
 
-  const result = await transform.call({} as never, source, filename);
+  const result = await handler.call({} as never, source, filename);
   if (result === null || result === undefined) return null;
   if (typeof result === "string") return { code: result, map: null };
   if (typeof result.code !== "string") {
@@ -53,6 +55,26 @@ async function transformAstroResult(
 }
 
 describe("@flowview/astro-events integration", () => {
+  it("orders the transform before flowview embedded templates when both integrations are installed", () => {
+    const plugin = createPlugin();
+    const plugins: Plugin[] = [
+      { name: "@flowview/astro:embedded" },
+      plugin,
+      { name: "astro:build" },
+    ];
+
+    if (typeof plugin.configResolved !== "function") {
+      throw new Error("flowview events plugin has no configResolved hook");
+    }
+    plugin.configResolved.call({} as never, { plugins } as never);
+
+    expect(plugins.map((candidate) => candidate.name)).toEqual([
+      "@flowview/astro-events:transform",
+      "@flowview/astro:embedded",
+      "astro:build",
+    ]);
+  });
+
   it("ignores Astro files without event bindings", async () => {
     const result = await transformAstro(`---
 const title = "Hello";

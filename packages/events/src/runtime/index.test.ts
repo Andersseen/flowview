@@ -48,6 +48,30 @@ describe("registerFlowHandlers", () => {
     expect(calls).toEqual(["saved"]);
   });
 
+  it("resolves dynamic template-scope arguments from compiled data attributes", () => {
+    setDocument(`
+      <button
+        data-flow-on-click="cancelAudit"
+        data-flow-scope="scope-dynamic"
+        data-flow-args='[{"__flow":"$scope","attr":"data-flow-arg-0"},{"__flow":"$scope","attr":"data-flow-arg-1"}]'
+        data-flow-arg-0='"audit-1"'
+        data-flow-arg-1='42'
+      >Stop</button>
+    `);
+    const calls: unknown[][] = [];
+
+    registerFlowHandlers(
+      "scope-dynamic",
+      { cancelAudit: (...args) => calls.push(args) },
+      ["click"],
+    );
+
+    const button = document.querySelector("button") as HTMLButtonElement;
+    button.click();
+
+    expect(calls).toEqual([["audit-1", 42]]);
+  });
+
   it("delegates non-bubbling focus events via the capture phase", () => {
     setDocument(
       `<input data-flow-on-focus="onFocus" data-flow-scope="scope-focus" />`,

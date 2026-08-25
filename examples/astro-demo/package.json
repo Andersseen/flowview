@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "astro dev",
-    "dev:e2e": "astro dev --host 127.0.0.1 --port 4321",
+    "dev:e2e": "ASTRO_DEV_BACKGROUND=0 astro dev --host 127.0.0.1 --port 4321",
     "build": "astro build",
     "check": "astro check --minimumSeverity warning",
     "lint": "pnpm run check",
@@ -23,7 +23,7 @@
     "@flowview/astro-events": "workspace:*",
     "@flowview/events": "workspace:*",
     "@flowview/runtime": "workspace:*",
-    "astro": "^5.7.10"
+    "astro": "^7.2.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",

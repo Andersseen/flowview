@@ -17,7 +17,8 @@ export interface HandlerCall {
 export type HandlerArgument =
   | { type: "literal"; value: unknown }
   | { type: "event" }
-  | { type: "element" };
+  | { type: "element" }
+  | { type: "scope"; expression: string };
 
 /** A top-level function declaration found in a `<script data-flowview>` block. */
 export interface DeclaredFunction {
@@ -356,10 +357,17 @@ function parseArgument(
   start: number,
   offset: number,
 ): HandlerArgument {
+  const end = argEnd(source, start);
+  const raw = source.slice(start, end).trim();
   const char = source[start];
 
   if (char === '"' || char === "'") {
     const { value, end } = readStringLiteral(source, start, char);
+    if (end !== start + raw.length) {
+      throw new Error(
+        `flowview event handler argument has unexpected trailing content at ${offset}.`,
+      );
+    }
     return { type: "literal", value };
   }
 
@@ -377,24 +385,96 @@ function parseArgument(
 
   if (isDigit(char) || (char === "-" && isDigit(source[start + 1]))) {
     const { value, end } = readNumberLiteral(source, start);
+    if (end !== start + raw.length) {
+      throw new Error(
+        `flowview event handler argument has unexpected trailing content at ${offset}.`,
+      );
+    }
     return { type: "literal", value };
   }
 
   if (isIdentifierStart(char)) {
     const { identifier, end } = readIdentifierWithEnd(source, start);
-    if (identifier === "true") return { type: "literal", value: true };
-    if (identifier === "false") return { type: "literal", value: false };
-    if (identifier === "null") return { type: "literal", value: null };
-    if (identifier === "$event") return { type: "event" };
-    if (identifier === "$el") return { type: "element" };
-    throw new Error(
-      `flowview event handler argument "${identifier}" is not supported at ${offset}.`,
-    );
+    if (end === start + raw.length) {
+      if (identifier === "true") return { type: "literal", value: true };
+      if (identifier === "false") return { type: "literal", value: false };
+      if (identifier === "null") return { type: "literal", value: null };
+      if (identifier === "$event") return { type: "event" };
+      if (identifier === "$el") return { type: "element" };
+    }
+    validateScopeArgumentExpression(raw, offset);
+    return { type: "scope", expression: raw };
   }
 
   throw new Error(
     `flowview event handler argument is invalid at ${offset}: "${source[start]}".`,
   );
+}
+
+function validateScopeArgumentExpression(
+  expression: string,
+  offset: number,
+): void {
+  const sourceFile = ts.createSourceFile(
+    SOURCE_FILENAME,
+    `(${expression});`,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+
+  const parseDiagnostics = (
+    sourceFile as ts.SourceFile & {
+      parseDiagnostics?: readonly ts.Diagnostic[];
+    }
+  ).parseDiagnostics;
+  if (parseDiagnostics !== undefined && parseDiagnostics.length > 0) {
+    throw new Error(
+      `flowview event handler argument expression is invalid at ${offset}.`,
+    );
+  }
+
+  const statement = sourceFile.statements[0];
+  if (
+    statement === undefined ||
+    !ts.isExpressionStatement(statement) ||
+    !isAllowedScopeExpression(unwrapExpression(statement.expression))
+  ) {
+    throw new Error(
+      `flowview event handler argument "${expression}" must be a template-scope property path.`,
+    );
+  }
+}
+
+function unwrapExpression(expression: ts.Expression): ts.Expression {
+  let current = expression;
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isNonNullExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isTypeAssertionExpression(current) ||
+    ts.isSatisfiesExpression(current)
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function isAllowedScopeExpression(expression: ts.Expression): boolean {
+  const current = unwrapExpression(expression);
+  if (ts.isIdentifier(current)) return true;
+  if (ts.isPropertyAccessExpression(current)) {
+    return isAllowedScopeExpression(current.expression);
+  }
+  if (ts.isElementAccessExpression(current)) {
+    return (
+      isAllowedScopeExpression(current.expression) &&
+      current.argumentExpression !== undefined &&
+      (ts.isNumericLiteral(current.argumentExpression) ||
+        ts.isStringLiteral(current.argumentExpression))
+    );
+  }
+  return false;
 }
 
 function argEnd(source: string, start: number): number {

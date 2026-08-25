@@ -39,11 +39,13 @@ async function transformAstroResult(
   filename = "/src/pages/example.astro",
 ): Promise<{ code: string; map: unknown } | null> {
   const transform = createEmbeddedPlugin().transform;
-  if (typeof transform !== "function") {
+  const handler =
+    typeof transform === "function" ? transform : transform?.handler;
+  if (typeof handler !== "function") {
     throw new Error("flowview embedded plugin has no transform hook");
   }
 
-  const result = await transform.call({} as never, source, filename);
+  const result = await handler.call({} as never, source, filename);
   if (result === null || result === undefined) return null;
   if (typeof result === "string") return { code: result, map: null };
   if (typeof result.code !== "string") {
@@ -53,6 +55,28 @@ async function transformAstroResult(
 }
 
 describe("flowview Astro integration", () => {
+  it("orders embedded template transforms after flowview events when both integrations are installed", () => {
+    const plugin = createEmbeddedPlugin();
+    const plugins: Plugin[] = [
+      { name: "@flowview/vite" },
+      plugin,
+      { name: "@flowview/astro-events:transform" },
+      { name: "astro:build" },
+    ];
+
+    if (typeof plugin.configResolved !== "function") {
+      throw new Error("flowview embedded plugin has no configResolved hook");
+    }
+    plugin.configResolved.call({} as never, { plugins } as never);
+
+    expect(plugins.map((candidate) => candidate.name)).toEqual([
+      "@flowview/vite",
+      "@flowview/astro-events:transform",
+      "@flowview/astro:embedded",
+      "astro:build",
+    ]);
+  });
+
   it("transforms inline templates and preserves existing frontmatter", async () => {
     const result = await transformAstro(`---
 const context = { title: "Hello" };

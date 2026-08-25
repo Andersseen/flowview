@@ -96,7 +96,31 @@ function readArgs(element: Element): unknown[] {
 function resolveArg(arg: unknown, event: Event, element: Element): unknown {
   if (isFlowviewMarker(arg, "$event")) return event;
   if (isFlowviewMarker(arg, "$el")) return element;
+  if (isFlowviewMarker(arg, "$scope")) {
+    return readScopeArg(arg, element);
+  }
   return arg;
+}
+
+function readScopeArg(arg: unknown, element: Element): unknown {
+  if (
+    typeof arg !== "object" ||
+    arg === null ||
+    typeof (arg as Record<string, unknown>).attr !== "string"
+  ) {
+    return undefined;
+  }
+
+  const attr = (arg as { attr: string }).attr;
+  const raw = element.getAttribute(attr);
+  if (raw === null || raw === "") return undefined;
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    console.warn(`[flowview] Could not parse dynamic event arg: ${raw}`);
+    return undefined;
+  }
 }
 
 function isFlowviewMarker(arg: unknown, marker: string): boolean {

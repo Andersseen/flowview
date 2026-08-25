@@ -119,14 +119,15 @@ export function compileScriptEvents(
     usedHandlerNames.add(call.name);
     usedEventNames.add(binding.eventName);
 
-    const serializedArgs = serializeArguments(call.args);
+    const compiledArgs = compileArguments(call.args);
     const argsAttribute =
-      serializedArgs === undefined
+      compiledArgs.serializedArgs === undefined
         ? ""
-        : ` data-flow-args=${escapeHtmlAttribute(JSON.stringify(serializedArgs))}`;
+        : ` data-flow-args=${escapeHtmlAttribute(JSON.stringify(compiledArgs.serializedArgs))}`;
     const replacement =
       ` data-flow-on-${binding.eventName}=${escapeHtmlAttribute(call.name)}` +
-      ` data-flow-scope=${escapeHtmlAttribute(request.scope)}${argsAttribute}`;
+      ` data-flow-scope=${escapeHtmlAttribute(request.scope)}${argsAttribute}` +
+      compiledArgs.dynamicAttributes;
 
     templateEdits.push({
       start: binding.attributeStart,
@@ -184,15 +185,30 @@ function validateArguments(args: HandlerArgument[]): { error?: string } {
   return {};
 }
 
-function serializeArguments(args: HandlerArgument[]): unknown[] | undefined {
-  if (args.length === 0) return undefined;
+interface CompiledArguments {
+  serializedArgs: unknown[] | undefined;
+  dynamicAttributes: string;
+}
 
-  return args.map((arg) => {
+function compileArguments(args: HandlerArgument[]): CompiledArguments {
+  if (args.length === 0) {
+    return { serializedArgs: undefined, dynamicAttributes: "" };
+  }
+
+  let dynamicAttributes = "";
+
+  const serializedArgs = args.map((arg, index) => {
     if (arg.type === "literal") return arg.value;
     if (arg.type === "event") return { __flow: "$event" };
     if (arg.type === "element") return { __flow: "$el" };
-    return null;
+    const attrName = `data-flow-arg-${index}`;
+    dynamicAttributes +=
+      ` ${attrName}=` +
+      escapeHtmlAttribute(`{{ JSON.stringify(${arg.expression}) }}`);
+    return { __flow: "$scope", attr: attrName };
   });
+
+  return { serializedArgs, dynamicAttributes };
 }
 
 function escapeHtmlAttribute(value: string): string {

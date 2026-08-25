@@ -5,7 +5,7 @@ import flowviewEvents from "@flowview/astro-events";
 
 export default defineConfig({
   site: "https://flowview.example",
-  integrations: [flowview(), flowviewEvents()],
+  integrations: [flowviewEvents(), flowview()],
   vite: {
     plugins: [tailwindcss()],
   },
