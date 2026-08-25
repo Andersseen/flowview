@@ -41,6 +41,7 @@
   "dependencies": {
     "@astrojs/compiler": "^2.13.1",
     "@flowview/events": "workspace:^",
+    "@flowview/vite-events": "workspace:^",
     "magic-string": "^0.30.0"
   },
   "devDependencies": {
@@ -53,6 +54,7 @@
   },
   "peerDependencies": {
     "astro": ">=5 <8",
-    "@flowview/events": "^0.1.1"
+    "@flowview/events": "^0.1.1",
+    "@flowview/vite-events": "^0.1.1"
   }
 }

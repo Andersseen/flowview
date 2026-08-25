@@ -1,0 +1,49 @@
+{
+  "name": "@flowview/dom",
+  "version": "0.0.0",
+  "description": "Tiny DOM runtime for flowview-generated render functions.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andersseen/flowview.git",
+    "directory": "packages/dom"
+  },
+  "bugs": {
+    "url": "https://github.com/andersseen/flowview/issues"
+  },
+  "homepage": "https://github.com/andersseen/flowview/tree/main/packages/dom#readme",
+  "keywords": [
+    "flowview",
+    "template",
+    "runtime",
+    "dom",
+    "browser"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@flowview/events": "workspace:*",
+    "@flowview/runtime": "workspace:*",
+    "jsdom": "^26.0.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.0.0"
+  }
+}

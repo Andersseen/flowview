@@ -1,0 +1,36 @@
+<section aria-labelledby="client-items-title">
+  <h2 id="client-items-title">Client DOM view</h2>
+
+  <p data-testid="summary">
+    {{ context.items.length }} task{{ context.items.length === 1 ? "" : "s" }}
+  </p>
+
+  <ul data-testid="client-items-list">
+    @for (item of context.items; track item.id) {
+      <li data-testid="client-item">
+        <strong>{{ item.name }}</strong>
+
+        @if (item.status === "completed") {
+          <span data-testid="client-item-status">Completed</span>
+        } @else {
+          <span data-testid="client-item-status">Active</span>
+        }
+
+        <button type="button" (click)="selectTask(item.id)">
+          Select
+        </button>
+      </li>
+    } @empty {
+      <li data-testid="client-empty">No tasks yet.</li>
+    }
+  </ul>
+
+  <p data-testid="selected-task">No task selected</p>
+</section>
+
+<script data-flowview>
+  function selectTask(id) {
+    const output = document.querySelector('[data-testid="selected-task"]');
+    if (output) output.textContent = `Selected task ${id}`;
+  }
+</script>

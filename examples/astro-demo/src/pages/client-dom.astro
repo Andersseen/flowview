@@ -1,0 +1,68 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { site } from "../data/site";
+---
+
+<Layout
+  title={`${site.title} client DOM`}
+  description="A tiny client-side Flowview DOM runtime demo."
+>
+  <main class="mx-auto grid w-full max-w-5xl gap-8 px-4 py-12 sm:px-6 lg:px-8">
+    <header class="grid gap-3">
+      <p
+        class="text-sm font-medium uppercase tracking-wide text-muted-foreground"
+      >
+        @flowview/dom
+      </p>
+      <h1 class="text-3xl font-semibold text-foreground md:text-4xl">
+        Minimal client-side DOM views
+      </h1>
+      <p class="max-w-2xl text-base leading-7 text-muted-foreground">
+        A compiled .flow template renders an empty target, receives client data,
+        and updates the same native DOM element without app-level template
+        strings.
+      </p>
+    </header>
+
+    <div
+      id="client-items"
+      class="rounded-md border border-border bg-card p-5 shadow-sm"
+      data-testid="client-items"
+    >
+    </div>
+  </main>
+
+  <script>
+    import { createView } from "@flowview/dom";
+    import { render } from "../views/client-items.flow";
+    import "virtual:flowview-events/src/views/client-items.flow.ts";
+
+    const view = createView("#client-items", render);
+
+    view.render({
+      items: [],
+    });
+
+    const firstItems = [
+      { id: 1, name: "Draft report", status: "active" },
+      { id: 2, name: "Review dashboard", status: "completed" },
+    ];
+
+    const nextItems = [
+      { id: 3, name: "Publish metrics", status: "completed" },
+      { id: 4, name: "Triage queue", status: "active" },
+    ];
+
+    setTimeout(() => {
+      view.update({
+        items: firstItems,
+      });
+    }, 100);
+
+    setTimeout(() => {
+      view.update({
+        items: nextItems,
+      });
+    }, 225);
+  </script>
+</Layout>

@@ -13,6 +13,7 @@ import {
   FlowviewEventsError,
   type FlowviewEventsDiagnostic,
 } from "@flowview/events";
+import flowviewViteEvents from "@flowview/vite-events";
 import type { AstroIntegration } from "astro";
 import type { Plugin } from "vite";
 
@@ -45,7 +46,10 @@ export default function flowviewEvents(
       "astro:config:setup": ({ updateConfig }) => {
         updateConfig({
           vite: {
-            plugins: [flowviewEventsVitePlugin(options)],
+            plugins: [
+              flowviewViteEvents(options),
+              flowviewEventsVitePlugin(options),
+            ],
           },
         });
       },
