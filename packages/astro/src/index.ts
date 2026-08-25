@@ -84,10 +84,28 @@ function flowviewAstroPlugin(options: FlowviewAstroOptions): Plugin {
       const astroIndex = plugins.findIndex(
         (plugin) => plugin.name === "astro:build",
       );
+      const eventsIndex = plugins.findIndex(
+        (plugin) => plugin.name === "@flowview/astro-events:transform",
+      );
 
       if (ownIndex > astroIndex && astroIndex !== -1) {
         const [plugin] = plugins.splice(ownIndex, 1);
         if (plugin) plugins.splice(astroIndex, 0, plugin);
+      }
+      const updatedOwnIndex = plugins.findIndex(
+        (plugin) => plugin.name === "@flowview/astro:embedded",
+      );
+      const updatedEventsIndex = plugins.findIndex(
+        (plugin) => plugin.name === "@flowview/astro-events:transform",
+      );
+      if (
+        eventsIndex !== -1 &&
+        updatedEventsIndex !== -1 &&
+        updatedOwnIndex !== -1 &&
+        updatedOwnIndex < updatedEventsIndex
+      ) {
+        const [plugin] = plugins.splice(updatedOwnIndex, 1);
+        if (plugin) plugins.splice(updatedEventsIndex, 0, plugin);
       }
     },
 
@@ -117,33 +135,36 @@ function flowviewAstroPlugin(options: FlowviewAstroOptions): Plugin {
       return code;
     },
 
-    transform(code, id) {
-      const cleanId = stripQuery(id);
-      if (!cleanId.endsWith(".astro") || !code.includes("flowview")) {
-        return null;
-      }
-
-      try {
-        return transformAstroSource(
-          code,
-          cleanId,
-          virtualModules,
-          virtualIdsByFile,
-        );
-      } catch (error) {
-        if (error instanceof FlowviewAstroError) {
-          const locatedError = {
-            message: error.message,
-            id: cleanId,
-            loc: error.loc,
-          };
-          if (typeof this.error === "function") {
-            this.error(locatedError);
-          }
-          throw locatedError;
+    transform: {
+      order: "pre",
+      handler(code, id) {
+        const cleanId = stripQuery(id);
+        if (!cleanId.endsWith(".astro") || !code.includes("flowview")) {
+          return null;
         }
-        throw error;
-      }
+
+        try {
+          return transformAstroSource(
+            code,
+            cleanId,
+            virtualModules,
+            virtualIdsByFile,
+          );
+        } catch (error) {
+          if (error instanceof FlowviewAstroError) {
+            const locatedError = {
+              message: error.message,
+              id: cleanId,
+              loc: error.loc,
+            };
+            if (typeof this.error === "function") {
+              this.error(locatedError);
+            }
+            throw locatedError;
+          }
+          throw error;
+        }
+      },
     },
   };
 }

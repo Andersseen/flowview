@@ -68,52 +68,64 @@ function flowviewEventsVitePlugin(options: FlowviewAstroEventsOptions): Plugin {
       const astroIndex = plugins.findIndex(
         (plugin) => plugin.name === "astro:build",
       );
+      const flowviewEmbeddedIndex = plugins.findIndex(
+        (plugin) => plugin.name === "@flowview/astro:embedded",
+      );
+      const targetIndex =
+        flowviewEmbeddedIndex === -1
+          ? astroIndex
+          : astroIndex === -1
+            ? flowviewEmbeddedIndex
+            : Math.min(flowviewEmbeddedIndex, astroIndex);
 
-      if (ownIndex > astroIndex && astroIndex !== -1) {
+      if (ownIndex > targetIndex && targetIndex !== -1) {
         const [plugin] = plugins.splice(ownIndex, 1);
-        if (plugin) plugins.splice(astroIndex, 0, plugin);
+        if (plugin) plugins.splice(targetIndex, 0, plugin);
       }
     },
 
-    transform(code, id) {
-      const cleanId = stripQuery(id);
-      if (!cleanId.endsWith(".astro")) return null;
+    transform: {
+      order: "pre",
+      handler(code, id) {
+        const cleanId = stripQuery(id);
+        if (!cleanId.endsWith(".astro")) return null;
 
-      try {
-        const result = transformAstroSource(code, cleanId, runtimeImport);
-        if (result === null) return null;
-        return { code: result.code, map: result.map };
-      } catch (error) {
-        if (error instanceof FlowviewAstroEventsError) {
-          const locatedError = {
-            message: error.message,
-            id: cleanId,
-            loc: error.loc,
-          };
-          if (typeof this.error === "function") {
-            this.error(locatedError);
-          }
-          throw locatedError;
-        }
-        if (error instanceof FlowviewEventsError) {
-          const first = error.diagnostics[0];
-          if (first) {
-            const message = error.diagnostics
-              .map((diagnostic) => diagnostic.message)
-              .join("\n");
+        try {
+          const result = transformAstroSource(code, cleanId, runtimeImport);
+          if (result === null) return null;
+          return { code: result.code, map: result.map };
+        } catch (error) {
+          if (error instanceof FlowviewAstroEventsError) {
             const locatedError = {
-              message,
+              message: error.message,
               id: cleanId,
-              loc: { line: first.line, column: first.column },
+              loc: error.loc,
             };
             if (typeof this.error === "function") {
               this.error(locatedError);
             }
             throw locatedError;
           }
+          if (error instanceof FlowviewEventsError) {
+            const first = error.diagnostics[0];
+            if (first) {
+              const message = error.diagnostics
+                .map((diagnostic) => diagnostic.message)
+                .join("\n");
+              const locatedError = {
+                message,
+                id: cleanId,
+                loc: { line: first.line, column: first.column },
+              };
+              if (typeof this.error === "function") {
+                this.error(locatedError);
+              }
+              throw locatedError;
+            }
+          }
+          throw error;
         }
-        throw error;
-      }
+      },
     },
   };
 }

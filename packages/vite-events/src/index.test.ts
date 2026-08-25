@@ -315,6 +315,34 @@ describe("integration with @flowview/vite's compiler", () => {
     expect(compiled?.script).toContain("function save(event)");
     expect(compiled?.script).toContain("registerFlowHandlers(");
   });
+
+  it("compiles template-scope event arguments into rendered JSON data attributes", async () => {
+    const source = `@for (audit of context.audits; track audit.id) {
+  <button (click)="cancelAudit(audit.id)">Stop</button>
+}
+<script data-flowview>
+function cancelAudit(id) {}
+</script>`;
+
+    const compiled = compileFlowviewEvents(source, {
+      filename: "example.flow",
+    });
+    expect(compiled).not.toBeNull();
+
+    const { code } = await compileFlowview(compiled!.code, {
+      filename: "example.flow",
+      runtimeImport: "@flowview/runtime",
+    });
+
+    const render = evaluateGeneratedModule(code);
+    const html = render({ audits: [{ id: "audit-1" }] });
+
+    expect(html).toContain('data-flow-on-click="cancelAudit"');
+    expect(html).toContain('data-flow-arg-0="&quot;audit-1&quot;"');
+    expect(html).toContain(
+      'data-flow-args="[{&quot;__flow&quot;:&quot;$scope&quot;,&quot;attr&quot;:&quot;data-flow-arg-0&quot;}]"',
+    );
+  });
 });
 
 function evaluateGeneratedModule(
