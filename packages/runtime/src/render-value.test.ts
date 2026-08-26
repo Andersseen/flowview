@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderValue } from "./render-value";
+import { renderAttributeValue, renderValue } from "./render-value";
 
 describe("renderValue", () => {
   it("escapes HTML by default", () => {
@@ -40,5 +40,23 @@ describe("renderValue", () => {
 
   it("coerces objects via String()", () => {
     expect(renderValue({ key: "value" })).toBe("[object Object]");
+  });
+});
+
+describe("renderAttributeValue", () => {
+  it("omits only null and undefined", () => {
+    expect(renderAttributeValue(null)).toBe("");
+    expect(renderAttributeValue(undefined)).toBe("");
+  });
+
+  it("preserves false and true as strings", () => {
+    expect(renderAttributeValue(false)).toBe("false");
+    expect(renderAttributeValue(true)).toBe("true");
+  });
+
+  it("escapes HTML-sensitive characters", () => {
+    expect(renderAttributeValue(`" onmouseover="alert(1)`)).toBe(
+      "&quot; onmouseover=&quot;alert(1)",
+    );
   });
 });

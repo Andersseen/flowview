@@ -120,7 +120,10 @@ function evaluateGeneratedModule(
   code: string,
 ): (context: Record<string, unknown>) => string {
   const executable = code
-    .replace(/^import \{ renderValue \} from '[^']+';\n\n/, "")
+    .replace(
+      /^import \{ renderAttributeValue, renderValue \} from '[^']+';\n\n/,
+      "",
+    )
     .replace("export function render", "function render");
   const renderValue = (value: unknown): string => {
     if (value === null || value === undefined || value === false) return "";
@@ -136,9 +139,16 @@ function evaluateGeneratedModule(
         })[character] ?? character,
     );
   };
+  const renderAttributeValue = (value: unknown): string => {
+    if (value === null || value === undefined) return "";
+    return renderValue(String(value));
+  };
 
   return Function(
+    "renderAttributeValue",
     "renderValue",
     `"use strict";\n${executable}\nreturn render;`,
-  )(renderValue) as (context: Record<string, unknown>) => string;
+  )(renderAttributeValue, renderValue) as (
+    context: Record<string, unknown>,
+  ) => string;
 }

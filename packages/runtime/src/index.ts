@@ -1,5 +1,5 @@
 export { escapeHtml } from "./escape-html";
-export { renderValue } from "./render-value";
+export { renderAttributeValue, renderValue } from "./render-value";
 
 /**
  * Generic shape of the context object passed to a generated render function.

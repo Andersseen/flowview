@@ -19,7 +19,7 @@ pub fn generate(root: &RootNode, options: &CompileOptions) -> String {
     }
 
     format!(
-        "import {{ renderValue }} from '{}';
+        "import {{ renderAttributeValue, renderValue }} from '{}';
 
 export function render(context) {{
   let output = '';{}
@@ -112,9 +112,21 @@ fn generate_element(
         element.tag
     ));
 
+    let has_class_bindings = element
+        .attributes
+        .iter()
+        .any(|attr| matches!(attr, Attribute::ClassBinding(_)));
+
+    if has_class_bindings {
+        generate_class_attribute(element, output, indent, ctx);
+    }
+
     for attribute in &element.attributes {
         match attribute {
             Attribute::Plain(plain) => {
+                if has_class_bindings && plain.name == "class" {
+                    continue;
+                }
                 let mut attr = String::new();
                 attr.push(' ');
                 attr.push_str(&plain.name);
@@ -131,6 +143,9 @@ fn generate_element(
                 ));
             }
             Attribute::Dynamic(dynamic) => {
+                if has_class_bindings && dynamic.name == "class" {
+                    continue;
+                }
                 output.push_str(&format!(
                     "{}output += ' {}=\"';\n",
                     ctx.spaces(indent),
@@ -143,6 +158,42 @@ fn generate_element(
                 ));
                 output.push_str(&format!("{}output += '\"';\n", ctx.spaces(indent)));
             }
+            Attribute::BooleanBinding(binding) => {
+                output.push_str(&format!(
+                    "{}if ({}) output += ' {}';\n",
+                    ctx.spaces(indent),
+                    binding.expression,
+                    binding.name
+                ));
+            }
+            Attribute::AttributeBinding(binding) => {
+                let value_name = ctx.next_temp("flowview_attr");
+                output.push_str(&format!(
+                    "{}const {} = {};\n",
+                    ctx.spaces(indent),
+                    value_name,
+                    binding.expression
+                ));
+                output.push_str(&format!(
+                    "{}if ({} !== null && {} !== undefined) {{\n",
+                    ctx.spaces(indent),
+                    value_name,
+                    value_name
+                ));
+                output.push_str(&format!(
+                    "{}output += ' {}=\"';\n",
+                    ctx.spaces(indent + 2),
+                    binding.name
+                ));
+                output.push_str(&format!(
+                    "{}output += renderAttributeValue({});\n",
+                    ctx.spaces(indent + 2),
+                    value_name
+                ));
+                output.push_str(&format!("{}output += '\"';\n", ctx.spaces(indent + 2)));
+                output.push_str(&format!("{}}}\n", ctx.spaces(indent)));
+            }
+            Attribute::ClassBinding(_) => {}
         }
     }
 
@@ -162,6 +213,106 @@ fn generate_element(
         ctx.spaces(indent),
         element.tag
     ));
+}
+
+fn generate_class_attribute(
+    element: &ElementNode,
+    output: &mut String,
+    indent: usize,
+    ctx: &mut CodegenContext,
+) {
+    let classes_name = ctx.next_temp("flowview_classes");
+    let seen_name = ctx.next_temp("flowview_class_seen");
+
+    output.push_str(&format!(
+        "{}const {} = [];\n",
+        ctx.spaces(indent),
+        classes_name
+    ));
+    output.push_str(&format!(
+        "{}const {} = new Set();\n",
+        ctx.spaces(indent),
+        seen_name
+    ));
+
+    for attribute in &element.attributes {
+        match attribute {
+            Attribute::Plain(plain) if plain.name == "class" => {
+                if let Some(value) = &plain.value {
+                    for class_name in value.split_whitespace() {
+                        output.push_str(&format!(
+                            "{}if (!{}.has('{}')) {{ {}.add('{}'); {}.push('{}'); }}\n",
+                            ctx.spaces(indent),
+                            seen_name,
+                            escape_js_string(class_name),
+                            seen_name,
+                            escape_js_string(class_name),
+                            classes_name,
+                            escape_js_string(class_name)
+                        ));
+                    }
+                }
+            }
+            Attribute::Dynamic(dynamic) if dynamic.name == "class" => {
+                let dynamic_name = ctx.next_temp("flowview_class_value");
+                output.push_str(&format!(
+                    "{}const {} = renderAttributeValue({});\n",
+                    ctx.spaces(indent),
+                    dynamic_name,
+                    dynamic.expression
+                ));
+                output.push_str(&format!(
+                    "{}for (const __flowview_class of {}.split(/\\s+/)) {{\n",
+                    ctx.spaces(indent),
+                    dynamic_name
+                ));
+                output.push_str(&format!(
+                    "{}if (__flowview_class && !{}.has(__flowview_class)) {{ {}.add(__flowview_class); {}.push(__flowview_class); }}\n",
+                    ctx.spaces(indent + 2),
+                    seen_name,
+                    seen_name,
+                    classes_name
+                ));
+                output.push_str(&format!("{}}}\n", ctx.spaces(indent)));
+            }
+            Attribute::ClassBinding(binding) => {
+                output.push_str(&format!(
+                    "{}if ({}) {{\n",
+                    ctx.spaces(indent),
+                    binding.expression
+                ));
+                output.push_str(&format!(
+                    "{}if (!{}.has('{}')) {{ {}.add('{}'); {}.push('{}'); }}\n",
+                    ctx.spaces(indent + 2),
+                    seen_name,
+                    escape_js_string(&binding.name),
+                    seen_name,
+                    escape_js_string(&binding.name),
+                    classes_name,
+                    escape_js_string(&binding.name)
+                ));
+                output.push_str(&format!("{}}}\n", ctx.spaces(indent)));
+            }
+            _ => {}
+        }
+    }
+
+    output.push_str(&format!(
+        "{}if ({}.length > 0) {{\n",
+        ctx.spaces(indent),
+        classes_name
+    ));
+    output.push_str(&format!(
+        "{}output += ' class=\"';\n",
+        ctx.spaces(indent + 2)
+    ));
+    output.push_str(&format!(
+        "{}output += renderAttributeValue({}.join(' '));\n",
+        ctx.spaces(indent + 2),
+        classes_name
+    ));
+    output.push_str(&format!("{}output += '\"';\n", ctx.spaces(indent + 2)));
+    output.push_str(&format!("{}}}\n", ctx.spaces(indent)));
 }
 
 fn element_is_static(element: &ElementNode) -> bool {

@@ -5,7 +5,25 @@
     {{ context.items.length }} task{{ context.items.length === 1 ? "" : "s" }}
   </p>
 
-  <ul data-testid="client-items-list">
+  <button
+    type="button"
+    data-testid="reload"
+    (click)="reload()"
+    [disabled]="context.loading"
+    [class.loading]="context.loading"
+  >
+    @if (context.loading) {
+      Loading...
+    } @else {
+      Reload
+    }
+  </button>
+
+  <ul
+    data-testid="client-items-list"
+    [attr.aria-busy]="context.loading"
+    [class.loading]="context.loading"
+  >
     @for (item of context.items; track item.id) {
       <li data-testid="client-item">
         <strong>{{ item.name }}</strong>
@@ -29,6 +47,10 @@
 </section>
 
 <script data-flowview>
+  function reload() {
+    window.dispatchEvent(new CustomEvent("flowview:reload"));
+  }
+
   function selectTask(id) {
     const output = document.querySelector('[data-testid="selected-task"]');
     if (output) output.textContent = `Selected task ${id}`;
