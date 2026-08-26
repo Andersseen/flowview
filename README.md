@@ -135,6 +135,7 @@ flowview/
 │   └── flowview-wasm/       # WASM wrapper for the compiler
 ├── packages/
 │   ├── runtime/             # TypeScript runtime helpers
+│   ├── reactive/            # Optional signal/computed/effect primitives
 │   ├── dom/                 # Browser DOM view helper
 │   ├── compiler/            # WASM wrapper used by the plugins
 │   ├── vite/                # Standalone .flow imports
@@ -239,6 +240,56 @@ the client entry so delegated handlers are registered once:
 ```ts
 import "virtual:flowview-events/src/views/items.flow.ts";
 ```
+
+## Optional Reactivity
+
+Explicit updates are always valid on their own:
+
+```ts
+view.update({
+  loading: true,
+  items,
+});
+```
+
+`@flowview/reactive` is an optional package for applications that would
+rather not track by hand which UI-relevant values changed. It exports
+`signal()`, `computed()`, `effect()`, and `untracked()` — a small,
+dependency-free, fine-grained reactive core with no relation to Flowview's
+compiler or DOM runtime.
+
+```ts
+import { effect, signal } from "@flowview/reactive";
+import { createView } from "@flowview/dom";
+import { render } from "./items.flow";
+
+const state = signal({
+  loading: false,
+  items: [],
+});
+
+const view = createView("#items", render);
+
+effect(() => {
+  view.update(state());
+});
+
+state.update((current) => ({ ...current, loading: true }));
+```
+
+- Signals are optional. Nothing in the compiler, `@flowview/dom`, or
+  Flowview Events requires them, and neither depends on the `@flowview/reactive`
+  package.
+- Flowview does not own application state; `signal()` just holds a value your
+  code reads and writes.
+- There is no component model or lifecycle, no automatic hydration, and no
+  `connect(view, ...)` adapter. `effect()` is a generic reactive primitive,
+  not a rendering lifecycle — calling `view.update()` from inside one is
+  ordinary application code, not a Flowview feature.
+- The `client-dom` example (`examples/astro-demo/src/pages/client-dom.astro`
+  and `src/state/client-state.ts`) shows the full pattern: a Flowview Events
+  handler updates a signal, and the one `effect()` in the page is what turns
+  that into a `view.update()` call.
 
 ## Use With Hono or Plain Node.js
 

@@ -50,6 +50,9 @@ importers:
       '@flowview/events':
         specifier: workspace:*
         version: link:../../packages/events
+      '@flowview/reactive':
+        specifier: workspace:*
+        version: link:../../packages/reactive
       '@flowview/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
@@ -251,6 +254,18 @@ importers:
       prettier:
         specifier: ^3.5.0
         version: 3.8.4
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.26)(tsx@4.23.0)(typescript@5.9.3)(yaml@2.9.0)
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@26.0.0)(jiti@2.7.0)(jsdom@26.1.0)(lightningcss@1.33.0)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/reactive:
+    devDependencies:
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.26)(tsx@4.23.0)(typescript@5.9.3)(yaml@2.9.0)

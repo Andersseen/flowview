@@ -4,7 +4,8 @@
     "baseUrl": ".",
     "paths": {
       "@flowview/dom": ["../../packages/dom/src/index.ts"],
-      "@flowview/runtime": ["../../packages/runtime/src/index.ts"]
+      "@flowview/runtime": ["../../packages/runtime/src/index.ts"],
+      "@/state/*": ["./src/state/*"]
     }
   }
 }
