@@ -588,6 +588,46 @@ fn ast_dynamic_attribute_is_recognized() {
 }
 
 #[test]
+fn ast_binding_attributes_are_recognized() {
+    use flowview_compiler::ast::{Attribute, ElementNode, Node};
+    use flowview_compiler::parse_ast;
+
+    let root = parse_ast(
+        r#"<button [disabled]="context.loading" [attr.aria-busy]="context.loading" [class.loading]="context.loading"></button>"#,
+    )
+    .unwrap();
+    let Node::Element(ElementNode { attributes, .. }) = &root.children[0] else {
+        panic!("expected an element node");
+    };
+
+    assert_eq!(attributes.len(), 3);
+
+    let Attribute::BooleanBinding(disabled) = &attributes[0] else {
+        panic!("expected boolean binding");
+    };
+    assert_eq!(disabled.name, "disabled");
+    assert_eq!(disabled.expression, "context.loading");
+
+    let Attribute::AttributeBinding(aria_busy) = &attributes[1] else {
+        panic!("expected attr binding");
+    };
+    assert_eq!(aria_busy.name, "aria-busy");
+    assert_eq!(aria_busy.expression, "context.loading");
+
+    let Attribute::ClassBinding(loading) = &attributes[2] else {
+        panic!("expected class binding");
+    };
+    assert_eq!(loading.name, "loading");
+    assert_eq!(loading.expression, "context.loading");
+}
+
+#[test]
+fn unsupported_binding_attribute_reports_diagnostic() {
+    let errors = expect_error(r#"<button [value]="context.value"></button>"#);
+    assert!(errors.iter().any(|m| m.contains("Unsupported binding")));
+}
+
+#[test]
 fn diagnostic_contains_precise_span_and_code() {
     let diagnostics = compile("@if () {}", CompileOptions::new("@flowview/runtime"))
         .err()

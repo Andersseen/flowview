@@ -1,5 +1,5 @@
 import { registerFlowHandlers } from "@flowview/events/runtime";
-import { renderValue } from "@flowview/runtime";
+import { renderAttributeValue, renderValue } from "@flowview/runtime";
 import { describe, expect, it, vi } from "vitest";
 import { compileFlowview } from "../../compiler/src/index";
 import { createView, type RenderFunction } from "./index";
@@ -20,13 +20,17 @@ function compiledRender<TContext>(source: string): RenderFunction<TContext> {
     runtimeImport: "@flowview/runtime",
   });
   const executable = result.code
-    .replace(/^import \{ renderValue \} from '[^']+';\n\n/, "")
+    .replace(
+      /^import \{ renderAttributeValue, renderValue \} from '[^']+';\n\n/,
+      "",
+    )
     .replace("export function render", "function render");
 
   return Function(
+    "renderAttributeValue",
     "renderValue",
     `"use strict";\n${executable}\nreturn render;`,
-  )(renderValue) as RenderFunction<TContext>;
+  )(renderAttributeValue, renderValue) as RenderFunction<TContext>;
 }
 
 function setDocument(html: string): void {
@@ -217,5 +221,42 @@ describe("createView", () => {
 
     expect(calls).toEqual([2]);
     expect(document.querySelector("#selected")?.textContent).toBe("2");
+  });
+
+  it("updates compiled declarative bindings through rerendered HTML", () => {
+    setDocument(`<div id="target"></div>`);
+    const render = compiledRender<{ loading: boolean; status: string }>(`
+      <button [disabled]="context.loading">Run</button>
+      <section
+        [attr.aria-busy]="context.loading"
+        [class.loading]="context.status === 'running'"
+      >
+        {{ context.status }}
+      </section>
+    `);
+    const view = createView("#target", render);
+
+    view.render({ loading: false, status: "idle" });
+    expect(
+      (document.querySelector("button") as HTMLButtonElement).disabled,
+    ).toBe(false);
+    expect(document.querySelector("section")?.getAttribute("aria-busy")).toBe(
+      "false",
+    );
+    expect(
+      document.querySelector("section")?.classList.contains("loading"),
+    ).toBe(false);
+
+    view.update({ loading: true, status: "running" });
+
+    expect(
+      (document.querySelector("button") as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(document.querySelector("section")?.getAttribute("aria-busy")).toBe(
+      "true",
+    );
+    expect(
+      document.querySelector("section")?.classList.contains("loading"),
+    ).toBe(true);
   });
 });

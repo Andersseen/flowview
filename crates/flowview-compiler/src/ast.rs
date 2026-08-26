@@ -55,6 +55,9 @@ pub struct ElementNode {
 pub enum Attribute {
     Plain(PlainAttribute),
     Dynamic(DynamicAttribute),
+    BooleanBinding(BooleanBindingAttribute),
+    AttributeBinding(AttributeBindingAttribute),
+    ClassBinding(ClassBindingAttribute),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -68,6 +71,27 @@ pub struct PlainAttribute {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct DynamicAttribute {
+    pub name: String,
+    pub expression: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct BooleanBindingAttribute {
+    pub name: String,
+    pub expression: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AttributeBindingAttribute {
+    pub name: String,
+    pub expression: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ClassBindingAttribute {
     pub name: String,
     pub expression: String,
     pub span: Span,

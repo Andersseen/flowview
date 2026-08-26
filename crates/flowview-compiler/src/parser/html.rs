@@ -1,5 +1,8 @@
 use crate::{
-    ast::{Attribute, DynamicAttribute, ElementNode, Node, PlainAttribute, Span, TextNode},
+    ast::{
+        Attribute, AttributeBindingAttribute, BooleanBindingAttribute, ClassBindingAttribute,
+        DynamicAttribute, ElementNode, Node, PlainAttribute, Span, TextNode,
+    },
     cursor::{Cursor, CursorPosition},
     diagnostics::{Diagnostic, DiagnosticCode},
     javascript,
@@ -138,6 +141,44 @@ fn parse_attribute(cursor: &mut Cursor) -> Result<Attribute, Vec<Diagnostic>> {
 
     cursor.skip_whitespace();
 
+    if name.starts_with('[') {
+        if !cursor.starts_with("=") {
+            return Err(vec![Diagnostic::from_source(
+                format!("Binding attribute '{}' must have a value.", name),
+                cursor.source(),
+                start,
+                cursor.position(),
+            )
+            .with_diagnostic_code(DiagnosticCode::InvalidAttribute)]);
+        }
+
+        cursor.advance(); // skip =
+        cursor.skip_whitespace();
+        let value = parse_attribute_value(cursor, &name, &start_mark)?;
+        let expression = value.value.trim().to_string();
+        if expression.is_empty() {
+            return Err(vec![Diagnostic::from_source(
+                format!("Binding attribute '{}' expression cannot be empty.", name),
+                cursor.source(),
+                value.content_start,
+                value.content_start + value.value.len(),
+            )
+            .with_diagnostic_code(DiagnosticCode::EmptyExpression)]);
+        }
+
+        let expression_start =
+            value.content_start + (value.value.len() - value.value.trim_start().len());
+        javascript::validate_expression(cursor.source(), &expression, expression_start)?;
+
+        return parse_binding_attribute(
+            name,
+            expression,
+            cursor.source(),
+            start,
+            cursor.position(),
+        );
+    }
+
     if !cursor.starts_with("=") {
         return Ok(Attribute::Plain(PlainAttribute {
             name,
@@ -194,6 +235,92 @@ fn parse_attribute(cursor: &mut Cursor) -> Result<Attribute, Vec<Diagnostic>> {
             end: cursor.position(),
         },
     }))
+}
+
+fn parse_binding_attribute(
+    name: String,
+    expression: String,
+    source: &str,
+    start: usize,
+    end: usize,
+) -> Result<Attribute, Vec<Diagnostic>> {
+    if !name.ends_with(']') {
+        return Err(vec![Diagnostic::from_source(
+            format!("Binding attribute '{}' must close with ']'.", name),
+            source,
+            start,
+            end,
+        )
+        .with_diagnostic_code(DiagnosticCode::InvalidAttribute)]);
+    }
+
+    let target = &name[1..name.len() - 1];
+    if is_boolean_binding_name(target) {
+        return Ok(Attribute::BooleanBinding(BooleanBindingAttribute {
+            name: target.to_string(),
+            expression,
+            span: Span { start, end },
+        }));
+    }
+
+    if let Some(attr_name) = target.strip_prefix("attr.") {
+        if attr_name.is_empty() {
+            return Err(vec![Diagnostic::from_source(
+                "Attribute binding must include a name after 'attr.'.",
+                source,
+                start,
+                end,
+            )
+            .with_diagnostic_code(DiagnosticCode::InvalidAttribute)]);
+        }
+        return Ok(Attribute::AttributeBinding(AttributeBindingAttribute {
+            name: attr_name.to_ascii_lowercase(),
+            expression,
+            span: Span { start, end },
+        }));
+    }
+
+    if let Some(class_name) = target.strip_prefix("class.") {
+        if class_name.is_empty() {
+            return Err(vec![Diagnostic::from_source(
+                "Class binding must include a class name after 'class.'.",
+                source,
+                start,
+                end,
+            )
+            .with_diagnostic_code(DiagnosticCode::InvalidAttribute)]);
+        }
+        return Ok(Attribute::ClassBinding(ClassBindingAttribute {
+            name: class_name.to_string(),
+            expression,
+            span: Span { start, end },
+        }));
+    }
+
+    Err(vec![Diagnostic::from_source(
+        format!(
+            "Unsupported binding '{}'. Supported bindings are boolean attributes, [attr.name], and [class.name].",
+            name
+        ),
+        source,
+        start,
+        end,
+    )
+    .with_diagnostic_code(DiagnosticCode::InvalidAttribute)])
+}
+
+fn is_boolean_binding_name(name: &str) -> bool {
+    matches!(
+        name,
+        "disabled"
+            | "hidden"
+            | "checked"
+            | "selected"
+            | "required"
+            | "readonly"
+            | "multiple"
+            | "open"
+    )
 }
 
 /// If `value` is a quoted string whose entire content is a single
@@ -261,6 +388,30 @@ fn has_balanced_brackets(source: &str) -> bool {
 fn parse_attribute_name(cursor: &mut Cursor) -> Result<String, Vec<Diagnostic>> {
     let start_mark = cursor.snapshot();
     let mut name = String::new();
+
+    if cursor.current() == Some('[') {
+        while let Some(ch) = cursor.current() {
+            if ch.is_whitespace() || ch == '=' || ch == '/' || ch == '>' {
+                break;
+            }
+            name.push(ch);
+            cursor.advance();
+            if ch == ']' {
+                break;
+            }
+        }
+
+        if name == "[" {
+            return Err(vec![Diagnostic::at_cursor(
+                "Expected binding name inside '[' and ']'.",
+                &start_mark,
+            )
+            .with_diagnostic_code(DiagnosticCode::InvalidAttribute)
+            .to_cursor(cursor)]);
+        }
+
+        return Ok(name);
+    }
 
     while let Some(ch) = cursor.current() {
         if ch.is_ascii_alphabetic() || ch.is_ascii_digit() || ch == '-' || ch == ':' || ch == '_' {

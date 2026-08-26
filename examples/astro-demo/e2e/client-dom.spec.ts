@@ -7,9 +7,23 @@ test("updates a compiled Flowview DOM view and keeps events delegated", async ({
 
   await expect(page.getByTestId("client-empty")).toHaveText("No tasks yet.");
   await expect(page.getByTestId("summary")).toHaveText("0 tasks");
+  await expect(page.getByTestId("reload")).toBeEnabled();
+  await expect(page.getByTestId("client-items-list")).toHaveAttribute(
+    "aria-busy",
+    "false",
+  );
 
   await expect(page.getByText("Draft report")).toBeVisible();
   await expect(page.getByTestId("summary")).toHaveText("2 tasks");
+  await expect(page.getByTestId("reload")).toBeEnabled();
+
+  await page.getByTestId("reload").click();
+  await expect(page.getByTestId("reload")).toBeDisabled();
+  await expect(page.getByTestId("client-items-list")).toHaveAttribute(
+    "aria-busy",
+    "true",
+  );
+  await expect(page.getByTestId("reload")).toHaveClass(/loading/);
 
   await expect(page.getByText("Publish metrics")).toBeVisible();
   await expect(page.getByText("Draft report")).toHaveCount(0);

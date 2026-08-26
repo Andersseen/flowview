@@ -37,32 +37,52 @@ import { site } from "../data/site";
     import { render } from "../views/client-items.flow";
     import "virtual:flowview-events/src/views/client-items.flow.ts";
 
+    type ClientItem = {
+      id: number;
+      name: string;
+      status: "active" | "completed";
+    };
+
     const view = createView("#client-items", render);
 
-    view.render({
-      items: [],
-    });
+    const emptyState = {
+      loading: false,
+      items: [] as ClientItem[],
+    };
 
-    const firstItems = [
+    const firstItems: ClientItem[] = [
       { id: 1, name: "Draft report", status: "active" },
       { id: 2, name: "Review dashboard", status: "completed" },
     ];
 
-    const nextItems = [
+    const nextItems: ClientItem[] = [
       { id: 3, name: "Publish metrics", status: "completed" },
       { id: 4, name: "Triage queue", status: "active" },
     ];
 
-    setTimeout(() => {
+    function renderLoading(items: ClientItem[]) {
       view.update({
-        items: firstItems,
+        loading: true,
+        items,
       });
-    }, 100);
+    }
+
+    function renderItems(items: ClientItem[]) {
+      view.update({
+        loading: false,
+        items,
+      });
+    }
+
+    window.addEventListener("flowview:reload", () => {
+      renderLoading(nextItems);
+      setTimeout(() => renderItems(nextItems), 125);
+    });
+
+    view.render(emptyState);
 
     setTimeout(() => {
-      view.update({
-        items: nextItems,
-      });
-    }, 225);
+      renderItems(firstItems);
+    }, 100);
   </script>
 </Layout>
