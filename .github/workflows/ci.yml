@@ -86,6 +86,9 @@ jobs:
       - name: Build events package
         run: pnpm run build:events
 
+      - name: Build Vite Events integration
+        run: pnpm run build:vite-events
+
       - name: Check TypeScript types
         run: pnpm run typecheck
 

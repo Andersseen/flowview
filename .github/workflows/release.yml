@@ -49,6 +49,7 @@ jobs:
       - name: Build packages
         run: |
           pnpm run build:runtime
+          pnpm run build:reactive
           pnpm run build:dom
           pnpm run build:events
           pnpm run build:compiler
@@ -61,6 +62,7 @@ jobs:
       - name: Test packages
         run: |
           pnpm run test:runtime
+          pnpm run test:reactive
           pnpm run test:dom
           pnpm run test:events
           pnpm run test:compiler
