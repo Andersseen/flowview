@@ -1,5 +1,10 @@
 # flowview
 
+[![CI](https://github.com/andersseen/flowview/actions/workflows/ci.yml/badge.svg)](https://github.com/andersseen/flowview/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/%40flowview%2Fvite.svg?label=%40flowview%2Fvite)](https://www.npmjs.com/package/@flowview/vite)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Live demo](https://img.shields.io/badge/demo-flowview--demo.pages.dev-4c1)](https://flowview-demo.pages.dev/)
+
 flowview is a small Rust compiler for HTML-like templates with
 Angular-inspired control flow syntax. It is not a framework. It transforms
 `.flow` files into plain JavaScript render functions.
@@ -27,6 +32,33 @@ export function render(context) {
 }
 ```
 
+## Contents
+
+- [Status](#status)
+- [What flowview Is](#what-flowview-is)
+- [What flowview Is Not](#what-flowview-is-not)
+- [Why It Exists](#why-it-exists)
+- [Supported Syntax](#supported-syntax)
+- [Security Model](#security-model)
+- [Repository Layout](#repository-layout)
+- [Requirements](#requirements)
+- [Install](#install)
+- [Build](#build)
+- [Use With Vite](#use-with-vite)
+- [Use In The Browser](#use-in-the-browser)
+- [Optional Reactivity](#optional-reactivity)
+- [Use With Hono or Plain Node.js](#use-with-hono-or-plain-nodejs)
+- [Test](#test)
+- [flowview Events](#flowview-events)
+- [Run The Astro Demo](#run-the-astro-demo)
+- [Run The Hono Demo](#run-the-hono-demo)
+- [Editor Support](#editor-support)
+- [Run The CLI](#run-the-cli)
+- [Contributing](#contributing)
+- [Specification](#specification)
+- [Security](#security)
+- [License](#license)
+
 ## Status
 
 flowview is experimental and pre-stable. The public shape is intentionally
@@ -45,6 +77,7 @@ reliable.
 - A Rust CLI: `flowview`
 - A tiny TypeScript runtime package: `@flowview/runtime`
 - A tiny browser DOM runtime package: `@flowview/dom`
+- An optional, dependency-free reactive primitives package: `@flowview/reactive` (`signal`/`computed`/`effect`)
 - A Vite plugin: `@flowview/vite`
 - An Astro integration: `@flowview/astro`
 - A separate events compiler: flowview Events (`@flowview/events`, `@flowview/astro-events`)
@@ -58,7 +91,7 @@ flowview does not provide:
 
 - Components
 - Hydration
-- Signals
+- Signals built into the compiler or DOM runtime (an optional `@flowview/reactive` package exists; nothing requires it)
 - DOM events in the HTML compiler (browser events are handled by the separate flowview Events compiler)
 - Directives
 - Dependency injection
