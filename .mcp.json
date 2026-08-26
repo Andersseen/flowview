@@ -5,9 +5,7 @@
       "url": "https://api.githubcopilot.com/mcp/"
     },
     "playwright": {
-      "args": [
-        "@playwright/mcp@latest"
-      ],
+      "args": ["@playwright/mcp@latest"],
       "command": "npx",
       "env": {},
       "type": "stdio"

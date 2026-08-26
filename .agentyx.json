@@ -8,11 +8,6 @@
     "documentation",
     "agentic"
   ],
-  "enable": [
-    "playwright",
-    "github"
-  ],
-  "targets": [
-    "claude"
-  ]
+  "enable": ["playwright", "github"],
+  "targets": ["claude"]
 }
