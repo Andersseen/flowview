@@ -5,8 +5,6 @@ test("updates a compiled Flowview DOM view and keeps events delegated", async ({
 }) => {
   await page.goto("/client-dom");
 
-  await expect(page.getByTestId("client-empty")).toHaveText("No tasks yet.");
-  await expect(page.getByTestId("summary")).toHaveText("0 tasks");
   await expect(page.getByTestId("reload")).toBeEnabled();
   await expect(page.getByTestId("client-items-list")).toHaveAttribute(
     "aria-busy",

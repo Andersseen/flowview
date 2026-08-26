@@ -1,7 +1,7 @@
-import { registerFlowHandlers } from "@flowview/events/runtime";
 import { renderAttributeValue, renderValue } from "@flowview/runtime";
 import { describe, expect, it, vi } from "vitest";
 import { compileFlowview } from "../../compiler/src/index";
+import { registerFlowHandlers } from "../../events/src/runtime/index";
 import { createView, type RenderFunction } from "./index";
 
 interface Item {

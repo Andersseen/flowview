@@ -54,8 +54,8 @@ jobs:
           pnpm run build:compiler
           pnpm run build:vite
           pnpm run build:astro
-          pnpm run build:astro-events
           pnpm run build:vite-events
+          pnpm run build:astro-events
           pnpm run build:prettier
 
       - name: Test packages
