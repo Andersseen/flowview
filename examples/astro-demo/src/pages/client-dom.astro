@@ -34,55 +34,27 @@ import { site } from "../data/site";
 
   <script>
     import { createView } from "@flowview/dom";
+    import { effect } from "@flowview/reactive";
     import { render } from "../views/client-items.flow";
+    import { clientState } from "@/state/client-state";
     import "virtual:flowview-events/src/views/client-items.flow.ts";
-
-    type ClientItem = {
-      id: number;
-      name: string;
-      status: "active" | "completed";
-    };
 
     const view = createView("#client-items", render);
 
-    const emptyState = {
-      loading: false,
-      items: [] as ClientItem[],
-    };
-
-    const firstItems: ClientItem[] = [
-      { id: 1, name: "Draft report", status: "active" },
-      { id: 2, name: "Review dashboard", status: "completed" },
-    ];
-
-    const nextItems: ClientItem[] = [
-      { id: 3, name: "Publish metrics", status: "completed" },
-      { id: 4, name: "Triage queue", status: "active" },
-    ];
-
-    function renderLoading(items: ClientItem[]) {
-      view.update({
-        loading: true,
-        items,
-      });
-    }
-
-    function renderItems(items: ClientItem[]) {
-      view.update({
-        loading: false,
-        items,
-      });
-    }
-
-    window.addEventListener("flowview:reload", () => {
-      renderLoading(nextItems);
-      setTimeout(() => renderItems(nextItems), 125);
+    // The application owns `clientState`; this is the one explicit boundary
+    // where its value reaches the compiled DOM view.
+    effect(() => {
+      view.update(clientState());
     });
 
-    view.render(emptyState);
-
     setTimeout(() => {
-      renderItems(firstItems);
+      clientState.update((state) => ({
+        ...state,
+        items: [
+          { id: 1, name: "Draft report", status: "active" },
+          { id: 2, name: "Review dashboard", status: "completed" },
+        ],
+      }));
     }, 100);
   </script>
 </Layout>

@@ -43,16 +43,21 @@
     }
   </ul>
 
-  <p data-testid="selected-task">No task selected</p>
+  @if (context.selectedTaskId !== null) {
+    <p data-testid="selected-task">Selected task {{ context.selectedTaskId }}</p>
+  } @else {
+    <p data-testid="selected-task">No task selected</p>
+  }
 </section>
 
 <script data-flowview>
+  import { reloadItems, selectTask as setSelectedTask } from "@/state/client-state";
+
   function reload() {
-    window.dispatchEvent(new CustomEvent("flowview:reload"));
+    reloadItems();
   }
 
   function selectTask(id) {
-    const output = document.querySelector('[data-testid="selected-task"]');
-    if (output) output.textContent = `Selected task ${id}`;
+    setSelectedTask(id);
   }
 </script>
