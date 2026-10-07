@@ -194,6 +194,16 @@ so templates without raw interpolation keep the same imports as before.
 `render_static(template, &context, StaticRenderOptions)` renders
 `template + context → HTML string` natively in Rust. It does not generate or
 execute JavaScript and needs no Node.js, browser, or `@flowview/*` package.
+`compile_static(template, options)` returns an immutable
+`CompiledStaticTemplate` that owns the AST, source text, lowered expressions,
+and compile-time warnings. `template.render(&context)` returns the HTML and
+can be called any number of times, with no state shared between calls.
+Syntax errors and unsupported or invalid expressions (even in branches a given
+context would never reach) are reported by `compile_static`; errors that depend
+on the context (`FV0017`–`FV0021`, `FV0025`) are reported by `render`.
+Warnings such as `FV0015` are produced once at compile time and exposed through
+`template.warnings()`; `render_static()` returns the same warnings in its output.
+`render_static()` is the one-off convenience over this pair.
 It is not a static-site generator: Markdown, routing, multi-page output,
 assets, themes, and components belong to the caller.
 

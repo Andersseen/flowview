@@ -6,6 +6,12 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+- Added a reusable static HTML API: `compile_static(source, options)` parses,
+  validates, and lowers expressions once into an immutable, `Send + Sync`
+  `CompiledStaticTemplate`, and `template.render(&context)` renders it against
+  any number of JSON contexts without re-parsing. Unsupported static
+  expressions now fail at compile time. `render_static()` is unchanged and is
+  now a one-off wrapper over the same implementation.
 - Added raw HTML interpolation, `{{{ expression }}}`, as an intentional and
   narrowly scoped language addition. `{{ expression }}` is unchanged and still
   escapes. Raw interpolation inserts a trusted string verbatim in both the

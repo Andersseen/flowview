@@ -624,6 +624,20 @@ let out = render_static(template, &serde_json::json!({"title": "Hi"}), StaticRen
 println!("{}", out.html);
 ```
 
+`render_static()` is the one-off convenience. To render the same template many
+times, compile it once; parsing, validation, and expression lowering then
+happen a single time and each `render` only evaluates against the context:
+
+```rust
+use flowview_compiler::compile_static;
+
+let template = compile_static(layout_source, Default::default())?; // compile errors
+for context in contexts {
+    let html = template.render(&context)?; // context-dependent errors only
+}
+// template.warnings() holds compile-time warnings (e.g. the `track` warning).
+```
+
 Static rendering supports all control flow and attribute bindings, but only a
 deterministic expression subset: `context`, loop variables, member access
 (`a.b`, `a['b']`, `a[0]`), `.length`, literals, `!`, `&&`, `||`, `??`, and
