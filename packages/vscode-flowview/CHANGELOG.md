@@ -1,5 +1,10 @@
 # Change Log
 
+## Unreleased
+
+- Highlight raw interpolation (`{{{ ... }}}`) like `{{ ... }}`, with an extra
+  `meta.interpolation.raw.flowview` scope, and treat `\{{{` as one escape.
+
 ## 0.2.0
 
 - Use theme-compatible TextMate scopes for every flowview control keyword.

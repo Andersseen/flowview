@@ -11,11 +11,14 @@ use std::{borrow::Cow, collections::HashMap};
 use serde_json::Value;
 
 use crate::{
-    ast::{Attribute, ElementNode, Node, RootNode, Span},
+    ast::{Attribute, ElementNode, InterpolationMode, Node, RootNode, Span},
     diagnostics::{Diagnostic, DiagnosticCode},
     parser, validation,
 };
-use evaluator::{eval, lower, render_attribute_value, render_value, EvalError, Expr, Scope, Val};
+use evaluator::{
+    eval, lower, render_attribute_value, render_raw_value, render_value, EvalError, Expr, Scope,
+    Val,
+};
 
 /// Options for [`render_static`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -205,7 +208,13 @@ impl<'a> Renderer<'_, 'a> {
             Node::Text(text) => self.out.push_str(&text.value),
             Node::Interpolation(i) => {
                 let value = self.value(&i.expression, i.span)?;
-                let rendered = self.fail(render_value(&value), i.span)?;
+                let rendered = self.fail(
+                    match i.mode {
+                        InterpolationMode::Escaped => render_value(&value),
+                        InterpolationMode::Raw => render_raw_value(&value),
+                    },
+                    i.span,
+                )?;
                 self.out.push_str(&rendered);
             }
             Node::Element(element) => self.element(element)?,

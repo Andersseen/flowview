@@ -35,6 +35,10 @@ pub enum DiagnosticCode {
     StaticInvalidIterable,
     StaticUnsupportedValue,
     StaticInvalidContext,
+    RawInterpolationUnsupportedLocation,
+    EmptyRawInterpolation,
+    UnclosedRawInterpolation,
+    StaticInvalidRawValue,
 }
 
 impl DiagnosticCode {
@@ -61,6 +65,10 @@ impl DiagnosticCode {
             Self::StaticInvalidIterable => "FV0019",
             Self::StaticUnsupportedValue => "FV0020",
             Self::StaticInvalidContext => "FV0021",
+            Self::RawInterpolationUnsupportedLocation => "FV0022",
+            Self::EmptyRawInterpolation => "FV0023",
+            Self::UnclosedRawInterpolation => "FV0024",
+            Self::StaticInvalidRawValue => "FV0025",
         }
     }
 }

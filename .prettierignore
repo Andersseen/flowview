@@ -12,3 +12,5 @@ packages/compiler/pkg/
 examples/astro-demo/src/components/DemoPage.astro
 examples/astro-demo/src/pages/security.astro
 pnpm-lock.yaml
+# Committed generated-output baselines must stay byte-exact.
+crates/flowview-compiler/tests/fixtures/js/

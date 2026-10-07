@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Plugin } from "vite";
+import {
+  renderAttributeValue,
+  renderRawValue,
+  renderValue,
+} from "../../runtime/src/render-value";
 import flowview from "./index";
 
 type ConfigSetupHook = (options: {
@@ -231,5 +236,55 @@ const context = { title: "Hello" };
       message: expect.stringContaining("context={...}"),
       loc: expect.objectContaining({ line: 1, column: expect.any(Number) }),
     });
+  });
+
+  it("compiles raw interpolation in embedded templates", async () => {
+    const plugin = createEmbeddedPlugin();
+    const transform = plugin.transform;
+    const handler =
+      typeof transform === "function" ? transform : transform?.handler;
+    if (typeof handler !== "function") {
+      throw new Error("flowview embedded plugin has no transform hook");
+    }
+
+    const result = await handler.call(
+      {} as never,
+      `<template flowview={context} is:raw>
+  <h1>{{ context.title }}</h1>
+  <article>{{{ context.bodyHtml }}}</article>
+</template>`,
+      "/src/pages/raw.astro",
+    );
+    const astro =
+      typeof result === "string"
+        ? result
+        : typeof result?.code === "string"
+          ? result.code
+          : "";
+    const publicId = /from "(virtual:flowview-astro\/[^"]+)"/.exec(astro)?.[1];
+    if (publicId === undefined) throw new Error("no virtual module import");
+
+    const resolveId = plugin.resolveId as (id: string) => string | null;
+    const load = plugin.load as (this: unknown, id: string) => Promise<string>;
+    const module = await load.call({}, resolveId(publicId) ?? "");
+
+    expect(module).toContain("renderRawValue(context.bodyHtml)");
+    const render = Function(
+      "renderAttributeValue",
+      "renderRawValue",
+      "renderValue",
+      `"use strict";\n${module
+        .replace(/^import \{[^}]+\} from '[^']+';\n\n/, "")
+        .replace("export function render", "function render")}\nreturn render;`,
+    )(renderAttributeValue, renderRawValue, renderValue) as (
+      context: Record<string, unknown>,
+    ) => string;
+
+    expect(
+      render({ title: "<T>", bodyHtml: "<h2>Trusted</h2>" }).replace(
+        /\s+/g,
+        "",
+      ),
+    ).toBe("<h1>&lt;T&gt;</h1><article><h2>Trusted</h2></article>");
   });
 });

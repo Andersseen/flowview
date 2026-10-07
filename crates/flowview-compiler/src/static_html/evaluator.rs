@@ -465,6 +465,29 @@ pub(crate) fn render_value(value: &Val) -> Result<String, EvalError> {
     }
 }
 
+/// Static equivalent of `renderRawValue`: only strings are inserted, verbatim.
+/// `null`, `undefined` and `false` render as an empty string; every other value
+/// is rejected so the two targets cannot disagree about what "raw" means.
+pub(crate) fn render_raw_value(value: &Val) -> Result<String, EvalError> {
+    let kind = match value {
+        Val::Undefined => return Ok(String::new()),
+        Val::Json(v) => match v.as_ref() {
+            Value::String(text) => return Ok(text.clone()),
+            Value::Null | Value::Bool(false) => return Ok(String::new()),
+            Value::Bool(true) => "boolean",
+            Value::Number(_) => "number",
+            Value::Array(_) => "array",
+            Value::Object(_) => "object",
+        },
+    };
+    Err(EvalError::new(
+        DiagnosticCode::StaticInvalidRawValue,
+        format!(
+            "Raw interpolation `{{{{{{ }}}}}}` requires a string, null, undefined or false, but received a value of type {kind}"
+        ),
+    ))
+}
+
 /// Static equivalent of `renderAttributeValue`: `null`/`undefined` become an
 /// empty string, everything else is stringified (so `false` is `"false"`).
 pub(crate) fn render_attribute_value(value: &Val) -> Result<String, EvalError> {

@@ -184,3 +184,79 @@ fn cli_static_unsupported_expression_human_and_json() {
     assert!(stderr.contains("\"code\":\"FV0016\""));
     assert!(stderr.contains("\"line\":1"));
 }
+
+#[test]
+fn cli_static_raw_interpolation_renders_trusted_html() {
+    let temp = tempfile::tempdir().unwrap();
+    let data = temp.path().join("context.json");
+    fs::write(
+        &data,
+        r#"{"title": "<T>", "bodyHtml": "<h2>Boundaries</h2>"}"#,
+    )
+    .unwrap();
+
+    let output = static_cmd("<h1>{{ context.title }}</h1>{{{ context.bodyHtml }}}")
+        .arg("--data")
+        .arg(&data)
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert_eq!(
+        str::from_utf8(&output.stdout).unwrap(),
+        "<h1>&lt;T&gt;</h1><h2>Boundaries</h2>"
+    );
+}
+
+#[test]
+fn cli_static_raw_value_type_error_is_a_json_diagnostic() {
+    let temp = tempfile::tempdir().unwrap();
+    let data = temp.path().join("context.json");
+    fs::write(&data, r#"{"n": 1}"#).unwrap();
+
+    let output = static_cmd("<p>\n{{{ context.n }}}</p>")
+        .arg("--data")
+        .arg(&data)
+        .arg("--diagnostic-format")
+        .arg("json")
+        .arg("--display-name")
+        .arg("page.flow")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = str::from_utf8(&output.stderr).unwrap();
+    assert!(stderr.contains("\"code\":\"FV0025\""), "{stderr}");
+    assert!(stderr.contains("\"filename\":\"page.flow\""), "{stderr}");
+    assert!(stderr.contains("\"line\":2"), "{stderr}");
+    assert!(stderr.contains("\"severity\":\"error\""), "{stderr}");
+}
+
+#[test]
+fn cli_js_target_rejects_raw_interpolation_in_attributes_with_json_diagnostic() {
+    let mut cmd = Command::cargo_bin("flowview").unwrap();
+    cmd.arg("compile")
+        .arg("-")
+        .arg("--diagnostic-format")
+        .arg("json")
+        .arg("--display-name")
+        .arg("page.flow")
+        .write_stdin("<div title=\"{{{ context.html }}}\"></div>");
+    let output = cmd.output().unwrap();
+    assert!(!output.status.success());
+    let stderr = str::from_utf8(&output.stderr).unwrap();
+    assert!(stderr.contains("\"code\":\"FV0022\""), "{stderr}");
+    assert!(stderr.contains("\"filename\":\"page.flow\""), "{stderr}");
+    assert!(stderr.contains("\"line\":1"), "{stderr}");
+    assert!(stderr.contains("\"column\":"), "{stderr}");
+}
+
+#[test]
+fn cli_js_target_emits_raw_helper() {
+    let mut cmd = Command::cargo_bin("flowview").unwrap();
+    cmd.arg("compile")
+        .arg("-")
+        .write_stdin("<article>{{{ context.body }}}</article>");
+    let output = cmd.output().unwrap();
+    assert!(output.status.success());
+    let stdout = str::from_utf8(&output.stdout).unwrap();
+    assert!(stdout.contains("renderRawValue(context.body)"));
+}

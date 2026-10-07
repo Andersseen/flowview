@@ -1,0 +1,128 @@
+{
+  "description": "Shared by the Rust static renderer tests and the TypeScript JavaScript-target tests. Both targets must produce `expected` for every case, and reject every `rejects` case.",
+  "cases": [
+    {
+      "name": "escaped and trusted content coexist",
+      "template": "<main>\n  <h1>{{ context.title }}</h1>\n  <article>{{{ context.bodyHtml }}}</article>\n</main>",
+      "context": {
+        "title": "<Architecture>",
+        "bodyHtml": "<h2>Boundaries</h2><p>Compiler-first.</p>"
+      },
+      "expected": "<main>\n  <h1>&lt;Architecture&gt;</h1>\n  <article><h2>Boundaries</h2><p>Compiler-first.</p></article>\n</main>"
+    },
+    {
+      "name": "escaped interpolation still escapes a script payload",
+      "template": "<div>{{ context.payload }}</div>",
+      "context": { "payload": "<script>alert(1)</script>" },
+      "expected": "<div>&lt;script&gt;alert(1)&lt;/script&gt;</div>"
+    },
+    {
+      "name": "raw interpolation emits a script payload verbatim",
+      "template": "<div>{{{ context.payload }}}</div>",
+      "context": { "payload": "<script>alert(1)</script>" },
+      "expected": "<div><script>alert(1)</script></div>"
+    },
+    {
+      "name": "ampersands and quotes are untouched by raw interpolation",
+      "template": "{{{ context.html }}}|{{ context.html }}",
+      "context": { "html": "<a href=\"x?a=1&b=2\">it's</a>" },
+      "expected": "<a href=\"x?a=1&b=2\">it's</a>|&lt;a href=&quot;x?a=1&amp;b=2&quot;&gt;it&#39;s&lt;/a&gt;"
+    },
+    {
+      "name": "raw interpolation inside @if",
+      "template": "@if (context.descriptionHtml) {<section>{{{ context.descriptionHtml }}}</section>} @else {<p>none</p>}",
+      "context": { "descriptionHtml": "<em>hi</em>" },
+      "expected": "<section><em>hi</em></section>"
+    },
+    {
+      "name": "raw interpolation inside @for",
+      "template": "@for (section of context.sections) {<section><h2>{{ section.title }}</h2>{{{ section.contentHtml }}}</section>}",
+      "context": {
+        "sections": [
+          { "title": "A & B", "contentHtml": "<p>one</p>" },
+          { "title": "C", "contentHtml": "<p>two</p>" }
+        ]
+      },
+      "expected": "<section><h2>A &amp; B</h2><p>one</p></section><section><h2>C</h2><p>two</p></section>"
+    },
+    {
+      "name": "raw interpolation inside @switch branches",
+      "template": "@switch (context.kind) { @case ('a') {{{{ context.a }}}} @case ('b') {<i>{{{ context.b }}}</i>} @default {{{{ context.d }}}} }",
+      "context": {
+        "kind": "b",
+        "a": "<b>A</b>",
+        "b": "<u>B</u>",
+        "d": "<s>D</s>"
+      },
+      "expected": "<i><u>B</u></i>"
+    },
+    {
+      "name": "raw interpolation inside the @switch default",
+      "template": "@switch (context.kind) { @case ('a') {{{{ context.a }}}} @default {{{{ context.d }}}} }",
+      "context": { "kind": "z", "a": "<b>A</b>", "d": "<s>D</s>" },
+      "expected": "<s>D</s>"
+    },
+    {
+      "name": "empty string, null and false render nothing",
+      "template": "[{{{ context.empty }}}][{{{ context.nothing }}}][{{{ context.off }}}]",
+      "context": { "empty": "", "nothing": null, "off": false },
+      "expected": "[][][]"
+    },
+    {
+      "name": "missing values render nothing",
+      "template": "[{{{ context.missing }}}][{{{ context.deep.missing }}}]",
+      "context": { "deep": {} },
+      "expected": "[][]"
+    },
+    {
+      "name": "logical expressions yielding strings",
+      "template": "{{{ context.a ?? context.b }}}|{{{ context.c || context.b }}}|{{{ context.d && context.b }}}",
+      "context": { "a": null, "b": "<b>b</b>", "c": "", "d": true },
+      "expected": "<b>b</b>|<b>b</b>|<b>b</b>"
+    },
+    {
+      "name": "raw interpolation is not re-escaped and preserves unicode and newlines",
+      "template": "<div>{{{ context.html }}}</div>",
+      "context": { "html": "<p>héllo — 日本語</p>\n<p>two</p>" },
+      "expected": "<div><p>héllo — 日本語</p>\n<p>two</p></div>"
+    },
+    {
+      "name": "escaped marker stays literal next to a real raw interpolation",
+      "template": "\\{{{ context.x \\}\\}\\} {{{ context.html }}}",
+      "context": { "html": "<b>ok</b>" },
+      "expected": "{{{ context.x }}} <b>ok</b>"
+    }
+  ],
+  "rejects": [
+    {
+      "name": "number",
+      "template": "{{{ context.value }}}",
+      "context": { "value": 42 }
+    },
+    {
+      "name": "zero",
+      "template": "{{{ context.value }}}",
+      "context": { "value": 0 }
+    },
+    {
+      "name": "true",
+      "template": "{{{ context.value }}}",
+      "context": { "value": true }
+    },
+    {
+      "name": "array",
+      "template": "{{{ context.value }}}",
+      "context": { "value": ["<b>x</b>"] }
+    },
+    {
+      "name": "empty array",
+      "template": "{{{ context.value }}}",
+      "context": { "value": [] }
+    },
+    {
+      "name": "object",
+      "template": "{{{ context.value }}}",
+      "context": { "value": { "html": "<b>x</b>" } }
+    }
+  ]
+}

@@ -8,7 +8,11 @@ use crate::{
     javascript,
 };
 
-use super::{lexer::is_escaped_syntax, nodes::parse_nodes};
+use super::{
+    interpolation::raw_interpolation_in_tag,
+    lexer::{take_escape, RAW_INTERPOLATION_START},
+    nodes::parse_nodes,
+};
 
 /// Parse an HTML segment starting with `<`.
 pub fn parse_html_segment(cursor: &mut Cursor) -> Result<Vec<Node>, Vec<Diagnostic>> {
@@ -88,6 +92,13 @@ fn parse_tag_name(cursor: &mut Cursor) -> Result<String, Vec<Diagnostic>> {
         }
     }
 
+    if name.is_empty() && cursor.starts_with(RAW_INTERPOLATION_START) {
+        return Err(vec![raw_interpolation_in_tag(
+            cursor.source(),
+            cursor.position(),
+        )]);
+    }
+
     if name.is_empty() {
         return Err(vec![Diagnostic::at_cursor(
             "Expected HTML tag name",
@@ -128,6 +139,13 @@ fn parse_attributes(
                 tag_start + tag_name.len() + 1,
             )
             .with_diagnostic_code(DiagnosticCode::InvalidHtml)]);
+        }
+
+        if cursor.starts_with(RAW_INTERPOLATION_START) {
+            return Err(vec![raw_interpolation_in_tag(
+                cursor.source(),
+                cursor.position(),
+            )]);
         }
 
         attributes.push(parse_attribute(cursor)?);
@@ -195,6 +213,10 @@ fn parse_attribute(cursor: &mut Cursor) -> Result<Attribute, Vec<Diagnostic>> {
     cursor.skip_whitespace();
 
     let value = parse_attribute_value(cursor, &name, &start_mark)?;
+
+    if let Some(position) = value.raw_marker_position {
+        return Err(vec![raw_interpolation_in_tag(cursor.source(), position)]);
+    }
 
     if !value.has_escaped_braces {
         if let Some(expression) = extract_dynamic_expression(&value.value) {
@@ -442,6 +464,8 @@ struct AttributeValue {
     content_start: usize,
     has_interpolation_marker: bool,
     has_escaped_braces: bool,
+    /// Source offset of the first unescaped `{{{` inside the value, if any.
+    raw_marker_position: Option<usize>,
 }
 
 fn parse_attribute_value(
@@ -466,15 +490,19 @@ fn parse_attribute_value(
     let mut value = String::new();
     let mut has_interpolation_marker = false;
     let mut has_escaped_braces = false;
+    let mut raw_marker_position = None;
 
     while let Some(ch) = cursor.current() {
-        if is_escaped_syntax(cursor) {
-            if matches!(cursor.peek(1), Some('{' | '}')) {
+        if let Some(literal) = take_escape(cursor) {
+            if literal.starts_with(['{', '}']) {
                 has_escaped_braces = true;
             }
-            cursor.advance();
-            value.push(cursor.advance().unwrap());
+            value.push_str(literal);
             continue;
+        }
+
+        if cursor.starts_with(RAW_INTERPOLATION_START) && raw_marker_position.is_none() {
+            raw_marker_position = Some(cursor.position());
         }
 
         if cursor.starts_with("{{") {
@@ -489,6 +517,7 @@ fn parse_attribute_value(
                 content_start,
                 has_interpolation_marker,
                 has_escaped_braces,
+                raw_marker_position,
             });
         }
 
@@ -515,6 +544,13 @@ fn parse_unquoted_attribute_value(
     while let Some(ch) = cursor.current() {
         if ch.is_whitespace() || ch == '>' || ch == '/' {
             break;
+        }
+
+        if cursor.starts_with(RAW_INTERPOLATION_START) {
+            return Err(vec![raw_interpolation_in_tag(
+                cursor.source(),
+                cursor.position(),
+            )]);
         }
 
         if cursor.starts_with("{{") {
@@ -547,6 +583,7 @@ fn parse_unquoted_attribute_value(
         content_start,
         has_interpolation_marker,
         has_escaped_braces: false,
+        raw_marker_position: None,
     })
 }
 
