@@ -1,6 +1,6 @@
 {
   "name": "@flowview/dom",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Tiny DOM runtime for flowview-generated render functions.",
   "license": "MIT",
   "type": "module",

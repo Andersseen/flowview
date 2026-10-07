@@ -1,6 +1,6 @@
 {
   "name": "@flowview/reactive",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Optional, dependency-free fine-grained reactivity (signal, computed, effect) for use alongside flowview.",
   "license": "MIT",
   "type": "module",
