@@ -370,7 +370,8 @@ impl<'a> Renderer<'_, 'a> {
                     }
                 }
                 Attribute::ClassBinding(binding) => {
-                    if self.value(&binding.expression, binding.span)?.truthy() {
+                    let active = self.value(&binding.expression, binding.span)?.truthy();
+                    if active {
                         add(&binding.name, &mut classes);
                     }
                 }
