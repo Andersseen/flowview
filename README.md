@@ -123,8 +123,13 @@ flowview currently supports:
 - Switch blocks:
   - `@switch (expr) { @case ('a') { ... } @default { ... } }`
 
-Iterables are normalized with `Array.from`, so arrays, sets, maps, generators,
-and array-like objects can be rendered.
+Binding attributes: `[disabled]` (and `hidden`, `checked`, `selected`,
+`required`, `readonly`, `multiple`, `open`), `[attr.name]="expr"`, and
+`[class.name]="expr"`. Full-value interpolation (`href="{{ expr }}"`) is also
+supported.
+
+In the JavaScript target, iterables are normalized with `Array.from`, so
+arrays, sets, maps, generators, and array-like objects can be rendered.
 
 `track` is accepted as reserved syntax for future integrations. Since flowview
 currently renders strings and does not diff DOM nodes, `track` has no runtime
@@ -555,6 +560,34 @@ Use a custom runtime import path:
 ```sh
 cargo run -p flowview-cli -- compile examples/basic/for.flow --runtime "#flowview/runtime"
 ```
+
+## Static HTML Output
+
+Besides the JavaScript module, the same parser and AST can render a template
+straight to HTML from a JSON context, natively in Rust (no Node.js, browser, or
+JavaScript engine):
+
+```sh
+flowview compile page.flow --target static-html --data context.json --out page.html
+```
+
+Without `--data` the context is `{}`. From Rust:
+
+```rust
+use flowview_compiler::{render_static, StaticRenderOptions};
+
+let out = render_static(template, &serde_json::json!({"title": "Hi"}), StaticRenderOptions::default())?;
+println!("{}", out.html);
+```
+
+Static rendering supports all control flow and attribute bindings, but only a
+deterministic expression subset: `context`, loop variables, member access
+(`a.b`, `a['b']`, `a[0]`), `.length`, literals, `!`, `&&`, `||`, `??`, and
+comparisons. Function calls and other JavaScript fail with diagnostic
+`FV0016`. See the spec for the exact subset. flowview is a renderer, not a
+static-site generator; routing, Markdown, and multi-page builds are up to the
+caller. The WASM/`@flowview/compiler` wrapper does not expose static rendering
+yet.
 
 ## Contributing
 

@@ -6,6 +6,17 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+- Added a static HTML output target to the compiler:
+  `flowview_compiler::render_static()` and
+  `flowview compile --target static-html [--data context.json]` render a
+  template with a JSON context to final HTML natively in Rust, with no
+  JavaScript execution. Supports all control flow and attribute bindings and a
+  deterministic expression subset; unsupported expressions fail with the new
+  diagnostics `FV0016`-`FV0021`. The JavaScript target and its output are
+  unchanged (`codegen.rs` moved to `codegen/javascript.rs`). WASM/npm wrapper
+  support is deferred.
+- Documented binding attributes (`[disabled]`, `[attr.*]`, `[class.*]`) and
+  the two-target architecture in the README, spec, and SDD guide.
 - Added `@flowview/vite-events`, bringing flowview Events'
   `(click)="handler()"` bindings to plain Vite projects (Hono, Node.js,
   Cloudflare Workers) without requiring Astro. Bindings are rewritten to

@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use flowview_compiler::{compile, CompileOptions, DiagnosticFormatter};
+use flowview_compiler::{
+    compile, render_static, CompileOptions, Diagnostic, DiagnosticFormatter, StaticRenderOptions,
+};
 use std::{
     fs,
     io::{self, Read},
@@ -9,7 +11,7 @@ use std::{
 
 #[derive(Parser)]
 #[command(name = "flowview")]
-#[command(about = "Compile flowview templates to JavaScript render functions")]
+#[command(about = "Compile flowview templates to JavaScript or render them to static HTML")]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
@@ -20,6 +22,14 @@ struct Cli {
 enum DiagnosticFormat {
     Human,
     Json,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum Target {
+    /// JavaScript module exporting `render(context)` (default)
+    Js,
+    /// Final HTML rendered natively from a JSON context
+    StaticHtml,
 }
 
 #[derive(Subcommand)]
@@ -33,7 +43,15 @@ enum Command {
         #[arg(long)]
         out: Option<String>,
 
-        /// Runtime module import path
+        /// Output target
+        #[arg(long, value_enum, default_value_t = Target::Js)]
+        target: Target,
+
+        /// JSON file used as `context` (static-html target only; defaults to `{}`)
+        #[arg(long)]
+        data: Option<String>,
+
+        /// Runtime module import path (js target only)
         #[arg(long, default_value = "@flowview/runtime")]
         runtime: String,
 
@@ -58,6 +76,8 @@ fn main() {
         Command::Compile {
             input,
             out,
+            target,
+            data,
             runtime,
             display_name,
             line_offset,
@@ -65,6 +85,8 @@ fn main() {
         } => compile_file(
             &input,
             out.as_deref(),
+            target,
+            data.as_deref(),
             &runtime,
             display_name.as_deref(),
             line_offset,
@@ -73,9 +95,12 @@ fn main() {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn compile_file(
     input: &str,
     out: Option<&str>,
+    target: Target,
+    data: Option<&str>,
     runtime: &str,
     display_name: Option<&str>,
     line_offset: usize,
@@ -85,6 +110,11 @@ fn compile_file(
 
     if input != "-" && path.extension().and_then(|ext| ext.to_str()) != Some("flow") {
         eprintln!("{}: expected a .flow file", input);
+        process::exit(1);
+    }
+
+    if data.is_some() && target != Target::StaticHtml {
+        eprintln!("--data is only valid with --target static-html");
         process::exit(1);
     }
 
@@ -107,35 +137,79 @@ fn compile_file(
 
     let diagnostic_name = display_name.unwrap_or(input);
 
-    let options = CompileOptions::new(runtime).with_filename(diagnostic_name);
+    let result = match target {
+        Target::Js => {
+            let options = CompileOptions::new(runtime).with_filename(diagnostic_name);
+            compile(&source, options).map(|output| (output.code, output.warnings))
+        }
+        Target::StaticHtml => {
+            let context = load_context(data);
+            let options = StaticRenderOptions::default().with_filename(diagnostic_name);
+            render_static(&source, &context, options).map(|output| (output.html, output.warnings))
+        }
+    };
 
-    match compile(&source, options) {
-        Ok(output) => {
-            if !output.warnings.is_empty() {
-                let formatter =
-                    DiagnosticFormatter::new(&output.warnings, diagnostic_name, line_offset);
-                match diagnostic_format {
-                    DiagnosticFormat::Human => eprint!("{}", formatter.format_human()),
-                    DiagnosticFormat::Json => eprintln!("{}", formatter.format_json()),
-                }
-            }
+    match result {
+        Ok((code, warnings)) => {
+            report(&warnings, diagnostic_name, line_offset, diagnostic_format);
 
             if let Some(out_path) = out {
-                if let Err(error) = fs::write(out_path, output.code) {
+                if let Err(error) = fs::write(out_path, code) {
                     eprintln!("Failed to write {}: {}", out_path, error);
                     process::exit(1);
                 }
             } else {
-                print!("{}", output.code);
+                print!("{}", code);
             }
         }
         Err(diagnostics) => {
-            let formatter = DiagnosticFormatter::new(&diagnostics, diagnostic_name, line_offset);
-            match diagnostic_format {
-                DiagnosticFormat::Human => eprint!("{}", formatter.format_human()),
-                DiagnosticFormat::Json => eprintln!("{}", formatter.format_json()),
-            }
+            report(
+                &diagnostics,
+                diagnostic_name,
+                line_offset,
+                diagnostic_format,
+            );
             process::exit(1);
         }
+    }
+}
+
+fn load_context(data: Option<&str>) -> serde_json::Value {
+    let Some(data_path) = data else {
+        return serde_json::json!({});
+    };
+    if data_path == "-" {
+        eprintln!("--data cannot read stdin; stdin is reserved for the template");
+        process::exit(1);
+    }
+    let text = match fs::read_to_string(data_path) {
+        Ok(text) => text,
+        Err(error) => {
+            eprintln!("Failed to read {}: {}", data_path, error);
+            process::exit(1);
+        }
+    };
+    match serde_json::from_str(&text) {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("Invalid JSON in {}: {}", data_path, error);
+            process::exit(1);
+        }
+    }
+}
+
+fn report(
+    diagnostics: &[Diagnostic],
+    filename: &str,
+    line_offset: usize,
+    format: DiagnosticFormat,
+) {
+    if diagnostics.is_empty() {
+        return;
+    }
+    let formatter = DiagnosticFormatter::new(diagnostics, filename, line_offset);
+    match format {
+        DiagnosticFormat::Human => eprint!("{}", formatter.format_human()),
+        DiagnosticFormat::Json => eprintln!("{}", formatter.format_json()),
     }
 }

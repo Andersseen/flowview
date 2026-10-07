@@ -750,3 +750,10 @@ fn raw_text_elements_are_case_insensitive() {
     assert!(output.contains(r#"const x = "@if";"#));
     assert!(output.contains(".a { color: red; }"));
 }
+
+#[test]
+fn javascript_output_matches_committed_baseline() {
+    let source = include_str!("fixtures/js/baseline.flow");
+    let expected = include_str!("fixtures/js/baseline.js");
+    assert_eq!(compile_source(source), expected);
+}

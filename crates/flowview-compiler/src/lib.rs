@@ -4,11 +4,13 @@ pub mod cursor;
 pub mod diagnostics;
 mod javascript;
 pub mod parser;
+pub mod static_html;
 mod validation;
 
 pub use cursor::CursorPosition;
 pub use diagnostics::Diagnostic;
 pub use diagnostics::{DiagnosticCode, DiagnosticFormatter, DiagnosticSeverity};
+pub use static_html::{render_static, StaticRenderOptions, StaticRenderOutput};
 
 /// Options that control code generation.
 #[derive(Debug, Clone, PartialEq, Eq)]

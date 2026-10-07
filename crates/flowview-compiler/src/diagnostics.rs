@@ -29,6 +29,12 @@ pub enum DiagnosticCode {
     InvalidHtml,
     ReservedBinding,
     TrackIgnored,
+    StaticUnsupportedExpression,
+    StaticUnresolvedIdentifier,
+    StaticInvalidMemberAccess,
+    StaticInvalidIterable,
+    StaticUnsupportedValue,
+    StaticInvalidContext,
 }
 
 impl DiagnosticCode {
@@ -49,6 +55,12 @@ impl DiagnosticCode {
             Self::InvalidHtml => "FV0013",
             Self::ReservedBinding => "FV0014",
             Self::TrackIgnored => "FV0015",
+            Self::StaticUnsupportedExpression => "FV0016",
+            Self::StaticUnresolvedIdentifier => "FV0017",
+            Self::StaticInvalidMemberAccess => "FV0018",
+            Self::StaticInvalidIterable => "FV0019",
+            Self::StaticUnsupportedValue => "FV0020",
+            Self::StaticInvalidContext => "FV0021",
         }
     }
 }
