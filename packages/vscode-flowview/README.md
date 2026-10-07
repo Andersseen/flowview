@@ -57,6 +57,9 @@ flowview control markers can be escaped with a backslash:
 <p>\@if and \{{ are rendered as literal text.</p>
 ```
 
+Raw HTML interpolation (`{{{ context.contentHtml }}}`) is highlighted like
+`{{ ... }}`. It inserts trusted HTML without escaping.
+
 ## Usage in Astro
 
 The extension injects the flowview grammar inside

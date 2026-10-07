@@ -64,10 +64,12 @@ The stable v1 language surface includes:
   - `[class.name]="expr"` adds `name` to `class` when truthy. Plain and
     dynamic `class` values are merged with these and de-duplicated in order.
 - Escaped interpolation with `{{ expression }}`.
+- Explicit raw HTML interpolation with `{{{ expression }}}` (see
+  [Raw Interpolation](#raw-interpolation)).
 - `@if`, `@else if`, and `@else`.
 - `@for`, optional `track`, and `@empty`.
 - `@switch`, `@case`, and `@default`.
-- Escaping syntax markers: `\@if`, `\{{`, `\}`.
+- Escaping syntax markers: `\@if`, `\{{`, `\{{{`, `\}`.
 - Explicit `context` as the only top-level template data binding.
 
 Example:
@@ -87,6 +89,50 @@ Example:
   }
 </main>
 ```
+
+## Raw Interpolation
+
+`{{{ expression }}}` is a deliberate, narrowly scoped addition to the language
+surface. It lets a caller that already owns trusted HTML insert it into a
+template without escaping:
+
+```text
+{{ value }}     → escaped interpolation
+{{{ value }}}   → explicit raw HTML interpolation
+```
+
+Syntax and parsing:
+
+- The parser recognizes `{{{` before `{{`. It decides the mode once and records
+  it on the AST: `Node::Interpolation` carries `mode: Escaped | Raw`. Backends
+  consume that field and never inspect source text for braces.
+- The expression is scanned and validated exactly like a `{{ }}` expression and
+  ends at the first top-level `}}}`. An expression that begins with an object
+  literal therefore needs a space or parentheses.
+- Raw interpolation is content interpolation only. It works in element content
+  and inside `@if`, `@for`, and `@switch` branches. It is not interpreted in
+  HTML comments, `<script>`, or `<style>`, and it is an error in tag names,
+  attribute names, and attribute values (`FV0022`).
+- `\{{{` escapes the whole marker and renders literal `{{{`. Existing escapes
+  (`\{{`, `\{`, `\}`) are unchanged.
+
+Value contract (identical in both targets):
+
+| value                         | result                                           |
+| ----------------------------- | ------------------------------------------------ |
+| string (including `""`)       | inserted unchanged                               |
+| `null`, `undefined`, `false`  | empty string                                     |
+| number, `true`, array, object | error: never stringified, never inferred as HTML |
+
+The JavaScript target throws a `TypeError` from `renderRawValue`; the static
+target reports `FV0025` with the template location. Raw interpolation does not
+widen the static expression subset: `{{{ sanitize(context.body) }}}` is
+`FV0016`.
+
+There is no configuration option that disables escaping globally. The choice is
+made at the exact template location where raw HTML is inserted. flowview does
+not sanitize, inspect, or classify raw values; see
+[Security Model](#security-model).
 
 ## Compiler Contract
 
@@ -121,6 +167,7 @@ Required exports:
 ```ts
 export function escapeHtml(value: unknown): string;
 export function renderValue(value: unknown): string;
+export function renderRawValue(value: unknown): string;
 
 export type RenderContext = Record<string, unknown>;
 
@@ -136,6 +183,11 @@ Runtime behavior for v1:
 - Interpolated values are HTML-escaped by default.
 - Escaping is valid for normal text and quoted HTML attribute values.
 - Escaping is not URL, CSS, JavaScript, or policy-level sanitization.
+
+`renderRawValue` backs `{{{ }}}`: it returns strings unchanged, renders `null`,
+`undefined`, and `false` as an empty string, and throws a `TypeError` for every
+other value. Generated modules import it only when the template uses `{{{ }}}`,
+so templates without raw interpolation keep the same imports as before.
 
 ## Static HTML Target
 
@@ -183,6 +235,10 @@ with `FV0019`. Arrays and objects cannot be interpolated or used as attribute
 values (`FV0020`). Numbers render like JavaScript for integers and ordinary
 decimals.
 
+Raw interpolation (`{{{ }}}`) renders string values verbatim and other values
+as described in [Raw Interpolation](#raw-interpolation); a value that is not a
+string, `null`, or `false` fails with `FV0025`.
+
 Static diagnostics: `FV0016` unsupported expression, `FV0017` unresolved
 identifier, `FV0018` invalid member access, `FV0019` invalid iterable, `FV0020`
 unsupported value, `FV0021` invalid context (not a JSON object).
@@ -201,7 +257,11 @@ application provides a sandbox.
 v1 documentation must clearly explain:
 
 - Templates are trusted source code.
-- Interpolated values are escaped by default.
+- Values interpolated with `{{ }}` are escaped by default.
+- `{{{ }}}` is an explicit assertion by the template author that the value is
+  already trusted or sanitized HTML. flowview does not sanitize it, so passing
+  untrusted markup is an XSS vulnerability. Its existence does not change how
+  `{{ }}` behaves.
 - Escaping does not make every HTML context safe.
 - Untrusted values must not be placed into `<script>`, `<style>`, event-handler
   attributes, or URL-bearing attributes without host-side validation.
@@ -237,6 +297,7 @@ Required behavior:
 The compiler validates JavaScript expressions used in:
 
 - `{{ expression }}`.
+- `{{{ expression }}}`.
 - `@if (expression)`.
 - `@else if (expression)`.
 - `@for (item of expression)`.
@@ -265,7 +326,10 @@ Each diagnostic includes:
 - Optional diagnostic code.
 
 Diagnostic codes are stable, e.g. `FV0011` for invalid JavaScript expressions.
-Static-target codes are `FV0016`–`FV0021` (see Static HTML Target).
+Static-target codes are `FV0016`–`FV0021` (see Static HTML Target). Raw
+interpolation uses `FV0022` (unsupported location), `FV0023` (empty), `FV0024`
+(unclosed), and, in the static target, `FV0025` (value is not a string, `null`,
+`undefined`, or `false`).
 
 ## Code Generation
 
@@ -274,7 +338,8 @@ The rules below describe the JavaScript target. Generated JavaScript is predicta
 Required behavior:
 
 - Static HTML is emitted efficiently.
-- Dynamic values go through `renderValue`.
+- Dynamic values go through `renderValue`; `{{{ }}}` values go through
+  `renderRawValue`.
 - Dynamic quoted attribute values go through `renderValue`.
 - Generated string literals escape backslashes, quotes, newlines, carriage
   returns, tabs, Unicode line separators, and other control characters.

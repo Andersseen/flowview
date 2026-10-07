@@ -1,6 +1,6 @@
 use crate::{ast::*, cursor::Cursor, diagnostics::Diagnostic};
 
-use super::lexer::{is_escaped_syntax, starts_syntax};
+use super::lexer::{starts_syntax, take_escape};
 
 /// Parse a run of plain text until a syntax marker is found.
 pub fn parse_text(cursor: &mut Cursor) -> Result<TextNode, Vec<Diagnostic>> {
@@ -12,9 +12,8 @@ pub fn parse_text(cursor: &mut Cursor) -> Result<TextNode, Vec<Diagnostic>> {
             break;
         }
 
-        if is_escaped_syntax(cursor) {
-            cursor.advance(); // skip escape marker
-            value.push(cursor.advance().unwrap());
+        if let Some(literal) = take_escape(cursor) {
+            value.push_str(literal);
             continue;
         }
 

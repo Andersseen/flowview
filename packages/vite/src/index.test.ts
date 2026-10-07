@@ -85,6 +85,56 @@ describe("compileFlowview", () => {
     );
   });
 
+  it("compiles raw interpolation through the native compiler", async () => {
+    const { code } = await compileFlowview(
+      "<h1>{{ context.title }}</h1><article>{{{ context.bodyHtml }}}</article>",
+      {
+        filename: "raw.flow",
+        runtimeImport: "@flowview/runtime",
+        compilerPath,
+      },
+    );
+    expect(code).toContain("renderRawValue(context.bodyHtml)");
+
+    expect(
+      evaluateGeneratedModule(code)({
+        title: "<T>",
+        bodyHtml: "<h2>Trusted</h2>",
+      }),
+    ).toBe("<h1>&lt;T&gt;</h1><article><h2>Trusted</h2></article>");
+  });
+
+  it("compiles raw interpolation through the bundled WASM compiler", async () => {
+    const { code } = await compileFlowview("{{{ context.bodyHtml }}}", {
+      filename: "raw.flow",
+      runtimeImport: "@flowview/runtime",
+      compilerPath: "",
+    });
+
+    expect(evaluateGeneratedModule(code)({ bodyHtml: "<b>x</b>" })).toBe(
+      "<b>x</b>",
+    );
+  });
+
+  it("reports raw interpolation inside attributes with a diagnostic", async () => {
+    await expect(
+      compileFlowview(`<div title="{{{ context.html }}}"></div>`, {
+        filename: "component.astro",
+        lineOffset: 4,
+        runtimeImport: "@flowview/runtime",
+        compilerPath,
+      }),
+    ).rejects.toMatchObject({
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({
+          code: "FV0022",
+          filename: "component.astro",
+          line: 5,
+        }),
+      ]),
+    });
+  });
+
   it("builds a real Vite consumer that imports a .flow file", async () => {
     const fixtureRoot = fileURLToPath(
       new URL("../test/fixtures/basic", import.meta.url),
@@ -120,10 +170,7 @@ function evaluateGeneratedModule(
   code: string,
 ): (context: Record<string, unknown>) => string {
   const executable = code
-    .replace(
-      /^import \{ renderAttributeValue, renderValue \} from '[^']+';\n\n/,
-      "",
-    )
+    .replace(/^import \{[^}]+\} from '[^']+';\n\n/, "")
     .replace("export function render", "function render");
   const renderValue = (value: unknown): string => {
     if (value === null || value === undefined || value === false) return "";
@@ -143,12 +190,18 @@ function evaluateGeneratedModule(
     if (value === null || value === undefined) return "";
     return renderValue(String(value));
   };
+  const renderRawValue = (value: unknown): string => {
+    if (typeof value === "string") return value;
+    if (value === null || value === undefined || value === false) return "";
+    throw new TypeError("unsupported raw value");
+  };
 
   return Function(
     "renderAttributeValue",
+    "renderRawValue",
     "renderValue",
     `"use strict";\n${executable}\nreturn render;`,
-  )(renderAttributeValue, renderValue) as (
+  )(renderAttributeValue, renderRawValue, renderValue) as (
     context: Record<string, unknown>,
   ) => string;
 }

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { renderAttributeValue, renderValue } from "./render-value";
+import {
+  renderAttributeValue,
+  renderRawValue,
+  renderValue,
+} from "./render-value";
 
 describe("renderValue", () => {
   it("escapes HTML by default", () => {
@@ -58,5 +62,57 @@ describe("renderAttributeValue", () => {
     expect(renderAttributeValue(`" onmouseover="alert(1)`)).toBe(
       "&quot; onmouseover=&quot;alert(1)",
     );
+  });
+});
+
+describe("renderRawValue", () => {
+  it("returns strings unchanged, without escaping", () => {
+    const html = `<h2 class="x">Fish & 'chips'</h2><script>alert(1)</script>`;
+    expect(renderRawValue(html)).toBe(html);
+  });
+
+  it("returns an empty string unchanged", () => {
+    expect(renderRawValue("")).toBe("");
+  });
+
+  it("renders null, undefined and false as an empty string", () => {
+    expect(renderRawValue(null)).toBe("");
+    expect(renderRawValue(undefined)).toBe("");
+    expect(renderRawValue(false)).toBe("");
+  });
+
+  it("rejects every other type instead of guessing", () => {
+    const rejected: Array<[unknown, string]> = [
+      [42, "number"],
+      [0, "number"],
+      [Number.NaN, "number"],
+      [true, "boolean"],
+      [1n, "bigint"],
+      [[], "array"],
+      [["<b>x</b>"], "array"],
+      [{}, "object"],
+      [{ html: "<b>x</b>" }, "object"],
+      [{ toString: () => "<b>x</b>" }, "object"],
+      [Symbol("x"), "symbol"],
+      [() => "<b>x</b>", "function"],
+    ];
+
+    for (const [value, kind] of rejected) {
+      expect(() => renderRawValue(value), kind).toThrow(TypeError);
+      expect(() => renderRawValue(value), kind).toThrow(
+        new RegExp(`of type ${kind}\\b`),
+      );
+    }
+  });
+
+  it("explains the contract in its error message", () => {
+    expect(() => renderRawValue(42)).toThrow(
+      /string, null, undefined or false/,
+    );
+  });
+
+  it("does not change escaped rendering", () => {
+    expect(renderValue("<b>")).toBe("&lt;b&gt;");
+    expect(renderAttributeValue("<b>")).toBe("&lt;b&gt;");
   });
 });

@@ -31,9 +31,23 @@ pub struct TextNode {
     pub span: Span,
 }
 
+/// How an interpolated value is written into the HTML output.
+///
+/// The parser decides this once; backends only consume it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InterpolationMode {
+    /// `{{ expression }}`: the value is HTML-escaped. This is the default.
+    Escaped,
+    /// `{{{ expression }}}`: the template author asserts the value is trusted
+    /// HTML and wants it inserted verbatim.
+    Raw,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct InterpolationNode {
     pub expression: String,
+    pub mode: InterpolationMode,
     pub span: Span,
 }
 

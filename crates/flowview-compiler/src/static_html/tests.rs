@@ -351,3 +351,165 @@ fn unsupported_forms_are_rejected_with_reason() {
         assert!(err.contains(reason), "{expr}: {err}");
     }
 }
+
+// --- raw interpolation ----------------------------------------------------
+
+mod raw_interpolation {
+    use super::*;
+
+    #[test]
+    fn emits_trusted_html_without_escaping() {
+        let ctx = json!({
+            "title": "<Architecture>",
+            "bodyHtml": "<h2>Boundaries</h2><p>Compiler-first.</p>"
+        });
+        assert_eq!(
+            render(
+                "<main>\n  <h1>{{ context.title }}</h1>\n  <article>{{{ context.bodyHtml }}}</article>\n</main>",
+                ctx
+            ),
+            "<main>\n  <h1>&lt;Architecture&gt;</h1>\n  <article><h2>Boundaries</h2><p>Compiler-first.</p></article>\n</main>"
+        );
+    }
+
+    #[test]
+    fn security_regression_escaped_stays_escaped_and_raw_is_verbatim() {
+        let ctx = json!({"payload": "<script>alert(1)</script>"});
+        assert_eq!(
+            render("{{ context.payload }}", ctx.clone()),
+            "&lt;script&gt;alert(1)&lt;/script&gt;"
+        );
+        assert_eq!(
+            render("{{{ context.payload }}}", ctx),
+            "<script>alert(1)</script>"
+        );
+    }
+
+    #[test]
+    fn nullish_false_and_empty_render_nothing() {
+        let ctx = json!({"s": "", "n": null, "f": false});
+        assert_eq!(
+            render(
+                "[{{{ context.s }}}][{{{ context.n }}}][{{{ context.f }}}][{{{ context.missing }}}]",
+                ctx
+            ),
+            "[][][][]"
+        );
+    }
+
+    #[test]
+    fn rejects_values_that_are_not_strings_with_a_structured_diagnostic() {
+        for (value, kind) in [
+            (json!(42), "number"),
+            (json!(0), "number"),
+            (json!(true), "boolean"),
+            (json!(["<b>"]), "array"),
+            (json!([]), "array"),
+            (json!({"html": "<b>"}), "object"),
+        ] {
+            let source = "<p>\n  {{{ context.value }}}\n</p>";
+            let err = render_err(source, json!({ "value": value }));
+            assert_eq!(err.code.as_deref(), Some("FV0025"), "{kind}");
+            assert!(err.message.contains(kind), "{}", err.message);
+            assert!(err.message.contains("string"), "{}", err.message);
+            assert_eq!((err.line, err.column), (2, 3), "{kind}");
+            assert_eq!(&source[err.start..err.end], "{{{ context.value }}}");
+        }
+    }
+
+    #[test]
+    fn escaped_interpolation_still_accepts_those_values() {
+        let ctx = json!({"n": 42, "t": true});
+        assert_eq!(render("{{ context.n }} {{ context.t }}", ctx), "42 true");
+    }
+
+    #[test]
+    fn does_not_widen_the_static_expression_subset() {
+        let err = render_err("{{{ sanitize(context.body) }}}", json!({"body": "x"}));
+        assert_eq!(err.code.as_deref(), Some("FV0016"));
+        assert!(err.message.contains("function calls"));
+
+        let err = render_err("{{{ context.a ? 'x' : 'y' }}}", json!({"a": true}));
+        assert_eq!(err.code.as_deref(), Some("FV0016"));
+    }
+
+    #[test]
+    fn unsupported_raw_expressions_fail_even_in_untaken_branches() {
+        let err = render_err(
+            "@if (context.no) {{{{ sanitize(context.body) }}}}",
+            json!({"no": false}),
+        );
+        assert_eq!(err.code.as_deref(), Some("FV0016"));
+    }
+
+    #[test]
+    fn works_in_control_flow() {
+        let ctx = json!({
+            "html": "<em>x</em>",
+            "sections": [{"t": "<A>", "h": "<p>1</p>"}, {"t": "B", "h": "<p>2</p>"}],
+            "kind": "b"
+        });
+        assert_eq!(
+            render(
+                "@if (context.html) {<s>{{{ context.html }}}</s>}",
+                ctx.clone()
+            ),
+            "<s><em>x</em></s>"
+        );
+        assert_eq!(
+            render(
+                "@for (s of context.sections) {<h2>{{ s.t }}</h2>{{{ s.h }}}}",
+                ctx.clone()
+            ),
+            "<h2>&lt;A&gt;</h2><p>1</p><h2>B</h2><p>2</p>"
+        );
+        assert_eq!(
+            render(
+                "@switch (context.kind) { @case ('a') {no} @case ('b') {{{{ context.html }}}} }",
+                ctx
+            ),
+            "<em>x</em>"
+        );
+    }
+
+    #[test]
+    fn syntax_errors_surface_through_render_static() {
+        let err = render_err("<a title=\"{{{ context.x }}}\"></a>", json!({"x": "y"}));
+        assert_eq!(err.code.as_deref(), Some("FV0022"));
+        let err = render_err("{{{ }}}", json!({}));
+        assert_eq!(err.code.as_deref(), Some("FV0023"));
+        let err = render_err("{{{ context.x", json!({}));
+        assert_eq!(err.code.as_deref(), Some("FV0024"));
+    }
+
+    #[test]
+    fn matches_the_shared_javascript_target_fixtures() {
+        let fixtures: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/raw-interpolation-parity.json"
+        ))
+        .unwrap();
+
+        for case in fixtures["cases"].as_array().unwrap() {
+            let name = case["name"].as_str().unwrap();
+            let html = render_static(
+                case["template"].as_str().unwrap(),
+                &case["context"],
+                StaticRenderOptions::default(),
+            )
+            .unwrap_or_else(|errors| panic!("{name}: {errors:?}"))
+            .html;
+            assert_eq!(html, case["expected"].as_str().unwrap(), "{name}");
+        }
+
+        for case in fixtures["rejects"].as_array().unwrap() {
+            let name = case["name"].as_str().unwrap();
+            let errors = render_static(
+                case["template"].as_str().unwrap(),
+                &case["context"],
+                StaticRenderOptions::default(),
+            )
+            .expect_err(name);
+            assert_eq!(errors[0].code.as_deref(), Some("FV0025"), "{name}");
+        }
+    }
+}

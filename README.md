@@ -112,6 +112,8 @@ flowview currently supports:
 
 - Plain text and HTML-like markup
 - Escaped interpolation: `{{ context.title }}`
+- Explicit raw HTML interpolation: `{{{ context.contentHtml }}}` (see
+  [Raw HTML interpolation](#raw-html-interpolation))
 - Conditional blocks:
   - `@if (condition) { ... }`
   - `@else if (condition) { ... }`
@@ -140,11 +142,44 @@ There is no implicit `ctx` alias. In Astro, `context={value}` supplies the value
 and the template reads it as `context.*`.
 
 To render syntax markers literally in text, escape the leading character:
-`\@if`, `\{{`, and `\}`.
+`\@if`, `\{{`, `\{{{`, and `\}`.
 
 Control-flow markers are recognized in template content, not inside HTML tag
 attributes, HTML comments, `<script>`, or `<style>` elements. An `@` embedded in
 a word, such as `contact@if.example`, is also plain text.
+
+### Raw HTML interpolation
+
+```text
+{{ value }}     → escaped interpolation (the default, always safe in text)
+{{{ value }}}   → explicit raw HTML interpolation
+```
+
+`{{{ expression }}}` inserts a value verbatim, without escaping, so a caller
+that already owns trusted HTML can compose it into a flowview layout:
+
+```text
+<main>
+  <h1>{{ context.title }}</h1>
+  <article>{{{ context.bodyHtml }}}</article>
+</main>
+```
+
+- It is a content feature. It works in element content and inside `@if`,
+  `@for`, and `@switch` branches. It is rejected (`FV0022`) inside tag names,
+  attribute names, and attribute values.
+- Only strings are inserted. `null`, `undefined`, and `false` render as an empty
+  string; numbers, `true`, arrays, and objects are an error (a `TypeError` from
+  the JavaScript target, `FV0025` from the static target), never silently
+  stringified.
+- flowview does not sanitize, inspect, or "fix" raw values. You assert the
+  value is trusted or already sanitized; sanitize before passing it in. There is
+  no global switch that disables escaping.
+- Use `\{{{` for a literal `{{{`. An expression that starts with an object
+  literal needs a space or parentheses (`{{ { a: 1 }.a }}`), because `{{{` always
+  starts raw interpolation.
+
+See [Security Model](#security-model) before using it.
 
 ## Security Model
 
@@ -153,8 +188,16 @@ JavaScript source strings and emits them into the generated render function.
 Do not compile user-submitted templates unless you sandbox the generated code
 yourself.
 
-Values interpolated from `context` are escaped by default through
-`@flowview/runtime`.
+Values interpolated from `context` with `{{ ... }}` are escaped by default
+through `@flowview/runtime`.
+
+`{{{ ... }}}` is the only way to insert unescaped HTML, and it is opt-in at the
+exact template location where it is written. It means: _the template author
+asserts this value is already trusted or sanitized HTML._ flowview does not
+sanitize it. Rendering untrusted input with `{{{ context.userSuppliedHtml }}}`
+is a cross-site scripting (XSS) vulnerability. Raw interpolation does not
+weaken `{{ ... }}`, which escapes exactly as before. See
+[SECURITY.md](./SECURITY.md).
 
 HTML escaping is safe for normal text and quoted HTML attribute values. flowview
 rejects interpolation in unquoted attributes and rejects mixed text plus
@@ -534,6 +577,7 @@ The repository includes a local VS Code language support package at
 - `.flow` syntax highlighting
 - flowview snippets
 - basic highlighting for `<template flowview>` blocks inside `.astro` files
+- highlighting for raw interpolation (`{{{ ... }}}`) alongside `{{ ... }}`
 
 ## Run The CLI
 
@@ -588,6 +632,21 @@ comparisons. Function calls and other JavaScript fail with diagnostic
 static-site generator; routing, Markdown, and multi-page builds are up to the
 caller. The WASM/`@flowview/compiler` wrapper does not expose static rendering
 yet.
+
+Raw interpolation works in both targets with the same contract. In static mode
+`{{{ context.contentHtml }}}` emits the JSON string verbatim, so a caller can
+compose HTML it already trusts into a layout:
+
+```sh
+echo '{"title":"<A>","bodyHtml":"<h2>Hi</h2>"}' > context.json
+printf '<h1>{{ context.title }}</h1>{{{ context.bodyHtml }}}' \
+  | flowview compile - --target static-html --data context.json
+# <h1>&lt;A&gt;</h1><h2>Hi</h2>
+```
+
+Static raw interpolation does not widen the expression subset:
+`{{{ sanitize(context.body) }}}` still fails with `FV0016`. Sanitize before
+calling flowview.
 
 ## Contributing
 

@@ -105,4 +105,55 @@ ${TEMPLATE}
       "@for (item of context.items) { <span>{{ item }}</span> }",
     );
   });
+
+  describe("raw interpolation {{{ }}}", () => {
+    const RAW_TEMPLATE = `<template flowview={context} is:raw>
+  <h1>{{ context.title }}</h1>
+  <article>{{{ context.contentHtml }}}</article>
+  @if (context.descriptionHtml) {
+    <section>{{{ context.descriptionHtml }}}</section>
+  }
+  @for (section of context.sections) {
+    <section>
+      <h2>{{ section.title }}</h2>
+      {{{ section.contentHtml }}}
+    </section>
+  }
+</template>`;
+
+    it("preserves triple-brace regions byte-for-byte", async () => {
+      const source = `---
+const   context = {title:"Hello"};
+---
+
+${RAW_TEMPLATE}
+`;
+
+      const result = await formatAstro(source);
+      expect(result).toContain(RAW_TEMPLATE);
+      expect(result).toContain(`const context = { title: "Hello" };`);
+    });
+
+    it("preserves triple-brace regions without is:raw", async () => {
+      const template = `<template flowview context={context}>
+  <article>{{{ context.contentHtml }}}</article>
+</template>`;
+      const result = await formatAstro(`${template}\n`);
+      expect(result).toContain(template);
+    });
+
+    it("is idempotent for triple-brace regions", async () => {
+      const once = await formatAstro(`${RAW_TEMPLATE}\n`);
+      expect(once).toContain("{{{ context.contentHtml }}}");
+      expect(await formatAstro(once)).toBe(once);
+    });
+
+    it("keeps triple braces next to escaped markers literal", async () => {
+      const template = `<template flowview={context} is:raw>
+  <p>\\{{{ not raw \\}\\}\\} {{{ context.html }}}</p>
+</template>`;
+      const result = await formatAstro(`${template}\n`);
+      expect(result).toContain(template);
+    });
+  });
 });

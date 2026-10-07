@@ -4,6 +4,7 @@
   "patterns": [
     { "include": "#comments" },
     { "include": "#escape" },
+    { "include": "#raw-interpolation" },
     { "include": "#interpolation" },
     { "include": "#control-keyword" },
     { "include": "#control-expression" },
@@ -24,7 +25,27 @@
       "patterns": [
         {
           "name": "constant.character.escape.flowview",
+          "match": "\\\\\\{\\{\\{"
+        },
+        {
+          "name": "constant.character.escape.flowview",
           "match": "\\\\[@{}\\\\]"
+        }
+      ]
+    },
+    "raw-interpolation": {
+      "patterns": [
+        {
+          "name": "meta.interpolation.flowview meta.interpolation.raw.flowview",
+          "begin": "\\{\\{\\{",
+          "beginCaptures": {
+            "0": { "name": "punctuation.section.embedded.begin.flowview" }
+          },
+          "end": "\\}\\}\\}",
+          "endCaptures": {
+            "0": { "name": "punctuation.section.embedded.end.flowview" }
+          },
+          "patterns": [{ "include": "source.js" }]
         }
       ]
     },

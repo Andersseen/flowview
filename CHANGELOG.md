@@ -6,6 +6,25 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+- Added raw HTML interpolation, `{{{ expression }}}`, as an intentional and
+  narrowly scoped language addition. `{{ expression }}` is unchanged and still
+  escapes. Raw interpolation inserts a trusted string verbatim in both the
+  JavaScript target (new `renderRawValue` runtime helper, imported only by
+  templates that use it) and the static HTML target. Only strings, `null`,
+  `undefined`, and `false` are accepted; other values are a `TypeError` /
+  `FV0025`. It is rejected inside tag names, attribute names, and attribute
+  values (`FV0022`); new diagnostics `FV0023` (empty) and `FV0024` (unclosed).
+  The AST now records `mode: escaped | raw` on interpolation nodes. `\{{{`
+  escapes the whole marker. flowview does not sanitize raw values; see
+  `SECURITY.md`. Two edge cases changed: `\{{{` is now a literal `{{{` (it used
+  to be a literal `{` followed by an interpolation), and an interpolation whose
+  expression starts with an object literal needs a space or parentheses
+  (`{{ { a: 1 }.a }}`), because `{{{` now always starts raw interpolation. The
+  VS Code grammar highlights `{{{ ... }}}`, and `@flowview/prettier` is covered
+  by regression tests proving raw regions survive formatting.
+- Reconciled `docs/spec-driven-development.md` with the repository: the WASM
+  distribution, public package publishing, and the `<script data-flowview>`
+  Events model are recorded as done, and obsolete workstreams were removed.
 - Added a static HTML output target to the compiler:
   `flowview_compiler::render_static()` and
   `flowview compile --target static-html [--data context.json]` render a

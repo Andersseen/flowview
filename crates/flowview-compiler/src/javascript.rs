@@ -14,6 +14,9 @@ pub enum ScanMode {
     Parenthesized,
     /// Scan until `}}` is found while balancing nested braces. Used for `{{ expr }}`.
     Interpolation,
+    /// Scan until `}}}` is found while balancing nested braces. Used for
+    /// `{{{ expr }}}`.
+    RawInterpolation,
 }
 
 /// Result of scanning a balanced JavaScript expression.
@@ -54,6 +57,7 @@ pub fn scan_balanced_expression(
 
         match mode {
             ScanMode::Interpolation if is_top_level && cursor.starts_with("}}") => break,
+            ScanMode::RawInterpolation if is_top_level && cursor.starts_with("}}}") => break,
             ScanMode::Parenthesized if is_top_level && cursor.starts_with(")") => break,
             _ => {}
         }
@@ -93,6 +97,16 @@ pub fn scan_balanced_expression(
                 return Err(Diagnostic::at_cursor("Unclosed interpolation", &start_mark)
                     .with_diagnostic_code(DiagnosticCode::UnclosedInterpolation)
                     .to_position(end));
+            }
+        }
+        ScanMode::RawInterpolation => {
+            if !cursor.starts_with("}}}") {
+                return Err(Diagnostic::at_cursor(
+                    "Unclosed raw interpolation; expected '}}}'",
+                    &start_mark,
+                )
+                .with_diagnostic_code(DiagnosticCode::UnclosedRawInterpolation)
+                .to_position(end));
             }
         }
         ScanMode::Parenthesized => {

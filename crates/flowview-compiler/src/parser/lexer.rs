@@ -9,6 +9,9 @@ pub const SWITCH_START: &str = "@switch";
 pub const CASE_START: &str = "@case";
 pub const DEFAULT_START: &str = "@default";
 
+/// Opening marker of a raw (unescaped) interpolation: `{{{ expression }}}`.
+pub const RAW_INTERPOLATION_START: &str = "{{{";
+
 /// Check whether the cursor is positioned at the start of a flowview keyword.
 /// Keywords must not be preceded or followed by alphanumeric characters or `-`/`_`.
 pub fn matches_keyword(cursor: &Cursor, keyword: &str) -> bool {
@@ -84,4 +87,26 @@ pub fn starts_syntax(cursor: &Cursor) -> bool {
 /// Check whether the current position is an escaped syntax marker (`\@`, `\{`, `\}`, `\\`).
 pub fn is_escaped_syntax(cursor: &Cursor) -> bool {
     cursor.starts_with("\\") && matches!(cursor.peek(1), Some('@' | '{' | '}' | '\\'))
+}
+
+/// Consume one escape sequence and return the literal text it stands for.
+///
+/// `\{{{` escapes the whole raw-interpolation marker, so it stays literal
+/// `{{{` instead of leaving a `{{` that would start an interpolation. Every
+/// other escape stands for the single character after the backslash.
+pub fn take_escape(cursor: &mut Cursor) -> Option<&'static str> {
+    if cursor.starts_with("\\{{{") {
+        cursor.advance_by(4);
+        return Some(RAW_INTERPOLATION_START);
+    }
+    if !is_escaped_syntax(cursor) {
+        return None;
+    }
+    cursor.advance(); // backslash
+    Some(match cursor.advance()? {
+        '@' => "@",
+        '{' => "{",
+        '}' => "}",
+        _ => "\\",
+    })
 }

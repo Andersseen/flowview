@@ -757,3 +757,271 @@ fn javascript_output_matches_committed_baseline() {
     let expected = include_str!("fixtures/js/baseline.js");
     assert_eq!(compile_source(source), expected);
 }
+
+// --- raw interpolation: `{{{ expression }}}` ---------------------------------
+
+mod raw_interpolation {
+    use super::*;
+    use flowview_compiler::{
+        ast::{InterpolationMode, Node},
+        parse_ast, Diagnostic,
+    };
+
+    fn errors(source: &str) -> Vec<Diagnostic> {
+        compile(source, CompileOptions::new("@flowview/runtime"))
+            .expect_err("template should fail to compile")
+    }
+
+    fn only_interpolation(source: &str) -> flowview_compiler::ast::InterpolationNode {
+        let root = parse_ast(source).unwrap();
+        match root.children.into_iter().next().unwrap() {
+            Node::Interpolation(node) => node,
+            other => panic!("expected an interpolation, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn normal_interpolation_stays_in_escaped_mode() {
+        let node = only_interpolation("{{ context.title }}");
+        assert_eq!(node.mode, InterpolationMode::Escaped);
+        assert_eq!(node.expression, "context.title");
+    }
+
+    #[test]
+    fn triple_braces_produce_a_raw_interpolation_node() {
+        let node = only_interpolation("{{{ context.body }}}");
+        assert_eq!(node.mode, InterpolationMode::Raw);
+        assert_eq!(node.expression, "context.body");
+        assert_eq!((node.span.start, node.span.end), (0, 20));
+    }
+
+    #[test]
+    fn raw_mode_is_explicit_in_the_serialized_ast() {
+        let escaped = serde_json::to_string(&parse_ast("{{ a }}").unwrap()).unwrap();
+        let raw = serde_json::to_string(&parse_ast("{{{ a }}}").unwrap()).unwrap();
+        assert!(escaped.contains(r#""mode":"escaped""#), "{escaped}");
+        assert!(raw.contains(r#""mode":"raw""#), "{raw}");
+    }
+
+    #[test]
+    fn raw_expressions_use_the_shared_javascript_scanner() {
+        let node =
+            only_interpolation("{{{ context.items.map((item) => ({ html: item })).length }}}");
+        assert_eq!(node.mode, InterpolationMode::Raw);
+        assert_eq!(
+            node.expression,
+            "context.items.map((item) => ({ html: item })).length"
+        );
+
+        let node = only_interpolation(r#"{{{ context.ok ? '}}}' : "}}}" }}}"#);
+        assert_eq!(node.expression, r#"context.ok ? '}}}' : "}}}""#);
+
+        let node = only_interpolation("{{{ { html: context.x }.html }}}");
+        assert_eq!(node.expression, "{ html: context.x }.html");
+
+        let node = only_interpolation("{{{context.body}}}");
+        assert_eq!(node.expression, "context.body");
+    }
+
+    #[test]
+    fn raw_and_escaped_can_share_a_template() {
+        let root = parse_ast("<p>{{ a }}</p>{{{ b }}}").unwrap();
+        let modes: Vec<_> = root
+            .children
+            .iter()
+            .filter_map(|node| match node {
+                Node::Interpolation(node) => Some(node.mode),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(modes, [InterpolationMode::Raw]);
+        let Node::Element(p) = &root.children[0] else {
+            panic!("expected element")
+        };
+        let Node::Interpolation(inner) = &p.children[0] else {
+            panic!("expected interpolation")
+        };
+        assert_eq!(inner.mode, InterpolationMode::Escaped);
+    }
+
+    #[test]
+    fn empty_raw_interpolation_is_rejected_with_its_own_code() {
+        for source in ["{{{}}}", "{{{   }}}", "<p>{{{\n}}}</p>"] {
+            let diagnostics = errors(source);
+            assert_eq!(diagnostics[0].code.as_deref(), Some("FV0023"), "{source}");
+            assert!(diagnostics[0].message.contains("cannot be empty"));
+        }
+    }
+
+    #[test]
+    fn unclosed_raw_interpolation_is_rejected_with_its_own_code() {
+        for source in [
+            "{{{ context.body",
+            "<p>{{{ context.body }}</p>",
+            "{{{ a }} b",
+        ] {
+            let diagnostics = errors(source);
+            assert_eq!(diagnostics[0].code.as_deref(), Some("FV0024"), "{source}");
+            assert!(diagnostics[0]
+                .message
+                .contains("Unclosed raw interpolation"));
+            assert!(diagnostics[0].message.contains("}}}"));
+        }
+    }
+
+    #[test]
+    fn invalid_javascript_in_raw_interpolation_is_rejected() {
+        let diagnostics = errors("{{{ context. }}}");
+        assert_eq!(diagnostics[0].code.as_deref(), Some("FV0011"));
+    }
+
+    #[test]
+    fn diagnostics_keep_line_column_and_span() {
+        let diagnostics = errors("<p>\n  {{{ }}}\n</p>");
+        let diagnostic = &diagnostics[0];
+        assert_eq!(diagnostic.code.as_deref(), Some("FV0023"));
+        assert_eq!((diagnostic.line, diagnostic.column), (2, 3));
+        assert_eq!(diagnostic.start, 6);
+    }
+
+    #[test]
+    fn escaped_triple_brace_marker_is_literal() {
+        let output = compile_source(r"\{{{ not raw \}\}\}");
+        assert!(!output.contains("renderRawValue"));
+        assert!(!output.contains("renderValue("));
+        assert!(output.contains("output += '{{{ not raw }}}';"), "{output}");
+    }
+
+    #[test]
+    fn brace_marker_forms_are_unambiguous() {
+        // `\{{`  -> literal `{{`
+        let output = compile_source(r"\{{ x \}\}");
+        assert!(output.contains("output += '{{ x }}';"), "{output}");
+        assert!(!output.contains("renderValue("));
+
+        // `\{{{` -> literal `{{{`, never a normal interpolation after a `{`.
+        let output = compile_source(r"a \{{{ x \}\}\} b");
+        assert!(output.contains("output += 'a {{{ x }}} b';"), "{output}");
+        assert!(!output.contains("renderValue("));
+        assert!(!output.contains("renderRawValue("));
+
+        // `{{`  -> escaped interpolation
+        let output = compile_source("{{ x }}");
+        assert!(output.contains("renderValue(x)"));
+        assert!(!output.contains("renderRawValue"));
+
+        // `{{{` -> raw interpolation
+        let output = compile_source("{{{ x }}}");
+        assert!(output.contains("renderRawValue(x)"));
+        assert!(!output.contains("renderValue("));
+
+        // A lone `{` before an escaped marker stays text.
+        let output = compile_source(r"{ \{{{ x \}\}\}");
+        assert!(output.contains("{ {{{ x }}}"), "{output}");
+
+        // An escape before `{{{` keeps working when a real one follows.
+        let output = compile_source(r"\{{{ \}\}\} {{{ context.html }}}");
+        assert!(output.contains("output += '{{{ }}} ';"), "{output}");
+        assert!(output.contains("renderRawValue(context.html)"));
+    }
+
+    #[test]
+    fn escaped_triple_brace_is_literal_in_attribute_values() {
+        let output = compile_source(r#"<div title="\{{{ x }}}">hi</div>"#);
+        assert!(!output.contains("renderValue("), "{output}");
+        assert!(!output.contains("renderRawValue"), "{output}");
+        assert!(output.contains(r#"title="{{{ x }}}""#), "{output}");
+    }
+
+    #[test]
+    fn comments_script_and_style_are_not_interpolated() {
+        let source =
+            "<!-- {{{ x }}} --><script>a = '{{{ y }}}';</script><style>/* {{{ z }}} */</style>";
+        let output = compile_source(source);
+        assert!(!output.contains("renderRawValue"));
+        assert!(output.contains("{{{ x }}}"));
+        assert!(output.contains("{{{ y }}}"));
+        assert!(output.contains("{{{ z }}}"));
+    }
+
+    #[test]
+    fn raw_interpolation_is_rejected_in_attribute_values() {
+        let sources = [
+            r#"<div title="{{{ context.html }}}"></div>"#,
+            r#"<div title="a {{{ context.html }}} b"></div>"#,
+            r#"<div title='{{{ context.html }}}'></div>"#,
+            r#"<div title={{{ context.html }}}></div>"#,
+            r#"<div class="{{{ context.html }}}"></div>"#,
+        ];
+        for source in sources {
+            let diagnostics = errors(source);
+            assert_eq!(diagnostics[0].code.as_deref(), Some("FV0022"), "{source}");
+            assert!(
+                diagnostics[0]
+                    .message
+                    .contains("not supported inside HTML tags"),
+                "{}",
+                diagnostics[0].message
+            );
+            assert!(diagnostics[0].start > 0);
+            assert_eq!(diagnostics[0].line, 1);
+        }
+    }
+
+    #[test]
+    fn raw_interpolation_is_rejected_in_tag_and_attribute_names() {
+        for source in [
+            "<div {{{ context.attrs }}}></div>",
+            "<{{{ context.tag }}}></{{{ context.tag }}}>",
+            "<div data-{{{ x }}}=\"1\"></div>",
+        ] {
+            let diagnostics = errors(source);
+            assert!(
+                diagnostics
+                    .iter()
+                    .any(|d| d.code.as_deref() == Some("FV0022")),
+                "{source}: {diagnostics:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn normal_interpolation_in_attributes_is_unchanged() {
+        let output = compile_source(r#"<div title="{{ context.t }}"></div>"#);
+        assert!(output.contains("renderValue(context.t)"));
+        assert!(!output.contains("renderRawValue"));
+    }
+
+    #[test]
+    fn javascript_output_calls_the_raw_helper_and_imports_it_only_when_used() {
+        let raw = compile_source("<article>{{{ context.body }}}</article>");
+        assert!(
+            raw.contains("output += renderRawValue(context.body);"),
+            "{raw}"
+        );
+        assert!(
+            raw.starts_with(
+                "import { renderAttributeValue, renderRawValue, renderValue } from '@flowview/runtime';"
+            ),
+            "{raw}"
+        );
+        for forbidden in ["innerHTML", "document", "DOMParser"] {
+            assert!(!raw.contains(forbidden), "{forbidden} in {raw}");
+        }
+
+        let escaped = compile_source("<p>{{ context.body }}</p>");
+        assert!(escaped
+            .starts_with("import { renderAttributeValue, renderValue } from '@flowview/runtime';"));
+        assert!(!escaped.contains("renderRawValue"));
+    }
+
+    #[test]
+    fn raw_interpolation_is_emitted_inside_control_flow() {
+        let source = "@if (context.a) {{{{ context.a }}}} @else {x}\n\
+                      @for (s of context.sections) {<h2>{{ s.title }}</h2>{{{ s.html }}}}\n\
+                      @switch (context.k) { @case ('a') {{{{ context.a }}}} @default {{{{ context.d }}}} }";
+        let output = compile_source(source);
+        assert_eq!(output.matches("renderRawValue(").count(), 4, "{output}");
+        assert!(output.contains("renderValue(s.title)"));
+    }
+}

@@ -95,6 +95,93 @@ assert.ok(
   "interpolation delimiters need punctuation scopes",
 );
 
+function tokenize(line) {
+  return grammar.tokenizeLine(line).tokens.map((token) => ({
+    text: line.slice(token.startIndex, token.endIndex),
+    scopes: token.scopes,
+  }));
+}
+
+const RAW_SCOPE = "meta.interpolation.raw.flowview";
+const BEGIN_SCOPE = "punctuation.section.embedded.begin.flowview";
+const END_SCOPE = "punctuation.section.embedded.end.flowview";
+
+{
+  const tokens = tokenize("<article>{{{ context.contentHtml }}}</article>");
+  const begin = tokens.find((token) => token.scopes.includes(BEGIN_SCOPE));
+  const end = tokens.find((token) => token.scopes.includes(END_SCOPE));
+  assert.equal(begin?.text, "{{{", "raw interpolation opens with one `{{{`");
+  assert.equal(end?.text, "}}}", "raw interpolation closes with one `}}}`");
+  assert.ok(
+    tokens.every(
+      (token) =>
+        !token.scopes.includes(RAW_SCOPE) ||
+        token.scopes.includes("meta.interpolation.flowview"),
+    ),
+    "raw interpolation keeps the shared interpolation scope",
+  );
+  assert.ok(
+    tokens.some((token) => token.scopes.includes(RAW_SCOPE)),
+    "raw interpolation needs its own scope",
+  );
+}
+
+{
+  const tokens = tokenize("<h1>{{ context.title }}</h1>");
+  assert.equal(
+    tokens.find((token) => token.scopes.includes(BEGIN_SCOPE))?.text,
+    "{{",
+    "escaped interpolation still opens with `{{`",
+  );
+  assert.ok(
+    tokens.every((token) => !token.scopes.includes(RAW_SCOPE)),
+    "escaped interpolation must not receive the raw scope",
+  );
+}
+
+{
+  const tokens = tokenize("{{{ { html: context.x }.html }}} after");
+  assert.equal(
+    tokens.find((token) => token.scopes.includes(END_SCOPE))?.text,
+    "}}}",
+    "nested braces do not break the raw closing marker",
+  );
+  assert.ok(
+    !tokens.at(-1).scopes.includes(RAW_SCOPE),
+    "text after the raw interpolation is outside of it",
+  );
+}
+
+{
+  const tokens = tokenize(String.raw`\{{{ literal \}\}\} {{ real }}`);
+  assert.ok(
+    tokens.some(
+      (token) =>
+        token.text === String.raw`\{{{` &&
+        token.scopes.includes("constant.character.escape.flowview"),
+    ),
+    "an escaped triple-brace marker is one escape token",
+  );
+  assert.ok(
+    tokens.every((token) => !token.scopes.includes(RAW_SCOPE)),
+    "an escaped triple-brace marker must not start a raw interpolation",
+  );
+  assert.ok(
+    tokens.some((token) =>
+      token.scopes.includes("meta.interpolation.flowview"),
+    ),
+    "a real interpolation after an escaped marker is still highlighted",
+  );
+}
+
+{
+  const tokens = tokenize("@if (context.html) {{{{ context.html }}}}");
+  assert.ok(
+    tokens.some((token) => token.scopes.includes(RAW_SCOPE)),
+    "raw interpolation directly after a block brace is recognized",
+  );
+}
+
 const injection = JSON.parse(
   await fs.readFile(
     path.join(packageRoot, "syntaxes/flowview-astro-injection.tmLanguage.json"),
@@ -193,6 +280,7 @@ let ruleStack = null;
 const embeddedLines = [
   "<template flowview is:raw context={context}>",
   "  <h1>{{ context.title }}</h1>",
+  "  <article>{{{ context.bodyHtml }}}</article>",
   "  @if (context.visible) {",
   "    <span>{{ context.label }}</span>",
   "  } @else {",
@@ -219,6 +307,11 @@ assert.ok(
 assert.ok(
   embeddedScopes.includes("meta.interpolation.flowview"),
   "flowview interpolations inside Astro must receive embedded scopes",
+);
+
+assert.ok(
+  embeddedScopes.includes("meta.interpolation.raw.flowview"),
+  "flowview raw interpolations inside Astro must receive the raw scope",
 );
 
 console.log("flowview Astro injection checks passed.");

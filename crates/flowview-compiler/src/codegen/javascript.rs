@@ -1,7 +1,7 @@
 use crate::{
     ast::{
-        Attribute, ElementNode, ForBlockNode, IfBlockNode, Node, RootNode, SwitchBlockNode,
-        TextNode,
+        Attribute, ElementNode, ForBlockNode, IfBlockNode, InterpolationMode, Node, RootNode,
+        SwitchBlockNode, TextNode,
     },
     CompileOptions,
 };
@@ -11,6 +11,7 @@ pub fn generate(root: &RootNode, options: &CompileOptions) -> String {
         temp_counter: 0,
         runtime_import: options.runtime_import.clone(),
         indent_cache: vec![String::new()],
+        uses_raw_values: false,
     };
 
     let mut body = String::new();
@@ -18,14 +19,23 @@ pub fn generate(root: &RootNode, options: &CompileOptions) -> String {
         generate_node(child, &mut body, 2, &mut ctx);
     }
 
+    // Only templates that opt into raw interpolation depend on `renderRawValue`,
+    // so everything else keeps importing exactly what it always did.
+    let imports = if ctx.uses_raw_values {
+        "renderAttributeValue, renderRawValue, renderValue"
+    } else {
+        "renderAttributeValue, renderValue"
+    };
+
     format!(
-        "import {{ renderAttributeValue, renderValue }} from '{}';
+        "import {{ {} }} from '{}';
 
 export function render(context) {{
   let output = '';{}
   return output;
 }}
 ",
+        imports,
         escape_js_string(&ctx.runtime_import),
         if body.is_empty() {
             String::new()
@@ -39,6 +49,7 @@ struct CodegenContext {
     temp_counter: usize,
     runtime_import: String,
     indent_cache: Vec<String>,
+    uses_raw_values: bool,
 }
 
 impl CodegenContext {
@@ -62,9 +73,17 @@ fn generate_node(node: &Node, output: &mut String, indent: usize, ctx: &mut Code
     match node {
         Node::Text(text) => generate_text(text, output, indent, ctx),
         Node::Interpolation(interp) => {
+            let helper = match interp.mode {
+                InterpolationMode::Escaped => "renderValue",
+                InterpolationMode::Raw => {
+                    ctx.uses_raw_values = true;
+                    "renderRawValue"
+                }
+            };
             let line = format!(
-                "{}output += renderValue({});\n",
+                "{}output += {}({});\n",
                 ctx.spaces(indent),
+                helper,
                 interp.expression
             );
             output.push_str(&line);
