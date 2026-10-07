@@ -260,3 +260,76 @@ fn cli_js_target_emits_raw_helper() {
     let stdout = str::from_utf8(&output.stdout).unwrap();
     assert!(stdout.contains("renderRawValue(context.body)"));
 }
+
+#[test]
+fn cli_static_html_reads_template_file_and_prints_to_stdout() {
+    let temp = tempfile::tempdir().unwrap();
+    let template = temp.path().join("page.flow");
+    let data = temp.path().join("context.json");
+    fs::write(&template, "<h1>{{ context.title }}</h1>").unwrap();
+    fs::write(&data, r#"{"title": "<Hi>"}"#).unwrap();
+
+    let mut cmd = Command::cargo_bin("flowview").unwrap();
+    let output = cmd
+        .arg("compile")
+        .arg(&template)
+        .args(["--target", "static-html", "--data"])
+        .arg(&data)
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert_eq!(
+        str::from_utf8(&output.stdout).unwrap(),
+        "<h1>&lt;Hi&gt;</h1>"
+    );
+}
+
+#[test]
+fn cli_static_html_rejects_non_object_json() {
+    let temp = tempfile::tempdir().unwrap();
+    let data = temp.path().join("context.json");
+    fs::write(&data, "[1, 2]").unwrap();
+
+    let output = static_cmd("x")
+        .arg("--data")
+        .arg(&data)
+        .args(["--diagnostic-format", "json"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(str::from_utf8(&output.stderr).unwrap().contains("FV0021"));
+}
+
+#[test]
+fn cli_static_html_missing_data_file() {
+    let output = static_cmd("x")
+        .arg("--data")
+        .arg("definitely-missing-context.json")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(str::from_utf8(&output.stderr)
+        .unwrap()
+        .contains("Failed to read definitely-missing-context.json"));
+}
+
+#[test]
+fn cli_static_html_data_cannot_come_from_stdin() {
+    let output = static_cmd("x").args(["--data", "-"]).output().unwrap();
+    assert!(!output.status.success());
+    assert!(str::from_utf8(&output.stderr)
+        .unwrap()
+        .contains("stdin is reserved for the template"));
+}
+
+#[test]
+fn cli_static_html_diagnostics_use_display_name() {
+    let output = static_cmd("<p>{{ context.f(1) }}</p>")
+        .args(["--display-name", "docs/page.flow"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(str::from_utf8(&output.stderr)
+        .unwrap()
+        .contains("docs/page.flow:1:"));
+}

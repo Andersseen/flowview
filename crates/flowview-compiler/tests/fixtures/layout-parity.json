@@ -1,0 +1,140 @@
+{
+  "cases": [
+    {
+      "context": {
+        "a": "x",
+        "deep": {},
+        "n": null
+      },
+      "expected": "<p>x|||</p>",
+      "name": "interpolation and nullish",
+      "template": "<p>{{ context.a }}|{{ context.n }}|{{ context.missing }}|{{ context.deep.x }}</p>"
+    },
+    {
+      "context": {
+        "v": "<img src=x onerror=alert(1)> \"q\" 'a' & <script>"
+      },
+      "expected": "<p>&lt;img src=x onerror=alert(1)&gt; &quot;q&quot; &#39;a&#39; &amp; &lt;script&gt;</p>",
+      "name": "escaping hostile values",
+      "template": "<p>{{ context.v }}</p>"
+    },
+    {
+      "context": {
+        "t": "\"><script>",
+        "u": "/a?b=1&c=2"
+      },
+      "expected": "<a href=\"/a?b=1&amp;c=2\" title=\"&quot;&gt;&lt;script&gt;\">x</a>",
+      "name": "dynamic attribute escaping",
+      "template": "<a href=\"{{ context.u }}\" title=\"{{ context.t }}\">x</a>"
+    },
+    {
+      "context": {
+        "c": true,
+        "d": false
+      },
+      "expected": "<li class=\"item current\">x</li><li class=\"item\">y</li>",
+      "name": "class binding on and off",
+      "template": "<li class=\"item\" [class.current]=\"context.c\">x</li><li class=\"item\" [class.current]=\"context.d\">y</li>"
+    },
+    {
+      "context": {
+        "off": false,
+        "on": true
+      },
+      "expected": "<button disabled>a</button><button>b</button>",
+      "name": "boolean attribute binding",
+      "template": "<button [disabled]=\"context.on\">a</button><button [disabled]=\"context.off\">b</button>"
+    },
+    {
+      "context": {
+        "n": 2
+      },
+      "expected": "<i>two</i>",
+      "name": "if else if else",
+      "template": "@if (context.n === 1) {<i>one</i>} @else if (context.n === 2) {<i>two</i>} @else {<i>many</i>}"
+    },
+    {
+      "context": {
+        "xs": []
+      },
+      "expected": "<ul><li>none</li></ul>",
+      "name": "for with empty",
+      "template": "<ul>@for (x of context.xs; track x) {<li>{{ x }}</li>} @empty {<li>none</li>}</ul>"
+    },
+    {
+      "context": {
+        "xs": [
+          {
+            "id": 1,
+            "name": "<a>"
+          },
+          {
+            "id": 2,
+            "name": "b"
+          }
+        ]
+      },
+      "expected": "<ul><li>1:&lt;a&gt;</li><li>2:b</li></ul>",
+      "name": "for over items",
+      "template": "<ul>@for (x of context.xs; track x.id) {<li>{{ x.id }}:{{ x.name }}</li>}</ul>"
+    },
+    {
+      "context": {
+        "sections": [
+          {
+            "name": "A",
+            "pages": ["a1", "a2"]
+          },
+          {
+            "name": "B",
+            "pages": []
+          }
+        ]
+      },
+      "expected": "<h2>A</h2><ul><li>a1</li><li>a2</li></ul><h2>B</h2><p>empty</p>",
+      "name": "nested loops and conditions",
+      "template": "@for (s of context.sections; track s.name) {<h2>{{ s.name }}</h2>@if (s.pages.length) {<ul>@for (p of s.pages; track p) {<li>{{ p }}</li>}</ul>} @else {<p>empty</p>}}"
+    },
+    {
+      "context": {
+        "k": "b"
+      },
+      "expected": "<b>B</b>",
+      "name": "switch with default",
+      "template": "@switch (context.k) { @case (\"a\") {<b>A</b>} @case (\"b\") {<b>B</b>} @default {<b>?</b>} }"
+    },
+    {
+      "context": {
+        "backlinks": [
+          {
+            "route": "/c/",
+            "title": "C"
+          }
+        ],
+        "nav": [
+          {
+            "current": true,
+            "route": "/a/",
+            "title": "A"
+          },
+          {
+            "current": false,
+            "route": "/b/",
+            "title": "B"
+          }
+        ],
+        "page": {
+          "body_html": "<p>Trusted.</p>",
+          "title": "A & B"
+        },
+        "site": {
+          "title": "Docs"
+        }
+      },
+      "expected": "<!doctype html><html lang=\"en\"><head><title>A &amp; B | Docs</title></head><body><nav><a class=\"current\" href=\"/a/\">A</a><a href=\"/b/\">B</a></nav><main><p>Trusted.</p><aside><a href=\"/c/\">C</a></aside></main></body></html>",
+      "name": "page layout with trusted body",
+      "template": "<!doctype html><html lang=\"en\"><head><title>{{ context.page.title }} | {{ context.site.title }}</title></head><body><nav>@for (n of context.nav; track n.route) {<a href=\"{{ n.route }}\" [class.current]=\"n.current\">{{ n.title }}</a>}</nav><main>{{{ context.page.body_html }}}@if (context.backlinks.length) {<aside>@for (b of context.backlinks; track b.route) {<a href=\"{{ b.route }}\">{{ b.title }}</a>}</aside>}</main></body></html>"
+    }
+  ],
+  "description": "Layout-oriented subset both backends must render identically. `expected` is filled from the native static backend and verified against the JS backend by packages/compiler."
+}

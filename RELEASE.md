@@ -35,30 +35,45 @@ npm view @flowview/astro-events version
 npm view @flowview/prettier version
 ```
 
-## Rust crates (optional)
+## Rust crates
 
-Requires `cargo login <CRATES_IO_TOKEN>` first.
+Rust crates are versioned independently from the npm packages (`[workspace.package]`
+and each crate's `version` in `Cargo.toml`). `flowview-wasm` is bundled into
+the npm compiler package and is `publish = false`.
 
-Order matters: the CLI depends on the compiler crate.
+Order matters: `flowview-compiler` first, then `flowview-cli` (which depends on it).
 
-```bash
-cd /Users/andriipap/Andersseen/Web/Projects/flowview
-pnpm run publish:rust
-```
+1. Bump `version` in `crates/flowview-compiler/Cargo.toml` and
+   `crates/flowview-cli/Cargo.toml`, and the `version = "…"` of the
+   `flowview-compiler` dependency in the CLI (and wasm) manifests. Commit and merge.
+2. Quality gate (also what the **Rust release** workflow runs):
 
-This runs:
+   ```bash
+   cargo fmt --all -- --check
+   cargo clippy --workspace --all-targets --locked -- -D warnings
+   cargo test --workspace --locked
+   cargo doc -p flowview-compiler --no-deps
+   cargo publish --dry-run --workspace --exclude flowview-wasm --locked
+   ```
 
-```bash
-cargo publish -p flowview-compiler
-cargo publish -p flowview-cli
-```
+3. Publish. Preferred: run the **Rust release** workflow (Actions → Rust release →
+   Run workflow) with `dry_run: false`. It needs the `CARGO_REGISTRY_TOKEN`
+   repository secret and publishes `flowview-compiler`, waits for the index, then
+   publishes `flowview-cli`. Manually, with `cargo login`:
 
-Verify with:
+   ```bash
+   pnpm run publish:rust
+   ```
 
-```bash
-cargo search flowview-compiler
-cargo search flowview-cli
-```
+4. Verify:
+
+   ```bash
+   cargo search flowview-compiler
+   cargo search flowview-cli
+   ```
+
+Downstream Rust tools should depend on `flowview-compiler = "<released-version>"`,
+not a Git branch. Never put the registry token in repository files.
 
 ## Subsequent npm releases (automated)
 

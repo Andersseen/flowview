@@ -14,3 +14,10 @@ examples/astro-demo/src/pages/security.astro
 pnpm-lock.yaml
 # Committed generated-output baselines must stay byte-exact.
 crates/flowview-compiler/tests/fixtures/js/
+
+# Agentyx-managed
+.agentyx.lock.json
+.claude/settings.json
+.mcp.json
+.codex/
+.agents/

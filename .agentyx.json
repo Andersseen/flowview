@@ -3,11 +3,14 @@
     "technical",
     "typescript",
     "testing",
+    "security",
+    "performance",
+    "documentation",
     "git",
     "devops",
-    "documentation",
+    "efficiency",
     "agentic"
   ],
-  "enable": ["playwright", "github"],
-  "targets": ["claude"]
+  "enable": ["playwright", "github", "rtk"],
+  "targets": ["codex", "claude"]
 }

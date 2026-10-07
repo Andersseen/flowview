@@ -20,7 +20,12 @@ use evaluator::{
     Val,
 };
 
-/// Options for [`compile_static`] and [`render_static`].
+/// Options for [`render_static`] (and, through [`StaticCompileOptions`],
+/// [`compile_static`]).
+///
+/// `filename` is the display name carried by the compiled template (see
+/// [`CompiledStaticTemplate::filename`]); pass the same name to
+/// [`crate::DiagnosticFormatter`] when reporting diagnostics.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StaticRenderOptions {
     pub filename: Option<String>,
@@ -33,7 +38,7 @@ impl StaticRenderOptions {
     }
 }
 
-/// Alias used by [`compile_static`]; compile and one-off render share options.
+/// Options for [`compile_static`]. Compile and one-off render share one type.
 pub type StaticCompileOptions = StaticRenderOptions;
 
 /// The successful result of a one-off static render.

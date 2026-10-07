@@ -2,9 +2,11 @@
 name = "flowview-cli"
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
+license.workspace = true
 description = "CLI for the flowview HTML template compiler."
-repository = "https://github.com/andersseen/flowview"
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
 keywords = ["template", "compiler", "html", "cli"]
 categories = ["command-line-utilities", "template-engine"]
 
