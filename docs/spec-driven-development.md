@@ -6,7 +6,7 @@
 > never become, what state it is in, what to work on, and how to prove your
 > change is correct.
 >
-> **Last verified:** 2026-07-03 (all test suites passing at commit `a57a259`).
+> **Last verified:** 2026-10-07 (full gate passing: 119 Rust tests, all JS suites and typecheck; static HTML target added on top of commit `22ae79e`).
 
 ---
 
@@ -44,15 +44,22 @@ Rules that override everything else:
 
 ## 2. The idea (why this project exists)
 
-flowview is **not a framework**. It is two small, independent compilers that
-let you write modern template syntax and get plain, dependency-free output:
+flowview is **not a framework** and **not a static-site generator**. It is two
+small, independent compilers that let you write modern template syntax and get
+plain, dependency-free output:
 
-1. **The HTML compiler** (Rust, `crates/flowview-compiler`): turns HTML-like
-   templates with Angular-inspired control flow (`@if`, `@for`, `@switch`,
-   `{{ interpolation }}`) into a plain JavaScript function
-   `render(context): string`. Server-first. No virtual DOM, no hydration,
-   no components. The output runs anywhere JavaScript runs: Node.js, Hono,
-   Cloudflare Workers, Astro, static generation.
+1. **The HTML compiler** (Rust, `crates/flowview-compiler`): one language, one
+   parser, one AST, two first-class output targets for HTML-like templates
+   with Angular-inspired control flow (`@if`, `@for`, `@switch`,
+   `{{ interpolation }}`):
+   - **JavaScript target** (default): a plain function
+     `render(context): string`. Runs anywhere JavaScript runs: Node.js, Hono,
+     Cloudflare Workers, Astro.
+   - **Static HTML target**: `render_static(template, json_context)` renders
+     final HTML natively in Rust with a constrained expression subset and no
+     JavaScript execution.
+
+   Server-first. No virtual DOM, no hydration, no components.
 
 2. **The Events compiler** ("flowview Events", TypeScript,
    `packages/events` + `packages/astro-events`): lets you write Angular-style
@@ -95,7 +102,11 @@ flowview/
 │   │       ├── ast.rs            # template AST
 │   │       ├── javascript.rs     # embedded-JS expression scanner/validator
 │   │       ├── validation.rs     # semantic validation
-│   │       ├── codegen.rs        # JS render-function generation
+│   │       ├── codegen/          # JS render-function generation
+│   │       │   └── javascript.rs
+│   │       ├── static_html/      # native static HTML backend
+│   │       │   ├── mod.rs        # render_static(), renderer
+│   │       │   └── evaluator.rs  # static expression subset (Oxc-lowered)
 │   │       └── diagnostics.rs    # structured diagnostics (FVxxxx codes)
 │   └── flowview-cli/             # `flowview` binary: file/stdin → JS,
 │                                 # JSON diagnostics, --line-offset, names
@@ -154,10 +165,13 @@ Language and output contracts. Every change must preserve all of them.
    [`flowview-spec.md` §Language Surface](./flowview-spec.md) lists:
    text, HTML-like elements, quoted attributes, `{{ expr }}`,
    `@if/@else if/@else`, `@for` + `track` + `@empty`,
-   `@switch/@case/@default`, escapes (`\@if`, `\{{`, `\}`), and `context`
+   `@switch/@case/@default`, binding attributes (`[disabled]`, `[attr.x]`,
+   `[class.x]`), escapes (`\@if`, `\{{`, `\}`), and `context`
    as the only top-level binding. Nothing else. No `ctx` alias.
-2. **Generated modules export exactly**
-   `export function render(context) { ... }` returning a string.
+2. **The JavaScript target's generated modules export exactly**
+   `export function render(context) { ... }` returning a string. A baseline
+   fixture test guards its output. The static HTML target must produce the
+   same HTML for the same data, within its documented expression subset.
 3. **Interpolated values are HTML-escaped by default** through
    `renderValue`. `null`, `undefined`, and `false` render as `""`.
 4. **`@for` normalizes with `Array.from(value ?? [])`**; `@empty` renders
@@ -187,7 +201,8 @@ Language and output contracts. Every change must preserve all of them.
 
 ## 5. Non-goals (never add these)
 
-Components, hydration, signals/reactivity, two-way binding, routing,
+Static-site generation (routing, Markdown, multi-page output, asset
+pipelines, themes), a JavaScript engine in the static target, components, hydration, signals/reactivity, two-way binding, routing,
 dependency injection, virtual DOM, directives, React/Hono-specific runtime
 integrations, Angular compatibility, user-submitted template execution,
 runtime compilation as a production path. If a task seems to require one of
@@ -197,9 +212,9 @@ these, the task is wrong — stop and report.
 
 ## 6. Current state (honest assessment)
 
-Verified 2026-07-03:
+Verified 2026-10-07:
 
-- `cargo test --workspace`: **71 tests passing**. `cargo fmt` and
+- `cargo test --workspace`: **119 tests passing**. `cargo fmt` and
   `cargo clippy -D warnings` clean in CI.
 - All JS package suites passing (`runtime`, `vite` 5, `astro` 9,
   `dom`, `astro-events` 10, demo unit tests 10). `pnpm run typecheck` clean.
@@ -423,6 +438,10 @@ positions for both `.flow` and embedded templates.
   snapshots break on harmless codegen changes).
 - Diagnostics tests assert message, code, line, and column — not just
   "an error occurred".
+
+Static target note: expressions outside the documented static subset must
+produce `FV0016`, never partial JavaScript emulation. Do not add function
+calls to the static evaluator.
 
 ## 10. Validation commands
 

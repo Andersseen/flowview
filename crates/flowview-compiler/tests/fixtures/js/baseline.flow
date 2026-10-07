@@ -1,0 +1,10 @@
+<!doctype html>
+<nav class="n" [class.on]="context.on">
+  @for (i of context.items; track i.id) {
+    <a href="{{ i.url }}" [attr.aria-current]="i.cur" [disabled]="i.off">{{ i.label }}</a>
+  } @empty {
+    <span>none</span>
+  }
+</nav>
+@if (context.a) {A} @else if (context.b) {B} @else {C}
+@switch (context.k) {@case ('x') {X}@default {D}}

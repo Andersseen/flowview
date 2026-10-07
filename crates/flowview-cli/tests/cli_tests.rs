@@ -89,3 +89,98 @@ fn cli_respects_version_flag() {
     let stdout = str::from_utf8(&output.stdout).unwrap();
     assert!(stdout.contains("flowview"));
 }
+
+fn static_cmd(template: &str) -> Command {
+    let mut cmd = Command::cargo_bin("flowview").unwrap();
+    cmd.arg("compile")
+        .arg("-")
+        .arg("--target")
+        .arg("static-html")
+        .write_stdin(template.to_string());
+    cmd
+}
+
+#[test]
+fn cli_explicit_js_target_matches_default() {
+    let run = |explicit: bool| {
+        let mut cmd = Command::cargo_bin("flowview").unwrap();
+        cmd.arg("compile").arg("-");
+        if explicit {
+            cmd.arg("--target").arg("js");
+        }
+        cmd.write_stdin("<h1>{{ context.title }}</h1>");
+        cmd.output().unwrap().stdout
+    };
+    assert_eq!(run(true), run(false));
+}
+
+#[test]
+fn cli_static_html_without_data() {
+    let output = static_cmd("<h1>Hello</h1>").output().unwrap();
+    assert!(output.status.success());
+    assert_eq!(str::from_utf8(&output.stdout).unwrap(), "<h1>Hello</h1>");
+}
+
+#[test]
+fn cli_static_html_with_data_and_out() {
+    let temp = tempfile::tempdir().unwrap();
+    let data = temp.path().join("context.json");
+    let out = temp.path().join("page.html");
+    fs::write(&data, r#"{"title": "A & B"}"#).unwrap();
+
+    let output = static_cmd("<h1>{{ context.title }}</h1>")
+        .arg("--data")
+        .arg(&data)
+        .arg("--out")
+        .arg(&out)
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert_eq!(fs::read_to_string(out).unwrap(), "<h1>A &amp; B</h1>");
+}
+
+#[test]
+fn cli_static_html_invalid_json() {
+    let temp = tempfile::tempdir().unwrap();
+    let data = temp.path().join("context.json");
+    fs::write(&data, "{ nope").unwrap();
+
+    let output = static_cmd("x").arg("--data").arg(&data).output().unwrap();
+    assert!(!output.status.success());
+    assert!(str::from_utf8(&output.stderr)
+        .unwrap()
+        .contains("Invalid JSON"));
+}
+
+#[test]
+fn cli_data_requires_static_target() {
+    let mut cmd = Command::cargo_bin("flowview").unwrap();
+    cmd.arg("compile")
+        .arg("-")
+        .arg("--data")
+        .arg("x.json")
+        .write_stdin("x");
+    let output = cmd.output().unwrap();
+    assert!(!output.status.success());
+    assert!(str::from_utf8(&output.stderr)
+        .unwrap()
+        .contains("only valid with --target static-html"));
+}
+
+#[test]
+fn cli_static_unsupported_expression_human_and_json() {
+    let human = static_cmd("{{ context.f() }}").output().unwrap();
+    assert!(!human.status.success());
+    let stderr = str::from_utf8(&human.stderr).unwrap();
+    assert!(stderr.contains("FV0016"));
+
+    let json = static_cmd("{{ context.f() }}")
+        .arg("--diagnostic-format")
+        .arg("json")
+        .output()
+        .unwrap();
+    let stderr = str::from_utf8(&json.stderr).unwrap();
+    assert!(stderr.contains("\"diagnostics\""));
+    assert!(stderr.contains("\"code\":\"FV0016\""));
+    assert!(stderr.contains("\"line\":1"));
+}

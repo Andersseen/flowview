@@ -1,0 +1,8 @@
+{
+  "title": "Project & Docs",
+  "description": "Documentation",
+  "navigation": [
+    { "label": "Home", "href": "/", "active": true },
+    { "label": "Architecture", "href": "/architecture/", "active": false }
+  ]
+}

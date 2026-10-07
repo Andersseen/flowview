@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <nav>
+      @for (item of context.navigation) {
+        <a href="{{ item.href }}" [class.active]="item.active">
+          {{ item.label }}
+        </a>
+      } @empty {
+        <span>No pages</span>
+      }
+    </nav>
+
+    <main>
+      <h1>{{ context.title }}</h1>
+
+      @if (context.description) {
+        <p>{{ context.description }}</p>
+      }
+    </main>
+  </body>
+</html>

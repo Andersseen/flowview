@@ -3,8 +3,13 @@
 ## Purpose
 
 flowview HTML is a small compiler that turns HTML-like templates into plain
-JavaScript render functions. It is framework-agnostic, server-first, safe by
-default, and keeps its runtime scope tiny.
+JavaScript render functions, or renders them directly to static HTML from a
+JSON context. It is framework-agnostic, server-first, safe by default, and
+keeps its runtime scope tiny.
+
+There is one language, one parser, and one AST. Two output targets consume that
+AST: the JavaScript target (the default and compatibility baseline) and the
+static HTML target.
 
 flowview HTML is **not** a UI framework. It does not own components, client
 hydration, events, state management, routing, signals, dependency injection, or
@@ -49,7 +54,15 @@ The stable v1 language surface includes:
 
 - Plain text.
 - HTML-like elements.
-- Quoted attributes.
+- Quoted attributes, including full-value interpolation: `href="{{ expr }}"`.
+- Binding attributes:
+  - `[disabled]`, `[hidden]`, `[checked]`, `[selected]`, `[required]`,
+    `[readonly]`, `[multiple]`, `[open]` emit the bare attribute when the
+    expression is truthy.
+  - `[attr.name]="expr"` emits `name="value"` unless the value is `null` or
+    `undefined`.
+  - `[class.name]="expr"` adds `name` to `class` when truthy. Plain and
+    dynamic `class` values are merged with these and de-duplicated in order.
 - Escaped interpolation with `{{ expression }}`.
 - `@if`, `@else if`, and `@else`.
 - `@for`, optional `track`, and `@empty`.
@@ -83,10 +96,13 @@ The compiler accepts:
 - Filename or display name.
 - Runtime import path.
 - Line offset for embedded templates.
-- Output target options when needed later.
+- An output target: JavaScript (`compile`) or static HTML (`render_static`).
 - Source map options when implemented.
 
-The compiler returns either generated JavaScript code or structured diagnostics.
+The JavaScript target returns generated JavaScript code or structured
+diagnostics. The static HTML target additionally takes a JSON context and
+returns an HTML string or structured diagnostics. Neither target performs
+filesystem I/O; callers decide where output goes.
 
 Generated modules export:
 
@@ -120,6 +136,59 @@ Runtime behavior for v1:
 - Interpolated values are HTML-escaped by default.
 - Escaping is valid for normal text and quoted HTML attribute values.
 - Escaping is not URL, CSS, JavaScript, or policy-level sanitization.
+
+## Static HTML Target
+
+`render_static(template, &context, StaticRenderOptions)` renders
+`template + context → HTML string` natively in Rust. It does not generate or
+execute JavaScript and needs no Node.js, browser, or `@flowview/*` package.
+It is not a static-site generator: Markdown, routing, multi-page output,
+assets, themes, and components belong to the caller.
+
+The context must be a JSON object and is visible to templates as `context`.
+All existing control flow and attribute bindings are supported, and output
+matches the JavaScript target for the same data (including whitespace,
+escaping, `null`/`undefined`/`false` handling, and class merging).
+
+### Static expression subset
+
+The JavaScript target accepts the full validated JavaScript expression
+surface. The static target evaluates only this subset, with explicit scope
+(`context` plus `@for` loop variables):
+
+- Literals: strings, numbers (including a leading `-`), `true`, `false`,
+  `null`.
+- Identifiers: `context` and enclosing `@for` item names.
+- Member access: `a.b`, `a['b']`, `a[0]` (computed keys must be string or
+  non-negative integer literals).
+- `.length` of strings (UTF-16 units) and arrays.
+- Unary `!`; logical `&&`, `||`, `??`; parentheses.
+- `===`, `!==`, `==`, `!=` on primitives (loose equality only between
+  same-type values or null/undefined), and `<`, `<=`, `>`, `>=` on
+  number/number or string/string.
+
+A missing object key or out-of-range index is `undefined`. Reading a property
+of `undefined`/`null` or of a number/boolean is an error. Truthiness follows
+JavaScript (`0`, `""`, `null`, `undefined`, `false` are falsy; empty arrays
+and objects are truthy).
+
+Anything else (function calls, arrow functions, ternaries, template literals,
+optional chaining, arithmetic, array/object literals, computed keys, ...)
+is rejected with `FV0016` even though it is valid for the JavaScript target.
+All expressions are checked before rendering, so errors do not depend on the
+data or on which branch runs.
+
+`@for` accepts an array; `null`/`undefined` count as empty. Other values fail
+with `FV0019`. Arrays and objects cannot be interpolated or used as attribute
+values (`FV0020`). Numbers render like JavaScript for integers and ordinary
+decimals.
+
+Static diagnostics: `FV0016` unsupported expression, `FV0017` unresolved
+identifier, `FV0018` invalid member access, `FV0019` invalid iterable, `FV0020`
+unsupported value, `FV0021` invalid context (not a JSON object).
+
+CLI: `flowview compile page.flow --target static-html [--data context.json]
+[--out page.html]`. Without `--data` the context is `{}`.
 
 ## Security Model
 
@@ -176,6 +245,9 @@ The compiler validates JavaScript expressions used in:
 - `@case (expression)`.
 - Quoted attribute values: `attr="{{ expression }}"`.
 
+Validation uses a real JavaScript parser and applies to both targets. The
+static target then further restricts expressions to the subset above.
+
 Invalid JavaScript expressions fail at compile time with a diagnostic that
 points to the original template location.
 
@@ -193,10 +265,11 @@ Each diagnostic includes:
 - Optional diagnostic code.
 
 Diagnostic codes are stable, e.g. `FV0011` for invalid JavaScript expressions.
+Static-target codes are `FV0016`–`FV0021` (see Static HTML Target).
 
 ## Code Generation
 
-Generated JavaScript is predictable, readable, and safe.
+The rules below describe the JavaScript target. Generated JavaScript is predictable, readable, and safe.
 
 Required behavior:
 
