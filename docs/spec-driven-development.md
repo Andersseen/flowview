@@ -62,7 +62,9 @@ plain, dependency-free output:
      Cloudflare Workers, Astro.
    - **Static HTML target**: `render_static(template, json_context)` renders
      final HTML natively in Rust with a constrained expression subset and no
-     JavaScript execution.
+     JavaScript execution. `compile_static()` parses and lowers once into a
+     reusable `CompiledStaticTemplate` whose `render(&context)` can be called
+     repeatedly.
 
    Server-first. No virtual DOM, no hydration, no components.
 
@@ -110,7 +112,7 @@ flowview/
 │   │       ├── codegen/          # JS render-function generation
 │   │       │   └── javascript.rs
 │   │       ├── static_html/      # native static HTML backend
-│   │       │   ├── mod.rs        # render_static(), renderer
+│   │       │   ├── mod.rs        # compile_static(), CompiledStaticTemplate, render_static()
 │   │       │   └── evaluator.rs  # static expression subset (Oxc-lowered)
 │   │       └── diagnostics.rs    # structured diagnostics (FVxxxx codes)
 │   └── flowview-cli/             # `flowview` binary: file/stdin → JS,
@@ -267,6 +269,10 @@ What is already genuinely solid (recent hardening phases A–D):
   versioned with Changesets, and published by `release.yml`.
 - Static HTML target (`render_static`, `--target static-html`) with a
   deterministic expression subset and diagnostics `FV0016`–`FV0021`.
+- Reusable `compile_static()` / `CompiledStaticTemplate`: parse, validation,
+  and Oxc lowering happen once; `render()` only evaluates. `render_static()`
+  wraps it, so repeated one-off calls no longer need to be the only path.
+  No batch or site APIs; callers loop. Not exposed through WASM yet.
 - Raw interpolation `{{{ expr }}}` in both targets with a shared AST mode, a
   shared fixture file proving cross-target parity, and diagnostics
   `FV0022`–`FV0025`.

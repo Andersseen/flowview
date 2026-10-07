@@ -20,7 +20,7 @@ use evaluator::{
     Val,
 };
 
-/// Options for [`render_static`].
+/// Options for [`compile_static`] and [`render_static`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StaticRenderOptions {
     pub filename: Option<String>,
@@ -33,54 +33,124 @@ impl StaticRenderOptions {
     }
 }
 
-/// The successful result of a static render.
+/// Alias used by [`compile_static`]; compile and one-off render share options.
+pub type StaticCompileOptions = StaticRenderOptions;
+
+/// The successful result of a one-off static render.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StaticRenderOutput {
     pub html: String,
     pub warnings: Vec<Diagnostic>,
 }
 
+/// A template that has been parsed, validated and expression-lowered once.
+///
+/// It owns everything needed to render (AST, source text for diagnostics,
+/// lowered expressions, compile-time warnings), so the original source string
+/// may be dropped. It is immutable: [`render`](Self::render) borrows it and
+/// keeps all per-render state (scope, output) local to the call, so one
+/// compiled template can render any number of contexts, from any thread.
+#[derive(Debug)]
+pub struct CompiledStaticTemplate {
+    source: String,
+    root: RootNode,
+    exprs: Exprs,
+    warnings: Vec<Diagnostic>,
+    filename: Option<String>,
+}
+
+/// Parse, validate and lower `source` once for repeated static rendering.
+///
+/// Every failure that does not depend on a context (syntax errors, invalid or
+/// unsupported static expressions, even in branches no context would reach)
+/// is reported here.
+pub fn compile_static(
+    source: &str,
+    options: StaticCompileOptions,
+) -> Result<CompiledStaticTemplate, Vec<Diagnostic>> {
+    CompiledStaticTemplate::compile(source, options)
+}
+
+impl CompiledStaticTemplate {
+    /// Same as [`compile_static`].
+    pub fn compile(source: &str, options: StaticCompileOptions) -> Result<Self, Vec<Diagnostic>> {
+        let root = parser::parse(source)?;
+        let warnings = validation::validate(&root, source);
+
+        let mut exprs = HashMap::new();
+        let mut errors = Vec::new();
+        collect_root(&root, source, &mut exprs, &mut errors);
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
+        Ok(Self {
+            source: source.to_owned(),
+            root,
+            exprs,
+            warnings,
+            filename: options.filename,
+        })
+    }
+
+    /// Compile-time warnings (for example the `@for` `track` warning). They
+    /// are produced once by compilation and never change between renders.
+    pub fn warnings(&self) -> &[Diagnostic] {
+        &self.warnings
+    }
+
+    /// The filename supplied at compile time, if any.
+    pub fn filename(&self) -> Option<&str> {
+        self.filename.as_deref()
+    }
+
+    /// Render against a JSON object context (visible to the template as
+    /// `context`). Only context-dependent failures can occur here.
+    pub fn render(&self, context: &Value) -> Result<String, Vec<Diagnostic>> {
+        check_context(context)?;
+        let mut renderer = Renderer {
+            template: self,
+            scope: Scope::new(context),
+            out: String::new(),
+        };
+        renderer
+            .nodes(&self.root.children)
+            .map_err(|diagnostic| vec![diagnostic])?;
+        Ok(renderer.out)
+    }
+}
+
+fn check_context(context: &Value) -> Result<(), Vec<Diagnostic>> {
+    if context.is_object() {
+        return Ok(());
+    }
+    Err(vec![Diagnostic::new(
+        "Static render context must be a JSON object",
+        1,
+        1,
+        0,
+        0,
+    )
+    .with_diagnostic_code(DiagnosticCode::StaticInvalidContext)])
+}
+
 /// Render a flowview template against a JSON context into final HTML.
 ///
-/// The context must be a JSON object; templates see it as `context`.
+/// One-off convenience over [`compile_static`] + [`CompiledStaticTemplate::render`];
+/// prefer those when rendering the same template more than once. The context
+/// must be a JSON object; templates see it as `context`. Compile-time warnings
+/// are returned in the output.
 pub fn render_static(
     source: &str,
     context: &Value,
-    _options: StaticRenderOptions,
+    options: StaticRenderOptions,
 ) -> Result<StaticRenderOutput, Vec<Diagnostic>> {
-    if !context.is_object() {
-        return Err(vec![Diagnostic::new(
-            "Static render context must be a JSON object",
-            1,
-            1,
-            0,
-            0,
-        )
-        .with_diagnostic_code(DiagnosticCode::StaticInvalidContext)]);
-    }
-
-    let root = parser::parse(source)?;
-    let warnings = validation::validate(&root, source);
-
-    let mut exprs = HashMap::new();
-    let mut errors = Vec::new();
-    collect_root(&root, source, &mut exprs, &mut errors);
-    if !errors.is_empty() {
-        return Err(errors);
-    }
-
-    let mut renderer = Renderer {
-        source,
-        exprs,
-        scope: Scope::new(context),
-        out: String::new(),
-    };
-    renderer
-        .nodes(&root.children)
-        .map_err(|diagnostic| vec![diagnostic])?;
+    check_context(context)?;
+    let template = compile_static(source, options)?;
+    let html = template.render(context)?;
     Ok(StaticRenderOutput {
-        html: renderer.out,
-        warnings,
+        html,
+        warnings: template.warnings,
     })
 }
 
@@ -177,9 +247,10 @@ fn to_diagnostic(error: EvalError, source: &str, span: Span) -> Diagnostic {
 // Renderer
 // ---------------------------------------------------------------------------
 
-struct Renderer<'s, 'a> {
-    source: &'s str,
-    exprs: Exprs,
+/// Per-render state. Borrows the immutable template; owns only the scope and
+/// output buffer.
+struct Renderer<'t, 'a> {
+    template: &'t CompiledStaticTemplate,
     scope: Scope<'a>,
     out: String,
 }
@@ -187,16 +258,21 @@ struct Renderer<'s, 'a> {
 type RenderResult = Result<(), Diagnostic>;
 
 impl<'a> Renderer<'_, 'a> {
+    fn source(&self) -> &str {
+        &self.template.source
+    }
+
     fn value(&self, expression: &str, span: Span) -> Result<Val<'a>, Diagnostic> {
         let expr = self
+            .template
             .exprs
             .get(expression)
             .expect("expression lowered in pre-pass");
-        eval(expr, &self.scope).map_err(|e| to_diagnostic(e, self.source, span))
+        eval(expr, &self.scope).map_err(|e| to_diagnostic(e, self.source(), span))
     }
 
     fn fail<T>(&self, result: Result<T, EvalError>, span: Span) -> Result<T, Diagnostic> {
-        result.map_err(|e| to_diagnostic(e, self.source, span))
+        result.map_err(|e| to_diagnostic(e, self.source(), span))
     }
 
     fn nodes(&mut self, nodes: &[Node]) -> RenderResult {
@@ -240,7 +316,7 @@ impl<'a> Renderer<'_, 'a> {
                         }
                         other if other.is_null() => Vec::new(),
                         other => {
-                            return Err(invalid_iterable(self.source, block.span, &other));
+                            return Err(invalid_iterable(self.source(), block.span, &other));
                         }
                     },
                     Val::Undefined => Vec::new(),
@@ -427,3 +503,6 @@ fn strict_equal(left: &Val, right: &Val) -> Result<bool, EvalError> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod compiled_tests;
