@@ -1,5 +1,11 @@
 # @flowview/compiler
 
+## 0.2.2
+
+### Patch Changes
+
+- 81b72a4: Return Source Map v3 output for generated render functions and preserve template locations through the compiler, Vite, and Astro integrations.
+
 ## 0.2.1
 
 ### Patch Changes
