@@ -1,5 +1,13 @@
 # @flowview/astro
 
+## 0.1.4
+
+### Patch Changes
+
+- 81b72a4: Return Source Map v3 output for generated render functions and preserve template locations through the compiler, Vite, and Astro integrations.
+- Updated dependencies [81b72a4]
+  - @flowview/vite@0.1.4
+
 ## 0.1.3
 
 ### Patch Changes
