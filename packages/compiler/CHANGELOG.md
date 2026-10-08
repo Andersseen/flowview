@@ -1,5 +1,11 @@
 # @flowview/compiler
 
+## 0.2.1
+
+### Patch Changes
+
+- aa993a8: Harden and document the native Rust static renderer for embedding: add shared layout parity fixtures, an external-consumer integration suite, Rust embedding docs, and crate publishing metadata. No JavaScript API changes.
+
 ## 0.2.0
 
 ### Minor Changes
