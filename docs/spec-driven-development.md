@@ -250,8 +250,10 @@ Verified 2026-10-08:
   also pass locally.
 - CI runs formatting, clippy, Rust tests, JS builds/tests/typecheck, and demo
   checks. Rust portability tests also run on macOS and Windows. External Rust
-  consumer/static embedding coverage is present; packed npm installation into
-  a fresh project remains unverified. The demo deploys to Cloudflare.
+  consumer/static embedding coverage is present. The packed npm consumer now
+  passes locally on macOS; CI packs once and runs that same artifact set on
+  Linux, macOS, and Windows. The first cross-platform CI result is pending.
+  The demo deploys to Cloudflare.
 
 What is already genuinely solid (recent hardening phases A–D):
 
@@ -295,10 +297,7 @@ What keeps it from serious production use today (§8 addresses these):
 3. **Editor diagnostics don't exist** (grammar + snippets only). The CLI
    already emits JSON diagnostics, so the plumbing exists but nothing
    consumes it.
-4. **Packaged npm distribution is not verified outside the monorepo.** The
-   WASM compiler is rebuilt and tested in-repo, but there is no fresh fixture
-   that installs packed packages and builds a `.flow` import.
-5. **Static rendering is Rust/CLI only.** The WASM wrapper does not expose
+4. **Static rendering is Rust/CLI only.** The WASM wrapper does not expose
    it, and expressions outside the documented subset are rejected by design.
 
 ---
@@ -321,30 +320,42 @@ enforced by a named test.
 Completed since the first version of this guide: WS2 (Rust JavaScript source
 maps), WS3 (Events capture analysis, superseded by the `<script data-flowview>`
 model), and most of WS6 (release engineering). Rust portability and external
-Rust-consumer checks are also covered; the npm packed-package verification in
-WS1 remains open.
+Rust-consumer checks are also covered. WS1's packed-package workflow is
+implemented and passes locally on macOS; its Linux/macOS/Windows matrix awaits
+its first CI run before WS1 is marked complete. WS4 is the next hardening
+workstream after that gate passes.
 
 Work top to bottom. Each workstream is independently shippable. Within one,
 do the steps in order and run the exit checks before moving on.
 
-### WS1 — Distribution: verify the installable compiler (incomplete)
+### WS1 — Distribution: verify the installable compiler (CI matrix pending)
 
 **Done:** the compiler ships as WASM in `@flowview/compiler`; `@flowview/vite`
 and `@flowview/astro` use it in-process with no Rust toolchain, and
 `compilerPath` / `FLOWVIEW_COMPILER_PATH` remain explicit native overrides
 (the monorepo `target/` binary is auto-discovered for development).
 
+The reusable packed-consumer workflow builds and packs the `@flowview/vite`
+dependency graph once, checks the actual manifests and compiler WASM files,
+then installs those exact tarballs into an isolated temporary project. The
+consumer checks compiler diagnostics and source maps, Vite development and
+production compilation, rendered escaping, and the published `.flow` types.
+Flowview dependency edges are overridden to the tarballs and their resolved
+paths are checked. Native process launches are blocked, and Rust tools are
+removed from and checked against the consumer `PATH`.
+
 **Already covered:** external Rust consumption and static embedding tests, plus
 Rust portability jobs on macOS and Windows. These do not verify npm packages.
 
-**Remaining:** an integration test in a temp dir _outside_ the workspace that
-installs the packed packages and builds a `.flow` import in dev and production,
-and a CI job that exercises the packaged flow on Linux, macOS, and Windows.
-Record the WASM-vs-native decision in `docs/decisions/` if it is revisited.
+**CI evidence pending:** the reusable PR and release gate runs the same packed
+artifacts on Linux, macOS, and Windows without setting up Rust in consumer
+jobs. The local macOS run passes; the matrix must pass before this workstream
+is marked complete. Record the WASM-vs-native decision in `docs/decisions/` if
+it is revisited.
 
-**Exit checks:** a fresh Vite project outside this repo, with no Rust
-installed, builds a `.flow` import in dev and production. All existing
-suites still pass.
+**Exit checks:** the fresh external Vite project passes in dev and production
+on Linux, macOS, and Windows from the same tarballs, with no Rust toolchain in
+the consumer jobs. All existing suites still pass.
 
 ### WS2 — Source maps from the Rust compiler (done)
 

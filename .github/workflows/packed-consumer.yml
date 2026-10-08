@@ -1,0 +1,84 @@
+name: Packed npm consumer
+
+on:
+  workflow_call:
+
+jobs:
+  pack:
+    name: Build and pack Flowview artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Rust and WASM target
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install WASM toolchain
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo install wasm-pack --locked
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build publishable Vite dependency graph
+        run: |
+          pnpm run build:runtime
+          pnpm run build:compiler
+          pnpm run build:vite
+
+      - name: Pack publish artifacts
+        run: pnpm run pack:consumer-artifacts -- "${{ runner.temp }}/flowview-packed-artifacts"
+
+      - name: Upload packed npm artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: flowview-packed-npm-artifacts
+          path: ${{ runner.temp }}/flowview-packed-artifacts
+          if-no-files-found: error
+          retention-days: 7
+
+  consume:
+    name: External consumer (${{ matrix.os }})
+    needs: pack
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout verification script
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download the same packed artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: flowview-packed-npm-artifacts
+          path: ${{ runner.temp }}/flowview-packed-artifacts
+
+      - name: Install tarballs in an isolated consumer and verify
+        run: node scripts/verify-packed-vite-consumer.mjs "${{ runner.temp }}/flowview-packed-artifacts"

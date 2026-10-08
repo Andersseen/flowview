@@ -9,7 +9,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  packed-consumer:
+    name: Packed npm consumer
+    uses: ./.github/workflows/packed-consumer.yml
+
   release:
+    needs: packed-consumer
     runs-on: ubuntu-latest
     permissions:
       contents: write
