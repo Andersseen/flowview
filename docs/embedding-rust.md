@@ -96,6 +96,18 @@ Markdown/parser owned by caller → trusted body HTML → Flowview page template
 Interpolations in attribute values must span the whole value
 (`href="{{ link.href }}"`), so compute derived strings such as `href` in Rust.
 
+## Subpaths, assets and `<script>`
+
+Flowview owns no routing or asset resolution. Compute every URL in the host
+(for example `../../assets/site.css` for a page two levels deep, or
+`/project/subpath/…`) and pass it through the context; `href="{{ … }}"` and
+`src="{{ … }}"` emit it unchanged apart from attribute escaping (`&` → `&amp;`).
+
+`<script>` and `<style>` elements are opaque: neither their content nor their
+opening tag is interpolated. To emit a `<script src>` whose URL is computed,
+have the host build the whole tag and place it with `{{{ context.assets.script_tag }}}`.
+`<link rel="stylesheet" href="{{ … }}">` works normally.
+
 ## Keep logic in the model
 
 Prefer a model that carries `current`, `href`, `label`, counts and groups, with

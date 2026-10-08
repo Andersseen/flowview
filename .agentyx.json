@@ -1,6 +1,7 @@
 {
   "packs": [
     "technical",
+    "rust",
     "typescript",
     "testing",
     "security",

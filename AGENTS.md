@@ -12,7 +12,7 @@ Flowview is a small HTML template compiler, not a framework. Do not add routing,
 
 ## Agent tooling
 
-Skills, MCP entries and hooks under `.claude/` and `.agents/` are owned by Agentyx (`.agentyx.json`, `.agentyx.lock.json`). Never hand-edit provider copies; change the config and run `agentyx install`.
+Skills, MCP entries and hooks under `.claude/` and `.agents/` are owned by Agentyx (`.agentyx.json`, `.agentyx.lock.json`). Never hand-edit provider copies; change the config and run `pnpm exec agentyx install` (CLI pinned in `package.json`).
 
 ## Verification gate
 

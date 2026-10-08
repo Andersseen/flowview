@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="{{ context.site.lang }}">
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ context.page.title }} · {{ context.site.title }}</title>
+    <link rel="canonical" href="{{ context.page.canonical }}" />
+    <link rel="stylesheet" href="{{ context.assets.styles }}" />
+    {{{ context.assets.script_tag }}}
+  </head>
+  <body>
+    <a href="{{ context.site.root }}" class="brand">{{ context.site.title }}</a>
+
+    @if (context.sidebar.length) {
+      <nav aria-label="Primary">
+        @for (section of context.sidebar; track section.title) {
+          <h2>{{ section.title }}</h2>
+          <ul>
+            @for (item of section.items; track item.href) {
+              <li><a href="{{ item.href }}" [class.current]="item.current" [attr.aria-current]="item.aria_current">{{ item.label }}</a></li>
+            }
+          </ul>
+        }
+      </nav>
+    }
+
+    <main data-source="{{ context.page.source_path }}">
+      <p class="role">{{ context.page.role }}</p>
+      <h1>{{ context.page.title }}</h1>
+      {{{ context.page.body_html }}}
+
+      @if (context.headings.length) {
+        <ul class="toc">
+          @for (heading of context.headings; track heading.href) {
+            <li><a href="{{ heading.href }}">{{ heading.text }}</a></li>
+          }
+        </ul>
+      }
+
+      @if (context.backlinks.length) {
+        <section class="backlinks">
+          @for (link of context.backlinks; track link.href) {
+            <a href="{{ link.href }}">{{ link.label }}</a>
+          }
+        </section>
+      }
+
+      @if (context.references.length) {
+        <ol class="references">
+          @for (ref of context.references; track ref.href) {
+            <li><a href="{{ ref.href }}">{{ ref.label }}</a></li>
+          }
+        </ol>
+      }
+    </main>
+    <img src="{{ context.assets.logo }}" alt="" />
+  </body>
+</html>

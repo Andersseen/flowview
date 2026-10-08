@@ -58,8 +58,10 @@ Order matters: `flowview-compiler` first, then `flowview-cli` (which depends on 
 
 3. Publish. Preferred: run the **Rust release** workflow (Actions → Rust release →
    Run workflow) with `dry_run: false`. It needs the `CARGO_REGISTRY_TOKEN`
-   repository secret and publishes `flowview-compiler`, waits for the index, then
-   publishes `flowview-cli`. Manually, with `cargo login`:
+   repository secret and runs `scripts/publish-rust.sh`: it publishes `flowview-compiler`,
+   polls the crates.io index (bounded, 30 × 10 s) until that exact version resolves, then
+   publishes `flowview-cli`. Reruns are safe: a version already public with a matching
+   package checksum is skipped; a checksum mismatch fails the run. Manually, with `cargo login`:
 
    ```bash
    pnpm run publish:rust

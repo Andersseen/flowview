@@ -65,9 +65,10 @@
     "build:prettier": "pnpm --filter @flowview/prettier build",
     "test:prettier": "pnpm --filter @flowview/prettier test",
     "publish:npm": "pnpm run build:runtime && pnpm run build:reactive && pnpm run build:dom && pnpm run build:events && pnpm run build:compiler && pnpm run build:vite && pnpm run build:astro && pnpm run build:vite-events && pnpm run build:astro-events && pnpm run build:prettier && pnpm exec changeset publish",
-    "publish:rust": "cargo publish -p flowview-compiler && cargo publish -p flowview-cli"
+    "publish:rust": "scripts/publish-rust.sh"
   },
   "devDependencies": {
+    "@agentyx/cli": "0.9.0",
     "@changesets/cli": "^2.31.0",
     "@flowview/prettier": "workspace:*",
     "prettier": "^3.5.0",

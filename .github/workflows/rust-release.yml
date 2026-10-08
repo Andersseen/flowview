@@ -37,5 +37,4 @@ jobs:
             echo "CARGO_REGISTRY_TOKEN is not configured; refusing to publish." >&2
             exit 1
           fi
-          cargo publish -p flowview-compiler --locked
-          cargo publish -p flowview-cli --locked
+          scripts/publish-rust.sh

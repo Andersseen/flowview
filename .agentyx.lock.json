@@ -48,6 +48,15 @@
     },
     {
       "kind": "skill",
+      "path": ".agents/skills/cargo-project-verification/SKILL.md",
+      "skill": "cargo-project-verification",
+      "targets": [
+        "codex"
+      ],
+      "hash": "0251d73d77306c6b50d8a1ecb02a10bdf70a874033abda50fc697a1b5d9b819b"
+    },
+    {
+      "kind": "skill",
       "path": ".agents/skills/ci-pipelines/SKILL.md",
       "skill": "ci-pipelines",
       "targets": [
@@ -237,6 +246,33 @@
     },
     {
       "kind": "skill",
+      "path": ".agents/skills/rust-filesystem-safety/SKILL.md",
+      "skill": "rust-filesystem-safety",
+      "targets": [
+        "codex"
+      ],
+      "hash": "72d9a8525b0e486c35cd298e5248e1f9306c9ad595ab680c59321accdd430cf1"
+    },
+    {
+      "kind": "skill",
+      "path": ".agents/skills/rust-idiomatic-development/SKILL.md",
+      "skill": "rust-idiomatic-development",
+      "targets": [
+        "codex"
+      ],
+      "hash": "c09be2191cc2f48ae2e1e7e5c41acbe1e2246994134dd009d91abf1b38b21828"
+    },
+    {
+      "kind": "skill",
+      "path": ".agents/skills/rust-testing-portability/SKILL.md",
+      "skill": "rust-testing-portability",
+      "targets": [
+        "codex"
+      ],
+      "hash": "bd5ef2ee0ff1b1ccad9a0acd1b5c78e833175c76bbdcde62f54b462d764fb798"
+    },
+    {
+      "kind": "skill",
       "path": ".agents/skills/secrets-handling/SKILL.md",
       "skill": "secrets-handling",
       "targets": [
@@ -417,6 +453,15 @@
         "claude"
       ],
       "hash": "138eda6f5f394a4f009bcaabaa6032d536374afb50797dab13efd7b72bc6740a"
+    },
+    {
+      "kind": "skill",
+      "path": ".claude/skills/cargo-project-verification/SKILL.md",
+      "skill": "cargo-project-verification",
+      "targets": [
+        "claude"
+      ],
+      "hash": "0251d73d77306c6b50d8a1ecb02a10bdf70a874033abda50fc697a1b5d9b819b"
     },
     {
       "kind": "skill",
@@ -606,6 +651,33 @@
         "claude"
       ],
       "hash": "87a63cba4f1b30db4fe28815d7fc0e94ee260b97ba10c60aef5de84da8b55b1a"
+    },
+    {
+      "kind": "skill",
+      "path": ".claude/skills/rust-filesystem-safety/SKILL.md",
+      "skill": "rust-filesystem-safety",
+      "targets": [
+        "claude"
+      ],
+      "hash": "72d9a8525b0e486c35cd298e5248e1f9306c9ad595ab680c59321accdd430cf1"
+    },
+    {
+      "kind": "skill",
+      "path": ".claude/skills/rust-idiomatic-development/SKILL.md",
+      "skill": "rust-idiomatic-development",
+      "targets": [
+        "claude"
+      ],
+      "hash": "c09be2191cc2f48ae2e1e7e5c41acbe1e2246994134dd009d91abf1b38b21828"
+    },
+    {
+      "kind": "skill",
+      "path": ".claude/skills/rust-testing-portability/SKILL.md",
+      "skill": "rust-testing-portability",
+      "targets": [
+        "claude"
+      ],
+      "hash": "bd5ef2ee0ff1b1ccad9a0acd1b5c78e833175c76bbdcde62f54b462d764fb798"
     },
     {
       "kind": "skill",
