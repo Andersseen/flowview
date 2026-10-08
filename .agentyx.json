@@ -1,6 +1,7 @@
 {
   "packs": [
     "technical",
+    "rust",
     "typescript",
     "testing",
     "security",
@@ -11,6 +12,13 @@
     "efficiency",
     "agentic"
   ],
-  "enable": ["playwright", "github", "rtk"],
-  "targets": ["codex", "claude"]
+  "enable": [
+    "playwright",
+    "github",
+    "rtk"
+  ],
+  "targets": [
+    "codex",
+    "claude"
+  ]
 }
