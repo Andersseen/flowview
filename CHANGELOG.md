@@ -6,6 +6,11 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+- Added opt-in Source Map v3 generation to Rust JavaScript codegen and carried
+  maps through the WASM compiler, `@flowview/compiler`, native CLI, Vite, and
+  Astro. Dynamic expressions and control-flow conditions map to template
+  positions; embedded Astro maps resolve to the host `.astro` file with its
+  original line and first-line column offsets. Static rendering is unchanged.
 - Added a reusable static HTML API: `compile_static(source, options)` parses,
   validates, and lowers expressions once into an immutable, `Send + Sync`
   `CompiledStaticTemplate`, and `template.render(&context)` renders it against

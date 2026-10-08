@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
+import { relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   compileFlowview as compileFlowviewWasm,
@@ -8,6 +9,7 @@ import {
   type FlowviewCompilerDiagnostic,
 } from "@flowview/compiler";
 import type { Plugin } from "vite";
+import type { FlowviewSourceMap } from "@flowview/compiler";
 
 export interface FlowviewViteOptions {
   runtimeImport?: string;
@@ -20,6 +22,9 @@ export interface FlowviewCompileRequest {
   lineOffset?: number;
   runtimeImport: string;
   compilerPath?: string;
+  sourceMapFilename?: string;
+  sourceMapSourceContent?: string;
+  sourceMapColumnOffset?: number;
 }
 
 export interface FlowviewDiagnostic {
@@ -45,6 +50,7 @@ export class FlowviewCompileError extends Error {
 
 interface FlowviewCompileResult {
   code: string;
+  map: FlowviewSourceMap;
   warnings: FlowviewDiagnostic[];
 }
 
@@ -53,12 +59,14 @@ const compileCache = new Map<string, Promise<FlowviewCompileResult>>();
 export default function flowview(options: FlowviewViteOptions = {}): Plugin {
   const runtimeImport = options.runtimeImport ?? "@flowview/runtime";
   const compilerPath = resolveCompilerPath(options.compilerPath);
+  let projectRoot = process.cwd();
 
   return {
     name: "@flowview/vite",
     enforce: "pre",
 
-    configResolved() {
+    configResolved(config) {
+      projectRoot = config.root;
       // Ensure configuration changes are reflected on the next build/dev session.
       compileCache.clear();
     },
@@ -74,10 +82,17 @@ export default function flowview(options: FlowviewViteOptions = {}): Plugin {
       if (!filename.endsWith(".flow")) return null;
 
       try {
-        const { code: compiled, warnings } = await compileFlowview(code, {
+        const {
+          code: compiled,
+          map,
+          warnings,
+        } = await compileFlowview(code, {
           filename,
           runtimeImport,
           compilerPath,
+          sourceMapFilename: relative(projectRoot, filename)
+            .split(sep)
+            .join("/"),
         });
 
         for (const warning of warnings) {
@@ -86,7 +101,7 @@ export default function flowview(options: FlowviewViteOptions = {}): Plugin {
 
         return {
           code: compiled,
-          map: null,
+          map,
         };
       } catch (error) {
         if (
@@ -165,6 +180,14 @@ function runCompiler(
         request.filename,
         "--line-offset",
         String(request.lineOffset ?? 0),
+        "--source-map",
+        "--source-map-name",
+        request.sourceMapFilename ?? request.filename,
+        "--source-map-column-offset",
+        String(request.sourceMapColumnOffset ?? 0),
+        ...(request.sourceMapSourceContent === undefined
+          ? []
+          : ["--source-map-input-json"]),
         "--diagnostic-format",
         "json",
       ],
@@ -202,7 +225,19 @@ function runCompiler(
       settled = true;
       if (exitCode === 0) {
         const warnings = parseDiagnostics(stderr);
-        resolve({ code: stdout, warnings });
+        try {
+          const compiled = JSON.parse(stdout) as {
+            code: string;
+            sourceMap: FlowviewSourceMap;
+          };
+          resolve({ code: compiled.code, map: compiled.sourceMap, warnings });
+        } catch (error) {
+          reject(
+            new Error(
+              `Invalid source-map output from flowview compiler: ${String(error)}`,
+            ),
+          );
+        }
         return;
       }
 
@@ -220,7 +255,14 @@ function runCompiler(
     child.stdin.on("error", () => {
       // The close/error handler reports the useful compiler failure.
     });
-    child.stdin.end(source);
+    child.stdin.end(
+      request.sourceMapSourceContent === undefined
+        ? source
+        : JSON.stringify({
+            source,
+            sourceMapSourceContent: request.sourceMapSourceContent,
+          }),
+    );
   });
 }
 
@@ -233,9 +275,19 @@ function runWasmCompiler(
       const result = compileFlowviewWasm(source, {
         filename: request.filename,
         runtimeImport: request.runtimeImport,
+        sourceMapFilename: request.sourceMapFilename,
+        sourceMapSourceContent: request.sourceMapSourceContent,
+        sourceMapLineOffset: request.lineOffset,
+        sourceMapColumnOffset: request.sourceMapColumnOffset,
+        sourceMap: true,
       });
+      if (!result.map)
+        throw new Error(
+          "WASM compiler did not return its requested source map",
+        );
       return {
         code: result.code,
+        map: result.map,
         warnings: applyLineOffset(result.warnings, request.lineOffset),
       };
     } catch (error) {

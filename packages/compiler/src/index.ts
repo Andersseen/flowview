@@ -3,6 +3,21 @@ import { createRequire } from "node:module";
 export interface FlowviewCompilerOptions {
   filename?: string;
   runtimeImport?: string;
+  sourceMapFilename?: string;
+  sourceMapSourceContent?: string;
+  sourceMapLineOffset?: number;
+  sourceMapColumnOffset?: number;
+  sourceMap?: boolean;
+}
+
+export interface FlowviewSourceMap {
+  version: 3;
+  file?: string;
+  sourceRoot?: string;
+  sources: string[];
+  sourcesContent?: (string | null)[];
+  names: string[];
+  mappings: string;
 }
 
 export interface FlowviewCompilerDiagnostic {
@@ -18,6 +33,7 @@ export interface FlowviewCompilerDiagnostic {
 
 export interface FlowviewCompilerResult {
   code: string;
+  map?: FlowviewSourceMap;
   warnings: FlowviewCompilerDiagnostic[];
 }
 
@@ -35,6 +51,7 @@ type WasmCompileResult =
   | {
       status: "ok";
       code: string;
+      sourceMap: string | null;
       warnings: FlowviewCompilerDiagnostic[];
     }
   | {
@@ -54,11 +71,19 @@ export function compileFlowview(
   const result = wasm.compile(source, {
     filename: options.filename,
     runtimeImport: options.runtimeImport,
+    sourceMapFilename: options.sourceMapFilename,
+    sourceMapSourceContent: options.sourceMapSourceContent,
+    sourceMapLineOffset: options.sourceMapLineOffset,
+    sourceMapColumnOffset: options.sourceMapColumnOffset,
+    sourceMap: options.sourceMap,
   });
 
   if (result.status === "ok") {
     return {
       code: result.code,
+      map: result.sourceMap
+        ? (JSON.parse(result.sourceMap) as FlowviewSourceMap)
+        : undefined,
       warnings: result.warnings,
     };
   }

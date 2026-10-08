@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { originalPositionFor, TraceMap } from "@jridgewell/trace-mapping";
 import type { Plugin } from "vite";
 import {
   renderAttributeValue,
@@ -42,8 +43,9 @@ async function transformAstro(
 async function transformAstroResult(
   source: string,
   filename = "/src/pages/example.astro",
+  plugin = createEmbeddedPlugin(),
 ): Promise<{ code: string; map: unknown } | null> {
-  const transform = createEmbeddedPlugin().transform;
+  const transform = plugin.transform;
   const handler =
     typeof transform === "function" ? transform : transform?.handler;
   if (typeof handler !== "function") {
@@ -139,6 +141,58 @@ const second = { value: "B" };
       sources: [filename],
       sourcesContent: [expect.stringContaining("<template flowview")],
     });
+  });
+
+  it("maps generated expressions in an embedded @for back to the host Astro file", async () => {
+    const filename = "/src/pages/list.astro";
+    const source = `---\nconst context = { items: [{ title: "A" }] };\n---\n<template flowview context={context}>\n  @for (item of context.items) {\n    <h2>{{ item.title }}</h2>\n  }\n</template>`;
+    const plugin = createEmbeddedPlugin();
+    if (typeof plugin.configResolved === "function") {
+      plugin.configResolved.call(
+        {} as never,
+        { root: "/", plugins: [plugin] } as never,
+      );
+    }
+    const transformed = await transformAstroResult(source, filename, plugin);
+    const virtualId = transformed?.code.match(
+      /from "(virtual:flowview-astro\/[^"]+)"/,
+    )?.[1];
+    if (
+      !virtualId ||
+      typeof plugin.load !== "function" ||
+      typeof plugin.resolveId !== "function"
+    ) {
+      throw new Error("embedded virtual module was not registered");
+    }
+    const resolveId = plugin.resolveId as (
+      this: unknown,
+      id: string,
+      importer?: string,
+      options?: unknown,
+    ) => string | null;
+    const resolvedId = resolveId.call({}, virtualId, undefined, {});
+    if (typeof resolvedId !== "string")
+      throw new Error("virtual module did not resolve");
+    const loaded = await plugin.load.call({} as never, resolvedId);
+    if (typeof loaded !== "object" || loaded === null || !("code" in loaded)) {
+      throw new Error(
+        `embedded module returned no compiler map: ${JSON.stringify(loaded)}`,
+      );
+    }
+    const code = loaded.code as string;
+    const map = loaded.map as ConstructorParameters<typeof TraceMap>[0] & {
+      sourcesContent?: (string | null)[];
+    };
+    const offset = code.indexOf("item.title");
+    const before = code.slice(0, offset);
+    const position = originalPositionFor(new TraceMap(map), {
+      line: before.split("\n").length,
+      column: before.length - before.lastIndexOf("\n") - 1,
+    });
+
+    expect(position).toMatchObject({ source: "src/pages/list.astro", line: 6 });
+    expect(map.sourcesContent?.[0]).toBe(source);
+    expect(position?.source).not.toContain("virtual:flowview-astro");
   });
 
   it("ignores comments, raw-text elements, and similarly named tags", async () => {
@@ -265,15 +319,19 @@ const context = { title: "Hello" };
     if (publicId === undefined) throw new Error("no virtual module import");
 
     const resolveId = plugin.resolveId as (id: string) => string | null;
-    const load = plugin.load as (this: unknown, id: string) => Promise<string>;
+    const load = plugin.load as (
+      this: unknown,
+      id: string,
+    ) => Promise<string | { code: string; map: unknown }>;
     const module = await load.call({}, resolveId(publicId) ?? "");
+    const moduleCode = typeof module === "string" ? module : module.code;
 
-    expect(module).toContain("renderRawValue(context.bodyHtml)");
+    expect(moduleCode).toContain("renderRawValue(context.bodyHtml)");
     const render = Function(
       "renderAttributeValue",
       "renderRawValue",
       "renderValue",
-      `"use strict";\n${module
+      `"use strict";\n${moduleCode
         .replace(/^import \{[^}]+\} from '[^']+';\n\n/, "")
         .replace("export function render", "function render")}\nreturn render;`,
     )(renderAttributeValue, renderRawValue, renderValue) as (
