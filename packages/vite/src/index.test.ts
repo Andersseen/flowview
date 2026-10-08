@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { originalPositionFor, TraceMap } from "@jridgewell/trace-mapping";
 import { describe, expect, it } from "vitest";
 import { build } from "vite";
 import flowview, { compileFlowview, resolveCompilerPath } from "./index";
@@ -14,16 +15,81 @@ describe("compileFlowview", () => {
   });
 
   it("compiles stdin without temporary files", async () => {
-    const { code } = await compileFlowview("<p>Hello {{ context.name }}</p>", {
-      filename: "greeting.flow",
-      runtimeImport: "@flowview/runtime",
-      compilerPath,
-    });
+    const { code, map } = await compileFlowview(
+      "<p>Hello {{ context.name }}</p>",
+      {
+        filename: "greeting.flow",
+        runtimeImport: "@flowview/runtime",
+        compilerPath,
+      },
+    );
 
     expect(code).toContain("output += '<p';");
     expect(code).toContain("output += '>';");
     expect(code).toContain("output += 'Hello ';");
     expect(code).toContain("renderValue(context.name)");
+    expect(map.sources).toEqual(["greeting.flow"]);
+    expect(map.sourcesContent).toEqual(["<p>Hello {{ context.name }}</p>"]);
+    expect(JSON.stringify(map)).not.toMatch(
+      /\/Users\/|target\/debug\/|packages\/compiler\/pkg\//,
+    );
+    expect(originalAt(map, code, "context.name")).toMatchObject({
+      source: "greeting.flow",
+      line: 1,
+      column: 12,
+    });
+  });
+
+  it("returns equivalent maps from native and bundled WASM compilers", async () => {
+    const source = "@for (item of context.items) { {{ item.title }} }";
+    const native = await compileFlowview(source, {
+      filename: "src/list.flow",
+      runtimeImport: "@flowview/runtime",
+      compilerPath,
+      sourceMapFilename: "src/list.flow",
+    });
+    const wasm = await compileFlowview(source, {
+      filename: "src/list.flow",
+      runtimeImport: "@flowview/runtime",
+      compilerPath: "",
+      sourceMapFilename: "src/list.flow",
+    });
+
+    expect(native.code).toBe(wasm.code);
+    expect(native.map.sources).toEqual(wasm.map.sources);
+    expect(originalAt(native.map, native.code, "context.items")).toEqual(
+      originalAt(wasm.map, wasm.code, "context.items"),
+    );
+    expect(originalAt(wasm.map, wasm.code, "item.title")).toMatchObject({
+      source: "src/list.flow",
+      line: 1,
+      column: 34,
+    });
+  });
+
+  it("returns the compiler map from the Vite transform hook", async () => {
+    const plugin = flowview({ compilerPath: "" });
+    if (typeof plugin.configResolved === "function") {
+      plugin.configResolved.call({} as never, { root: "/project" } as never);
+    }
+    const transform = plugin.transform;
+    const handler =
+      typeof transform === "function" ? transform : transform?.handler;
+    if (typeof handler !== "function")
+      throw new Error("missing transform hook");
+    const result = await handler.call(
+      {
+        warn() {},
+        error(error: unknown) {
+          throw error;
+        },
+      } as never,
+      "<p>{{ context.name }}</p>",
+      "/project/src/page.flow",
+    );
+    expect(result).toMatchObject({
+      map: { version: 3, sources: ["src/page.flow"] },
+    });
   });
 
   it("falls back to the npm WASM compiler when no binary is resolved", async () => {
@@ -204,4 +270,16 @@ function evaluateGeneratedModule(
   )(renderAttributeValue, renderRawValue, renderValue) as (
     context: Record<string, unknown>,
   ) => string;
+}
+
+function originalAt(
+  map: ConstructorParameters<typeof TraceMap>[0],
+  code: string,
+  expression: string,
+) {
+  const offset = code.indexOf(expression);
+  const before = code.slice(0, offset);
+  const line = before.split("\n").length;
+  const column = before.length - before.lastIndexOf("\n") - 1;
+  return originalPositionFor(new TraceMap(map), { line, column });
 }

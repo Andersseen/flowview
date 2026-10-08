@@ -22,6 +22,138 @@ fn expect_warnings(source: &str) -> Vec<flowview_compiler::Diagnostic> {
 }
 
 #[test]
+fn javascript_source_maps_resolve_template_expressions() {
+    let cases = [
+        ("<p>{{ context.user.name }}</p>", "context.user.name"),
+        ("<p>é{{ context.value }}</p>", "context.value"),
+        ("<p>{{{ context.html }}}</p>", "context.html"),
+        ("@if (context.visible) {x}", "context.visible"),
+        ("@if (context.a) {x} @else if (context.b) {y}", "context.b"),
+        (
+            "@for (item of context.items) { {{ item.title }} }",
+            "context.items",
+        ),
+        (
+            "@for (item of context.items) { @for (child of item.children) { {{ child.name }} } }",
+            "child.name",
+        ),
+        ("<p title=\"{{ context.title }}\">x</p>", "context.title"),
+        (
+            "<button [disabled]=\"context.disabled\">x</button>",
+            "context.disabled",
+        ),
+        ("<p [attr.title]=\"context.title\">x</p>", "context.title"),
+        (
+            "<p [class.active]=\"context.active\">x</p>",
+            "context.active",
+        ),
+        (
+            "@switch (context.kind) { @case ('a') { A } }",
+            "context.kind",
+        ),
+        ("@switch (context.kind) { @case ('a') { A } }", "'a'"),
+    ];
+
+    for (source, expression) in cases {
+        let compiled = compile(
+            source,
+            CompileOptions::new("@flowview/runtime")
+                .with_filename("src/page.flow")
+                .with_source_map(true),
+        )
+        .unwrap();
+        let map = sourcemap::SourceMap::from_slice(compiled.source_map.unwrap().as_bytes())
+            .expect("valid Source Map v3");
+        let generated = compiled
+            .code
+            .find(expression)
+            .expect("expression in generated code");
+        let (generated_line, generated_column) = line_column(&compiled.code, generated);
+        let token = map
+            .lookup_token(generated_line, generated_column)
+            .expect("expression mapping exists");
+        let original = source.find(expression).expect("expression in template");
+        let (original_line, original_column) = line_column(source, original);
+        assert_eq!(token.get_source(), Some("src/page.flow"), "{source}");
+        assert_eq!(token.get_src_line(), original_line, "{source}");
+        assert_eq!(token.get_src_col(), original_column, "{source}");
+    }
+}
+
+#[test]
+fn source_maps_are_opt_in_and_line_offsets_apply_once() {
+    let source = "\n{{ context.name }}";
+    let plain = compile(source, CompileOptions::new("@flowview/runtime")).unwrap();
+    assert!(plain.source_map.is_none());
+    let mapped = compile(
+        source,
+        CompileOptions::new("@flowview/runtime")
+            .with_filename("component.astro")
+            .with_source_map_source("component.astro", "<template>\n{{ context.name }}", 1, 0),
+    )
+    .unwrap();
+    assert_eq!(plain.code, mapped.code);
+    let map = sourcemap::SourceMap::from_slice(mapped.source_map.unwrap().as_bytes()).unwrap();
+    let generated = mapped.code.find("context.name").unwrap();
+    let (line, column) = line_column(&mapped.code, generated);
+    let token = map.lookup_token(line, column).unwrap();
+    assert_eq!(token.get_src_line(), 2);
+    assert_eq!(
+        map.get_source_contents(0),
+        Some("<template>\n{{ context.name }}")
+    );
+}
+
+#[test]
+fn source_map_includes_a_source_location_for_multiline_static_html() {
+    let source = "<p>first\n  second</p>";
+    let compiled = compile(
+        source,
+        CompileOptions::new("@flowview/runtime")
+            .with_filename("page.flow")
+            .with_source_map(true),
+    )
+    .unwrap();
+    let map = sourcemap::SourceMap::from_slice(compiled.source_map.unwrap().as_bytes()).unwrap();
+    let generated = compiled.code.find("<p>first").unwrap();
+    let (line, column) = line_column(&compiled.code, generated);
+    let token = map.lookup_token(line, column).unwrap();
+    assert_eq!(token.get_src_line(), 0);
+    assert_eq!(token.get_src_col(), 0);
+}
+
+#[test]
+fn source_map_applies_host_column_offset_to_first_template_line() {
+    let source = "{{ context.name }}";
+    let compiled = compile(
+        source,
+        CompileOptions::new("@flowview/runtime").with_source_map_source(
+            "component.astro",
+            "12345{{ context.name }}",
+            0,
+            5,
+        ),
+    )
+    .unwrap();
+    let map = sourcemap::SourceMap::from_slice(compiled.source_map.unwrap().as_bytes()).unwrap();
+    let generated = compiled.code.find("context.name").unwrap();
+    let (line, column) = line_column(&compiled.code, generated);
+    assert_eq!(map.lookup_token(line, column).unwrap().get_src_col(), 8);
+}
+
+fn line_column(source: &str, offset: usize) -> (u32, u32) {
+    let before = &source[..offset];
+    let line = before.bytes().filter(|byte| *byte == b'\n').count() as u32;
+    let column = before
+        .rsplit('\n')
+        .next()
+        .unwrap_or_default()
+        .encode_utf16()
+        .count() as u32;
+    (line, column)
+}
+
+#[test]
 fn plain_text() {
     let output = compile_source("Hello, world!");
     assert!(output.contains("output += 'Hello, world!';"));

@@ -63,6 +63,22 @@ enum Command {
         #[arg(long, default_value_t = 0)]
         line_offset: usize,
 
+        /// Emit JavaScript code and its Source Map v3 as a JSON object
+        #[arg(long)]
+        source_map: bool,
+
+        /// Normalized source identifier stored in the source map
+        #[arg(long)]
+        source_map_name: Option<String>,
+
+        /// Read `{ source, sourceMapSourceContent }` JSON from stdin
+        #[arg(long)]
+        source_map_input_json: bool,
+
+        /// Host column offset for a template beginning on the first mapped line
+        #[arg(long, default_value_t = 0)]
+        source_map_column_offset: usize,
+
         /// Format used for compiler diagnostics
         #[arg(long, value_enum, default_value_t = DiagnosticFormat::Human)]
         diagnostic_format: DiagnosticFormat,
@@ -81,6 +97,10 @@ fn main() {
             runtime,
             display_name,
             line_offset,
+            source_map,
+            source_map_name,
+            source_map_input_json,
+            source_map_column_offset,
             diagnostic_format,
         } => compile_file(
             &input,
@@ -90,6 +110,10 @@ fn main() {
             &runtime,
             display_name.as_deref(),
             line_offset,
+            source_map,
+            source_map_name.as_deref(),
+            source_map_input_json,
+            source_map_column_offset,
             diagnostic_format,
         ),
     }
@@ -104,6 +128,10 @@ fn compile_file(
     runtime: &str,
     display_name: Option<&str>,
     line_offset: usize,
+    source_map: bool,
+    source_map_name: Option<&str>,
+    source_map_input_json: bool,
+    source_map_column_offset: usize,
     diagnostic_format: DiagnosticFormat,
 ) {
     let path = Path::new(input);
@@ -118,16 +146,50 @@ fn compile_file(
         process::exit(1);
     }
 
-    let source = if input == "-" {
+    if source_map && target != Target::Js {
+        eprintln!("--source-map is only valid with the js target");
+        process::exit(1);
+    }
+
+    if source_map_input_json && (!source_map || input != "-") {
+        eprintln!("--source-map-input-json requires --source-map and stdin input (`-`)");
+        process::exit(1);
+    }
+
+    let (source, source_map_source_content) = if input == "-" {
         let mut source = String::new();
         if let Err(error) = io::stdin().read_to_string(&mut source) {
             eprintln!("Failed to read stdin: {}", error);
             process::exit(1);
         }
-        source
+        if source_map_input_json {
+            let input = match serde_json::from_str::<serde_json::Value>(&source) {
+                Ok(input) => input,
+                Err(error) => {
+                    eprintln!("Invalid source-map compiler input: {}", error);
+                    process::exit(1);
+                }
+            };
+            let Some(source) = input.get("source").and_then(serde_json::Value::as_str) else {
+                eprintln!("Source-map compiler input must contain a string `source`");
+                process::exit(1);
+            };
+            let Some(source_content) = input
+                .get("sourceMapSourceContent")
+                .and_then(serde_json::Value::as_str)
+            else {
+                eprintln!(
+                    "Source-map compiler input must contain a string `sourceMapSourceContent`"
+                );
+                process::exit(1);
+            };
+            (source.to_string(), Some(source_content.to_string()))
+        } else {
+            (source, None)
+        }
     } else {
         match fs::read_to_string(path) {
-            Ok(source) => source,
+            Ok(source) => (source, None),
             Err(error) => {
                 eprintln!("Failed to read {}: {}", input, error);
                 process::exit(1);
@@ -139,18 +201,25 @@ fn compile_file(
 
     let result = match target {
         Target::Js => {
-            let options = CompileOptions::new(runtime).with_filename(diagnostic_name);
-            compile(&source, options).map(|output| (output.code, output.warnings))
+            let mut options = CompileOptions::new(runtime).with_filename(diagnostic_name);
+            options.source_map = source_map;
+            options.source_map_line_offset = line_offset;
+            options.source_map_filename = source_map_name.map(str::to_string);
+            options.source_map_source_content = source_map_source_content;
+            options.source_map_column_offset = source_map_column_offset;
+            compile(&source, options)
+                .map(|output| (output.code, output.source_map, output.warnings))
         }
         Target::StaticHtml => {
             let context = load_context(data);
             let options = StaticRenderOptions::default().with_filename(diagnostic_name);
-            render_static(&source, &context, options).map(|output| (output.html, output.warnings))
+            render_static(&source, &context, options)
+                .map(|output| (output.html, None, output.warnings))
         }
     };
 
     match result {
-        Ok((code, warnings)) => {
+        Ok((code, map, warnings)) => {
             report(&warnings, diagnostic_name, line_offset, diagnostic_format);
 
             if let Some(out_path) = out {
@@ -158,8 +227,23 @@ fn compile_file(
                     eprintln!("Failed to write {}: {}", out_path, error);
                     process::exit(1);
                 }
+                if let Some(map) = map {
+                    if let Err(error) = fs::write(format!("{}.map", out_path), map) {
+                        eprintln!("Failed to write {}.map: {}", out_path, error);
+                        process::exit(1);
+                    }
+                }
             } else {
-                print!("{}", code);
+                if source_map {
+                    let map = map.map(|json| {
+                        serde_json::from_str::<serde_json::Value>(&json)
+                            .expect("compiler emitted valid source map JSON")
+                    });
+                    let payload = serde_json::json!({ "code": code, "sourceMap": map });
+                    println!("{}", payload);
+                } else {
+                    print!("{}", code);
+                }
             }
         }
         Err(diagnostics) => {

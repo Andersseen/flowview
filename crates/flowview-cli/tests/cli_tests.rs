@@ -15,6 +15,50 @@ fn cli_compiles_valid_template() {
 }
 
 #[test]
+fn cli_transports_javascript_and_source_map_as_json() {
+    let mut cmd = Command::cargo_bin("flowview").unwrap();
+    cmd.arg("compile")
+        .arg("-")
+        .arg("--source-map")
+        .arg("--source-map-name")
+        .arg("src/page.flow")
+        .write_stdin("<p>{{ context.name }}</p>");
+    let output = cmd.output().unwrap();
+    assert!(output.status.success());
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert!(result["code"].as_str().unwrap().contains("context.name"));
+    let map = &result["sourceMap"];
+    assert_eq!(map["version"], 3);
+    assert_eq!(map["sources"][0], "src/page.flow");
+    assert!(!map["mappings"].as_str().unwrap().is_empty());
+}
+
+#[test]
+fn cli_accepts_embedded_host_source_through_stdin_without_extra_arguments() {
+    let mut cmd = Command::cargo_bin("flowview").unwrap();
+    cmd.arg("compile")
+        .arg("-")
+        .arg("--source-map")
+        .arg("--source-map-input-json")
+        .arg("--source-map-name")
+        .arg("src/component.astro")
+        .write_stdin(
+            serde_json::json!({
+                "source": "{{ context.name }}",
+                "sourceMapSourceContent": "<template>{{ context.name }}</template>"
+            })
+            .to_string(),
+        );
+    let output = cmd.output().unwrap();
+    assert!(output.status.success());
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        result["sourceMap"]["sourcesContent"][0],
+        "<template>{{ context.name }}</template>"
+    );
+}
+
+#[test]
 fn cli_reports_human_errors_by_default() {
     let mut cmd = Command::cargo_bin("flowview").unwrap();
     cmd.arg("compile").arg("-").write_stdin("{{ context. }}");

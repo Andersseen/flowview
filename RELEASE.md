@@ -53,8 +53,13 @@ Order matters: `flowview-compiler` first, then `flowview-cli` (which depends on 
    cargo clippy --workspace --all-targets --locked -- -D warnings
    cargo test --workspace --locked
    cargo doc -p flowview-compiler --no-deps
-   cargo publish --dry-run --workspace --exclude flowview-wasm --locked
+   cargo package --workspace --exclude flowview-wasm --locked --no-verify
+   cargo publish --dry-run -p flowview-compiler --locked
    ```
+
+   Workspace tests compile the CLI against the local compiler. Cargo cannot
+   dry-run the CLI publish before the compiler version exists in the registry;
+   the release script publishes the compiler first and then the CLI.
 
 3. Publish. Preferred: run the **Rust release** workflow (Actions → Rust release →
    Run workflow) with `dry_run: false`. It needs the `CARGO_REGISTRY_TOKEN`

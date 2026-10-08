@@ -37,7 +37,10 @@ jobs:
           RUSTDOCFLAGS: -D warnings
 
       - name: Package crates
-        run: cargo package --workspace --exclude flowview-wasm --locked
+        # Workspace tests compile current local crates. Package verification
+        # would instead compile the CLI against the last published compiler,
+        # whose API can lag changes on main until the Rust release workflow.
+        run: cargo package --workspace --exclude flowview-wasm --locked --no-verify
 
   rust-portability:
     name: rust (${{ matrix.os }})

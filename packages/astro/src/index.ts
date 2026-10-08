@@ -5,6 +5,7 @@ import type {
   TagLikeNode,
 } from "@astrojs/compiler/types";
 import { createHash } from "node:crypto";
+import { relative, sep } from "node:path";
 import flowviewVite, {
   compileFlowview,
   resolveCompilerPath,
@@ -22,12 +23,16 @@ interface EmbeddedTemplate {
   start: number;
   end: number;
   lineOffset: number;
+  columnOffset: number;
 }
 
 interface VirtualTemplate {
   source: string;
   filename: string;
   lineOffset: number;
+  columnOffset: number;
+  hostSource: string;
+  sourceMapFilename: string;
 }
 
 class FlowviewAstroError extends Error {
@@ -71,12 +76,14 @@ function flowviewAstroPlugin(options: FlowviewAstroOptions): Plugin {
   const compilerPath = resolveCompilerPath(options.compilerPath);
   const virtualModules = new Map<string, VirtualTemplate>();
   const virtualIdsByFile = new Map<string, Set<string>>();
+  let projectRoot = process.cwd();
 
   return {
     name: "@flowview/astro:embedded",
     enforce: "pre",
 
     configResolved(config) {
+      projectRoot = config.root;
       const plugins = config.plugins as Plugin[];
       const ownIndex = plugins.findIndex(
         (plugin) => plugin.name === "@flowview/astro:embedded",
@@ -126,13 +133,16 @@ function flowviewAstroPlugin(options: FlowviewAstroOptions): Plugin {
         throw new Error(`Missing flowview virtual module: ${publicId}`);
       }
 
-      const { code } = await compileFlowview(template.source, {
+      const { code, map } = await compileFlowview(template.source, {
         filename: template.filename,
         lineOffset: template.lineOffset,
         runtimeImport,
         compilerPath,
+        sourceMapFilename: template.sourceMapFilename,
+        sourceMapSourceContent: template.hostSource,
+        sourceMapColumnOffset: template.columnOffset,
       });
-      return code;
+      return { code, map };
     },
 
     transform: {
@@ -149,6 +159,7 @@ function flowviewAstroPlugin(options: FlowviewAstroOptions): Plugin {
             cleanId,
             virtualModules,
             virtualIdsByFile,
+            projectRoot,
           );
         } catch (error) {
           if (error instanceof FlowviewAstroError) {
@@ -174,6 +185,7 @@ function transformAstroSource(
   filename: string,
   virtualModules: Map<string, VirtualTemplate>,
   virtualIdsByFile: Map<string, Set<string>>,
+  projectRoot: string,
 ): { code: string; map: ReturnType<MagicString["generateMap"]> } | null {
   const templates = findEmbeddedTemplates(code, filename);
   if (templates.length === 0) return null;
@@ -199,6 +211,9 @@ function transformAstroSource(
       source: template.source,
       filename,
       lineOffset: template.lineOffset,
+      columnOffset: template.columnOffset,
+      hostSource: code,
+      sourceMapFilename: relative(projectRoot, filename).split(sep).join("/"),
     });
     currentIds.add(virtualId);
     imports.push(`import { render as ${renderName} } from "${virtualId}";`);
@@ -306,6 +321,7 @@ function findEmbeddedTemplates(
       start: openStart,
       end: closeTagEnd + 1,
       lineOffset: countNewlines(code, 0, openEnd + 1),
+      columnOffset: openEnd + 1 - (code.lastIndexOf("\n", openEnd) + 1),
     });
 
     return false;

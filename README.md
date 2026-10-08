@@ -274,10 +274,28 @@ export default {
 };
 ```
 
-The plugin compiles `.flow` imports at build time using the prebuilt CLI. In
-the monorepo it discovers the local Rust binary automatically; installed usage
-resolves `flowview` from `PATH`. `compilerPath` remains available as an advanced
-override.
+The plugin compiles `.flow` imports at build time with the bundled Rust-to-WASM
+compiler and returns a Source Map v3 for generated render functions. Dynamic
+expressions and control-flow conditions resolve to their original `.flow`
+locations in errors and devtools. Astro's inline integration maps embedded
+expressions back to the host `.astro` file. The monorepo discovers a native
+`flowview` binary for development; `compilerPath` and
+`FLOWVIEW_COMPILER_PATH` remain available as explicit native overrides.
+
+Rust callers can request a map without paying the generation cost by default:
+
+```rust
+let output = flowview_compiler::compile(
+    "<h1>{{ context.title }}</h1>",
+    flowview_compiler::CompileOptions::new("@flowview/runtime")
+        .with_filename("src/page.flow")
+        .with_source_map(true),
+)?;
+let source_map_json = output.source_map.expect("requested source map");
+```
+
+The CLI's `--source-map` option writes a JSON object containing `code` and
+`sourceMap` to stdout; with `--out`, it writes a `.map` sidecar.
 
 TypeScript projects that import `.flow` files can add the bundled module
 declaration to their `tsconfig.json`:

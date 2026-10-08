@@ -25,8 +25,14 @@ jobs:
           cargo test --workspace --locked
           cargo doc -p flowview-compiler --no-deps --locked
 
-      - name: Publish dry run
-        run: cargo publish --dry-run --workspace --exclude flowview-wasm --locked
+      - name: Package workspace
+        # Workspace tests compile the CLI against the local compiler. Package
+        # verification instead resolves its registry dependency, which can lag
+        # the compiler API until the Rust release script publishes it.
+        run: cargo package --workspace --exclude flowview-wasm --locked --no-verify
+
+      - name: Verify compiler publish
+        run: cargo publish --dry-run -p flowview-compiler --locked
 
       - name: Publish flowview-compiler, then flowview-cli
         if: ${{ !inputs.dry_run }}

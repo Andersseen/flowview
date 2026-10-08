@@ -1,17 +1,28 @@
 use crate::{
     ast::{
-        Attribute, ElementNode, ForBlockNode, IfBlockNode, InterpolationMode, Node, RootNode,
+        Attribute, ElementNode, ForBlockNode, IfBlockNode, InterpolationMode, Node, RootNode, Span,
         SwitchBlockNode, TextNode,
     },
     CompileOptions,
 };
 
-pub fn generate(root: &RootNode, options: &CompileOptions) -> String {
+pub fn generate(
+    root: &RootNode,
+    options: &CompileOptions,
+    source: &str,
+) -> (String, Option<String>) {
     let mut ctx = CodegenContext {
         temp_counter: 0,
         runtime_import: options.runtime_import.clone(),
         indent_cache: vec![String::new()],
         uses_raw_values: false,
+        mappings: Vec::new(),
+        source: if options.source_map {
+            source.to_string()
+        } else {
+            String::new()
+        },
+        mapping_enabled: options.source_map,
     };
 
     let mut body = String::new();
@@ -27,7 +38,7 @@ pub fn generate(root: &RootNode, options: &CompileOptions) -> String {
         "renderAttributeValue, renderValue"
     };
 
-    format!(
+    let code = format!(
         "import {{ {} }} from '{}';
 
 export function render(context) {{
@@ -42,7 +53,34 @@ export function render(context) {{
         } else {
             format!("\n{}", body)
         }
-    )
+    );
+    let source_map = options.source_map.then(|| {
+        let body_offset = if body.is_empty() {
+            0
+        } else {
+            code.find(&body).unwrap_or(0)
+        };
+        build_source_map(
+            &code,
+            source,
+            options
+                .source_map_source_content
+                .as_deref()
+                .unwrap_or(source),
+            options
+                .source_map_filename
+                .as_deref()
+                .or(options.filename.as_deref())
+                .unwrap_or("<inline>"),
+            (
+                options.source_map_line_offset,
+                options.source_map_column_offset,
+            ),
+            body_offset,
+            &ctx.mappings,
+        )
+    });
+    (code, source_map)
 }
 
 struct CodegenContext {
@@ -50,6 +88,110 @@ struct CodegenContext {
     runtime_import: String,
     indent_cache: Vec<String>,
     uses_raw_values: bool,
+    mappings: Vec<Mapping>,
+    source: String,
+    mapping_enabled: bool,
+}
+
+#[derive(Clone, Copy)]
+struct Mapping {
+    generated_offset: usize,
+    original_offset: usize,
+}
+
+fn mark_expression(
+    output: &str,
+    ctx: &mut CodegenContext,
+    prefix: &str,
+    expression: &str,
+    span: Span,
+) {
+    if !ctx.mapping_enabled {
+        return;
+    }
+    let Some(relative) = span_expression_offset(&ctx.source, span, expression) else {
+        return;
+    };
+    ctx.mappings.push(Mapping {
+        generated_offset: output.len() + prefix.len(),
+        original_offset: span.start + relative,
+    });
+}
+
+fn mark_span(output: &str, ctx: &mut CodegenContext, prefix: &str, span: Span) {
+    if !ctx.mapping_enabled {
+        return;
+    }
+    ctx.mappings.push(Mapping {
+        generated_offset: output.len() + prefix.len(),
+        original_offset: span.start,
+    });
+}
+
+fn span_expression_offset(source: &str, span: Span, expression: &str) -> Option<usize> {
+    source.get(span.start..span.end)?.find(expression)
+}
+
+fn build_source_map(
+    code: &str,
+    source: &str,
+    source_content: &str,
+    filename: &str,
+    source_offset: (usize, usize),
+    body_offset: usize,
+    mappings: &[Mapping],
+) -> String {
+    let (line_offset, column_offset) = source_offset;
+    let mut builder = sourcemap::SourceMapBuilder::new(None);
+    let source_id = builder.add_source(filename);
+    builder.set_source_contents(source_id, Some(source_content));
+    let generated_lines = line_starts(code);
+    let original_lines = line_starts(source);
+    for mapping in mappings {
+        let (generated_line, generated_column) = line_column(
+            code,
+            &generated_lines,
+            body_offset + mapping.generated_offset,
+        );
+        let (original_line, original_column) =
+            line_column(source, &original_lines, mapping.original_offset);
+        builder.add_raw(
+            generated_line as u32,
+            generated_column as u32,
+            (original_line + line_offset) as u32,
+            (original_column + if original_line == 0 { column_offset } else { 0 }) as u32,
+            Some(source_id),
+            None,
+            false,
+        );
+    }
+    let mut json = Vec::new();
+    builder
+        .into_sourcemap()
+        .to_writer(&mut json)
+        .expect("serialize source map");
+    String::from_utf8(json).expect("source map JSON is UTF-8")
+}
+
+fn line_starts(source: &str) -> Vec<usize> {
+    let mut starts = vec![0];
+    for (index, byte) in source.bytes().enumerate() {
+        if byte == b'\n' {
+            starts.push(index + 1);
+        }
+    }
+    starts
+}
+
+fn line_column(source: &str, starts: &[usize], offset: usize) -> (usize, usize) {
+    let line = starts
+        .partition_point(|start| *start <= offset)
+        .saturating_sub(1);
+    let column = source
+        .get(starts[line]..offset)
+        .map(|prefix| prefix.encode_utf16().count())
+        .unwrap_or_default();
+    (line, column)
 }
 
 impl CodegenContext {
@@ -80,12 +222,9 @@ fn generate_node(node: &Node, output: &mut String, indent: usize, ctx: &mut Code
                     "renderRawValue"
                 }
             };
-            let line = format!(
-                "{}output += {}({});\n",
-                ctx.spaces(indent),
-                helper,
-                interp.expression
-            );
+            let prefix = format!("{}output += {}(", ctx.spaces(indent), helper);
+            mark_expression(output, ctx, &prefix, &interp.expression, interp.span);
+            let line = format!("{}{});\n", prefix, interp.expression);
             output.push_str(&line);
         }
         Node::Element(element) => generate_element(element, output, indent, ctx),
@@ -105,6 +244,8 @@ fn generate_text(text: &TextNode, output: &mut String, indent: usize, ctx: &mut 
         ctx.spaces(indent),
         escape_js_string(&text.value)
     );
+    let prefix = format!("{}output += '", ctx.spaces(indent));
+    mark_span(output, ctx, &prefix, text.span);
     output.push_str(&line);
 }
 
@@ -116,6 +257,8 @@ fn generate_element(
 ) {
     if element_is_static(element) {
         let html = render_element_to_string(element);
+        let prefix = format!("{}output += '", ctx.spaces(indent));
+        mark_span(output, ctx, &prefix, element.span);
         let line = format!(
             "{}output += '{}';\n",
             ctx.spaces(indent),
@@ -170,29 +313,24 @@ fn generate_element(
                     ctx.spaces(indent),
                     dynamic.name
                 ));
-                output.push_str(&format!(
-                    "{}output += renderValue({});\n",
-                    ctx.spaces(indent),
-                    dynamic.expression
-                ));
+                let prefix = format!("{}output += renderValue(", ctx.spaces(indent));
+                mark_expression(output, ctx, &prefix, &dynamic.expression, dynamic.span);
+                output.push_str(&format!("{}{});\n", prefix, dynamic.expression));
                 output.push_str(&format!("{}output += '\"';\n", ctx.spaces(indent)));
             }
             Attribute::BooleanBinding(binding) => {
+                let prefix = format!("{}if (", ctx.spaces(indent));
+                mark_expression(output, ctx, &prefix, &binding.expression, binding.span);
                 output.push_str(&format!(
-                    "{}if ({}) output += ' {}';\n",
-                    ctx.spaces(indent),
-                    binding.expression,
-                    binding.name
+                    "{}{}) output += ' {}';\n",
+                    prefix, binding.expression, binding.name
                 ));
             }
             Attribute::AttributeBinding(binding) => {
                 let value_name = ctx.next_temp("flowview_attr");
-                output.push_str(&format!(
-                    "{}const {} = {};\n",
-                    ctx.spaces(indent),
-                    value_name,
-                    binding.expression
-                ));
+                let prefix = format!("{}const {} = ", ctx.spaces(indent), value_name);
+                mark_expression(output, ctx, &prefix, &binding.expression, binding.span);
+                output.push_str(&format!("{}{};\n", prefix, binding.expression,));
                 output.push_str(&format!(
                     "{}if ({} !== null && {} !== undefined) {{\n",
                     ctx.spaces(indent),
@@ -274,12 +412,13 @@ fn generate_class_attribute(
             }
             Attribute::Dynamic(dynamic) if dynamic.name == "class" => {
                 let dynamic_name = ctx.next_temp("flowview_class_value");
-                output.push_str(&format!(
-                    "{}const {} = renderAttributeValue({});\n",
+                let prefix = format!(
+                    "{}const {} = renderAttributeValue(",
                     ctx.spaces(indent),
-                    dynamic_name,
-                    dynamic.expression
-                ));
+                    dynamic_name
+                );
+                mark_expression(output, ctx, &prefix, &dynamic.expression, dynamic.span);
+                output.push_str(&format!("{}{});\n", prefix, dynamic.expression,));
                 output.push_str(&format!(
                     "{}for (const __flowview_class of {}.split(/\\s+/)) {{\n",
                     ctx.spaces(indent),
@@ -295,11 +434,9 @@ fn generate_class_attribute(
                 output.push_str(&format!("{}}}\n", ctx.spaces(indent)));
             }
             Attribute::ClassBinding(binding) => {
-                output.push_str(&format!(
-                    "{}if ({}) {{\n",
-                    ctx.spaces(indent),
-                    binding.expression
-                ));
+                let prefix = format!("{}if (", ctx.spaces(indent));
+                mark_expression(output, ctx, &prefix, &binding.expression, binding.span);
+                output.push_str(&format!("{}{}) {{\n", prefix, binding.expression));
                 output.push_str(&format!(
                     "{}if (!{}.has('{}')) {{ {}.add('{}'); {}.push('{}'); }}\n",
                     ctx.spaces(indent + 2),
@@ -392,12 +529,9 @@ fn generate_if_block(
 ) {
     for (index, branch) in if_block.branches.iter().enumerate() {
         let keyword = if index == 0 { "if" } else { "else if" };
-        let line = format!(
-            "{}{} ({}) {{\n",
-            ctx.spaces(indent),
-            keyword,
-            branch.condition
-        );
+        let prefix = format!("{}{} (", ctx.spaces(indent), keyword);
+        mark_expression(output, ctx, &prefix, &branch.condition, branch.span);
+        let line = format!("{}{}) {{\n", prefix, branch.condition,);
         output.push_str(&line);
 
         for child in &branch.children {
@@ -430,12 +564,9 @@ fn generate_for_block(
 ) {
     let items_name = ctx.next_temp("flowview_items");
 
-    output.push_str(&format!(
-        "{}const {} = Array.from(({}) ?? []);\n",
-        ctx.spaces(indent),
-        items_name,
-        for_block.iterable
-    ));
+    let prefix = format!("{}const {} = Array.from((", ctx.spaces(indent), items_name);
+    mark_expression(output, ctx, &prefix, &for_block.iterable, for_block.span);
+    output.push_str(&format!("{}{}) ?? []);\n", prefix, for_block.iterable));
 
     output.push_str(&format!(
         "{}if ({}.length === 0) {{\n",
@@ -474,12 +605,15 @@ fn generate_switch_block(
 ) {
     let switch_name = ctx.next_temp("flowview_switch");
 
-    output.push_str(&format!(
-        "{}const {} = {};\n",
-        ctx.spaces(indent),
-        switch_name,
-        switch_block.expression
-    ));
+    let prefix = format!("{}const {} = ", ctx.spaces(indent), switch_name);
+    mark_expression(
+        output,
+        ctx,
+        &prefix,
+        &switch_block.expression,
+        switch_block.span,
+    );
+    output.push_str(&format!("{}{};\n", prefix, switch_block.expression));
 
     output.push_str(&format!(
         "{}switch ({}) {{\n",
@@ -488,11 +622,9 @@ fn generate_switch_block(
     ));
 
     for case in &switch_block.cases {
-        output.push_str(&format!(
-            "{}case {}:\n",
-            ctx.spaces(indent + 2),
-            case.expression
-        ));
+        let prefix = format!("{}case ", ctx.spaces(indent + 2));
+        mark_expression(output, ctx, &prefix, &case.expression, case.span);
+        output.push_str(&format!("{}{}:\n", prefix, case.expression));
 
         for child in &case.children {
             generate_node(child, output, indent + 4, ctx);

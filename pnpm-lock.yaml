@@ -17,6 +17,9 @@ importers:
       '@flowview/prettier':
         specifier: workspace:*
         version: link:packages/prettier
+      '@jridgewell/trace-mapping':
+        specifier: ^0.3.31
+        version: 0.3.31
       prettier:
         specifier: ^3.5.0
         version: 3.8.4

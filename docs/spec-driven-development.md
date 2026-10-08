@@ -158,13 +158,15 @@ Key data flows:
 
 - **`.flow` file → JS module:** Vite plugin → `@flowview/compiler` (WASM,
   in-process) or an explicit/monorepo native `flowview` binary → Rust
-  compiler → JS source (no source map yet) → Vite module graph.
+  compiler → JavaScript plus an opt-in Source Map v3 → Vite module graph.
 - **`.flow` + JSON context → final HTML:** `flowview compile --target
 static-html` / `render_static()` → same parser and AST → native Rust
   renderer. Not exposed through the WASM wrapper yet.
 - **Inline Astro template → JS:** `@flowview/astro` pre-transform →
   Astro parser finds `<template flowview is:raw>` → region compiled through
-  the same Rust pipeline → content-addressed virtual module + source map.
+  the same Rust pipeline with the host `.astro` filename and offsets →
+  content-addressed virtual module + compiler source map (alongside the
+  pre-transform map).
 - **`(click)="save($event)"` in Astro:** `@flowview/astro-events` →
   `@flowview/events` compiler → template rewritten with `data-flow-on-*` →
   the file's `<script data-flowview>` block is registered through
@@ -238,16 +240,18 @@ these, the task is wrong — stop and report.
 
 ## 6. Current state (honest assessment)
 
-Verified 2026-10-07:
+Verified 2026-10-08:
 
-- `cargo test --workspace`: **151 tests passing**. `cargo fmt` and
-  `cargo clippy -D warnings` clean in CI.
-- All JS package suites passing (`runtime` 27, `compiler` 32, `vite` 9,
-  `astro` 14, `dom` 13, `reactive` 32, `events` 17, `astro-events` 14,
-  `vite-events` 27, `prettier` 10, VS Code grammar checks, demo unit tests).
-  `pnpm run typecheck` clean.
-- CI runs formatting, clippy, Rust tests, JS builds/tests/typecheck, and the
-  demo check. The demo deploys to Cloudflare.
+- `cargo test --workspace --locked`: **199 tests passing**. `cargo fmt` and
+  strict workspace Clippy pass locally.
+- The full `pnpm run test` suite and `pnpm run typecheck` pass, including the
+  compiler/Vite/Astro source-map assertions, a runtime-failure mapping check,
+  VS Code grammar checks, and Astro demo unit tests. Both demo Playwright suites
+  also pass locally.
+- CI runs formatting, clippy, Rust tests, JS builds/tests/typecheck, and demo
+  checks. Rust portability tests also run on macOS and Windows. External Rust
+  consumer/static embedding coverage is present; packed npm installation into
+  a fresh project remains unverified. The demo deploys to Cloudflare.
 
 What is already genuinely solid (recent hardening phases A–D):
 
@@ -281,23 +285,20 @@ What is already genuinely solid (recent hardening phases A–D):
 
 What keeps it from serious production use today (§8 addresses these):
 
-1. **No source maps from the Rust compiler.** `.flow` → JS has no mapping,
-   so stack traces and devtools point at generated code. (The Astro
-   pre-transform maps the _slicing_, not the generated render function.)
-2. **No adversarial testing.** All tests are example-based. There is no
+1. **No adversarial testing.** All tests are example-based. There is no
    fuzzing, no property-based testing, no large real-world HTML corpus run
    through the parser. For a parser whose whole value is trustworthiness,
    this is the biggest confidence gap.
-3. **No conformance mapping.** `flowview-spec.md` makes normative claims,
+2. **No conformance mapping.** `flowview-spec.md` makes normative claims,
    but nothing links each claim to the test(s) that enforce it, so spec
    drift is detected only by humans.
-4. **Editor diagnostics don't exist** (grammar + snippets only). The CLI
+3. **Editor diagnostics don't exist** (grammar + snippets only). The CLI
    already emits JSON diagnostics, so the plumbing exists but nothing
    consumes it.
-5. **Distribution is not verified outside the monorepo.** The WASM compiler
-   is bundled and tested in-repo, but there is no fixture project outside
-   the workspace and CI runs on Linux only.
-6. **Static rendering is Rust/CLI only.** The WASM wrapper does not expose
+4. **Packaged npm distribution is not verified outside the monorepo.** The
+   WASM compiler is rebuilt and tested in-repo, but there is no fresh fixture
+   that installs packed packages and builds a `.flow` import.
+5. **Static rendering is Rust/CLI only.** The WASM wrapper does not expose
    it, and expressions outside the documented subset are rejected by design.
 
 ---
@@ -317,19 +318,24 @@ enforced by a named test.
 
 ## 8. Workstreams (prioritized; hardening only, no features)
 
-Completed since the first version of this guide: WS1 (distribution, apart from
-the verification items below), WS3 (Events capture analysis, superseded by the
-`<script data-flowview>` model), and most of WS6 (release engineering).
+Completed since the first version of this guide: WS2 (Rust JavaScript source
+maps), WS3 (Events capture analysis, superseded by the `<script data-flowview>`
+model), and most of WS6 (release engineering). Rust portability and external
+Rust-consumer checks are also covered; the npm packed-package verification in
+WS1 remains open.
 
 Work top to bottom. Each workstream is independently shippable. Within one,
 do the steps in order and run the exit checks before moving on.
 
-### WS1 — Distribution: verify the installable compiler (mostly done)
+### WS1 — Distribution: verify the installable compiler (incomplete)
 
 **Done:** the compiler ships as WASM in `@flowview/compiler`; `@flowview/vite`
 and `@flowview/astro` use it in-process with no Rust toolchain, and
 `compilerPath` / `FLOWVIEW_COMPILER_PATH` remain explicit native overrides
 (the monorepo `target/` binary is auto-discovered for development).
+
+**Already covered:** external Rust consumption and static embedding tests, plus
+Rust portability jobs on macOS and Windows. These do not verify npm packages.
 
 **Remaining:** an integration test in a temp dir _outside_ the workspace that
 installs the packed packages and builds a `.flow` import in dev and production,
@@ -340,26 +346,20 @@ Record the WASM-vs-native decision in `docs/decisions/` if it is revisited.
 installed, builds a `.flow` import in dev and production. All existing
 suites still pass.
 
-### WS2 — Source maps from the Rust compiler
+### WS2 — Source maps from the Rust compiler (done)
 
-**Why:** Spec §Compiler Contract lists source maps as planned; serious
-debugging needs them; `@flowview/vite` currently returns `map: null`
-implicitly.
+**Implemented:** JavaScript codegen records mappings while emitting template
+expressions and control-flow expressions. The Rust compiler returns an optional
+Source Map v3; WASM, `@flowview/compiler`, the native CLI JSON transport, Vite,
+and Astro preserve it. Astro mappings target the host `.astro` source and apply
+line and first-line column offsets once. Static rendering stays independent.
 
-**What:** Emit a source map (mappings from generated JS positions back to
-template positions) alongside generated code. Respect the existing
-`line offset` input so Astro-embedded templates map to the `.astro` file.
-
-**Steps:** extend `codegen/javascript.rs` to track output positions per emitted node →
-add a `--source-map` CLI flag emitting JSON (code + map) → plumb through
-`@flowview/vite` and `@flowview/astro` `transform` results → tests: a
-runtime error thrown inside an `@for` body resolves to the correct template
-line in Node with source-map support enabled.
-
-**Exit checks:** `cargo test --workspace`, `pnpm run test:vite`,
-`pnpm run test:astro`; a fixture proves correct line resolution; spec's
-"Source map options when implemented" sentence replaced with the actual
-contract.
+**Verified:** decoded map tests cover escaped/raw interpolation, conditions,
+nested loops, dynamic and bound attributes, switch expressions and cases,
+native/WASM parity, Vite transforms, and an embedded Astro expression inside
+`@for`. A render-time failure test executes generated JavaScript, then resolves
+the failing nested-loop expression back to its `.flow` line and column. The
+Compiler Contract now documents the actual opt-in and integration behavior.
 
 ### WS3 — Events capture analysis (done; superseded)
 

@@ -143,11 +143,18 @@ The compiler accepts:
 - Runtime import path.
 - Line offset for embedded templates.
 - An output target: JavaScript (`compile`) or static HTML (`render_static`).
-- Source map options when implemented.
+- Optional Source Map v3 output for JavaScript compilation. Rust callers opt in
+  with `CompileOptions::with_source_map(true)`; the WASM compiler and Vite/Astro
+  integrations request maps for JavaScript transforms. Static HTML compilation
+  does not generate JavaScript maps.
 
-The JavaScript target returns generated JavaScript code or structured
-diagnostics. The static HTML target additionally takes a JSON context and
-returns an HTML string or structured diagnostics. Neither target performs
+The JavaScript target returns generated JavaScript code, an optional source map,
+and structured warnings, or structured diagnostics. Maps identify the
+configured source filename and map expression and control-flow positions to
+template locations. Embedded Astro compilation applies the host line and
+first-line column offsets once and includes the complete host file as
+`sourcesContent`. Static HTML compilation returns HTML or structured
+diagnostics and does not include source-map data. Neither target performs
 filesystem I/O; callers decide where output goes.
 
 Generated modules export:

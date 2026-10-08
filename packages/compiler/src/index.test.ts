@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { originalPositionFor, TraceMap } from "@jridgewell/trace-mapping";
 import { describe, expect, it } from "vitest";
 import {
   renderAttributeValue,
@@ -33,11 +34,65 @@ describe("compileFlowview", () => {
     const result = compileFlowview("<p>Hello {{ context.name }}</p>", {
       filename: "hello.flow",
       runtimeImport: "@flowview/runtime",
+      sourceMap: true,
     });
 
     expect(result.code).toContain("@flowview/runtime");
     expect(result.code).toContain("Hello ");
     expect(result.warnings).toEqual([]);
+    const map = result.map;
+    if (!map) throw new Error("source map was not returned");
+    expect(map.version).toBe(3);
+    expect(map.sources).toEqual(["hello.flow"]);
+    const position = result.code.indexOf("context.name");
+    const before = result.code.slice(0, position);
+    const line = before.split("\n").length;
+    const column = before.length - before.lastIndexOf("\n") - 1;
+    expect(
+      originalPositionFor(new TraceMap(map), { line, column }),
+    ).toMatchObject({ source: "hello.flow", line: 1, column: 12 });
+  });
+
+  it("maps a render-time failure back to its template expression", () => {
+    const source = [
+      "<main>",
+      "  @for (item of context.items) {",
+      "    <p>{{ item.profile.name }}</p>",
+      "  }",
+      "</main>",
+    ].join("\n");
+    const result = compileFlowview(source, {
+      filename: "throws.flow",
+      runtimeImport: "@flowview/runtime",
+      sourceMap: true,
+    });
+    const executable = result.code
+      .replace(/^import \{[^}]+\} from '[^']+';\n\n/, "")
+      .replace("export function render", "function render");
+    const render = Function(
+      "renderAttributeValue",
+      "renderRawValue",
+      "renderValue",
+      `"use strict";\n${executable}\nreturn render;`,
+    )(renderAttributeValue, renderRawValue, renderValue) as (context: {
+      items: Array<{ profile?: { name: string } }>;
+    }) => string;
+
+    expect(() => render({ items: [{}] })).toThrow();
+
+    const map = result.map;
+    if (!map) throw new Error("source map was not returned");
+    const generatedOffset = result.code.indexOf("item.profile.name");
+    expect(generatedOffset).toBeGreaterThanOrEqual(0);
+    const before = result.code.slice(0, generatedOffset);
+    const generatedLine = before.split("\n").length;
+    const generatedColumn = before.length - before.lastIndexOf("\n") - 1;
+    expect(
+      originalPositionFor(new TraceMap(map), {
+        line: generatedLine,
+        column: generatedColumn,
+      }),
+    ).toMatchObject({ source: "throws.flow", line: 3, column: 10 });
   });
 
   it("throws structured diagnostics", () => {

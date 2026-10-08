@@ -72,6 +72,11 @@ pub use static_html::{
 pub struct CompileOptions {
     pub filename: Option<String>,
     pub runtime_import: String,
+    pub source_map: bool,
+    pub source_map_filename: Option<String>,
+    pub source_map_source_content: Option<String>,
+    pub source_map_line_offset: usize,
+    pub source_map_column_offset: usize,
 }
 
 impl CompileOptions {
@@ -79,11 +84,39 @@ impl CompileOptions {
         Self {
             filename: None,
             runtime_import: runtime_import.into(),
+            source_map: false,
+            source_map_filename: None,
+            source_map_source_content: None,
+            source_map_line_offset: 0,
+            source_map_column_offset: 0,
         }
     }
 
     pub fn with_filename(mut self, filename: impl Into<String>) -> Self {
         self.filename = Some(filename.into());
+        self
+    }
+
+    /// Include a Source Map v3 JSON document in the compilation result.
+    pub fn with_source_map(mut self, enabled: bool) -> Self {
+        self.source_map = enabled;
+        self
+    }
+
+    /// Use a normalized source identifier and optional complete host source for
+    /// embedded templates. Offsets are applied to original positions once.
+    pub fn with_source_map_source(
+        mut self,
+        filename: impl Into<String>,
+        source_content: impl Into<String>,
+        line_offset: usize,
+        column_offset: usize,
+    ) -> Self {
+        self.source_map = true;
+        self.source_map_filename = Some(filename.into());
+        self.source_map_source_content = Some(source_content.into());
+        self.source_map_line_offset = line_offset;
+        self.source_map_column_offset = column_offset;
         self
     }
 }
@@ -92,6 +125,7 @@ impl CompileOptions {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompileOutput {
     pub code: String,
+    pub source_map: Option<String>,
     pub warnings: Vec<Diagnostic>,
 }
 
@@ -99,8 +133,12 @@ pub struct CompileOutput {
 pub fn compile(source: &str, options: CompileOptions) -> Result<CompileOutput, Vec<Diagnostic>> {
     let root = parser::parse(source)?;
     let warnings = validation::validate(&root, source);
-    let code = codegen::generate(&root, &options);
-    Ok(CompileOutput { code, warnings })
+    let (code, source_map) = codegen::generate(&root, &options, source);
+    Ok(CompileOutput {
+        code,
+        source_map,
+        warnings,
+    })
 }
 
 /// Parse a flowview template into its AST without generating code.
