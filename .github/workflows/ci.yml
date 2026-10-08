@@ -11,6 +11,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  packed-consumer:
+    name: Packed npm consumer
+    uses: ./.github/workflows/packed-consumer.yml
+
   rust:
     runs-on: ubuntu-latest
     steps:

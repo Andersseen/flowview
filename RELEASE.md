@@ -23,6 +23,23 @@ pnpm run publish:npm
 
 This builds runtime, events, compiler, Vite, Astro, Astro Events, and Prettier packages, then runs `changeset publish`.
 
+Before publishing changes to the Vite package graph, reproduce the packed
+consumer check locally after installing the repository dependencies and
+building its WASM compiler:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm run build:runtime
+pnpm run build:compiler
+pnpm run build:vite
+node scripts/pack-vite-consumer-artifacts.mjs <empty-temporary-directory>
+node scripts/verify-packed-vite-consumer.mjs <same-temporary-directory>
+```
+
+The verification installs the generated tarballs into a fresh directory under
+the operating system's temporary directory. It uses a separate pnpm store and
+does not use the workspace lockfile for the consumer.
+
 Verify with:
 
 ```bash

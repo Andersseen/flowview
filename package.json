@@ -47,6 +47,8 @@
     "test:vscode": "pnpm --filter vscode-flowview test",
     "test:demo": "pnpm run build:runtime && pnpm run build:reactive && pnpm run build:dom && pnpm run build:events && pnpm run build:vite-events && pnpm run build:astro && pnpm run build:astro-events && pnpm --filter @flowview/astro-demo run check && pnpm --filter @flowview/astro-demo run test:unit",
     "test:e2e:demo": "pnpm run build:rust && pnpm run build:runtime && pnpm run build:reactive && pnpm run build:dom && pnpm run build:events && pnpm run build:compiler && pnpm run build:vite && pnpm run build:vite-events && pnpm run build:astro && pnpm run build:astro-events && pnpm --filter @flowview/astro-demo run test:e2e",
+    "pack:consumer-artifacts": "node scripts/pack-vite-consumer-artifacts.mjs",
+    "verify:packed-consumer": "node scripts/verify-packed-vite-consumer.mjs",
     "typecheck": "pnpm --filter @flowview/runtime typecheck && pnpm --filter @flowview/reactive typecheck && pnpm --filter @flowview/dom typecheck && pnpm --filter @flowview/events typecheck && pnpm --filter @flowview/compiler typecheck && pnpm --filter @flowview/vite typecheck && pnpm --filter @flowview/astro typecheck && pnpm --filter @flowview/astro-events typecheck && pnpm --filter @flowview/vite-events typecheck && pnpm --filter @flowview/prettier typecheck",
     "format": "pnpm run format:rust && pnpm run format:ts",
     "format:check": "cargo fmt --all -- --check && prettier --check --no-error-on-unmatched-pattern \"**/*.{astro,css,js,json,md,mjs,ts,yml,yaml}\"",

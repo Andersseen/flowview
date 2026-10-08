@@ -237,9 +237,17 @@ flowview/
 
 ## Requirements
 
-- Node.js 22 or newer
+- Node.js 22.12 or newer
 - pnpm 10.30.1 or compatible
 - Rust stable
+
+Published `@flowview/*` packages do not declare a Node.js `engines` field, so
+package managers do not enforce a minimum. The repository requires Node.js
+22.12 or newer: the current lockfile-resolved Astro 7 release requires that
+version, while Vite 8 itself accepts `^20.19.0 || >=22.12.0`. CI uses Node 22.
+`@flowview/vite` declares support for Vite `^6`, `^7`, and `^8`; CI currently
+tests Vite 8. `@flowview/astro` declares Astro `>=5 <8`; CI currently tests the
+lockfile-resolved Astro 7 release, rather than every version in that range.
 
 ## Install
 
