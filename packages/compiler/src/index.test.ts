@@ -138,6 +138,16 @@ interface ParityFixtures {
   }>;
 }
 
+const layoutParity = JSON.parse(
+  readFileSync(
+    new URL(
+      "../../../crates/flowview-compiler/tests/fixtures/layout-parity.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+) as Pick<ParityFixtures, "cases">;
+
 // Shared with the Rust static renderer tests: both targets must agree.
 const parity = JSON.parse(
   readFileSync(
@@ -203,6 +213,11 @@ describe("raw interpolation {{{ }}}", () => {
   });
 
   it.each(parity.cases)("parity fixture: $name", (fixture) => {
+    const render = compiledRender<Record<string, unknown>>(fixture.template);
+    expect(render(fixture.context)).toBe(fixture.expected);
+  });
+
+  it.each(layoutParity.cases)("layout parity fixture: $name", (fixture) => {
     const render = compiledRender<Record<string, unknown>>(fixture.template);
     expect(render(fixture.context)).toBe(fixture.expected);
   });

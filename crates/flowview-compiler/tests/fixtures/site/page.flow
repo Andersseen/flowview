@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ context.page.title }} · {{ context.site.title }}</title>
+    <link rel="canonical" href="{{ context.page.route }}" />
+  </head>
+  <body>
+    <header>
+      <a href="/" class="brand">{{ context.site.title }}</a>
+    </header>
+
+    <nav aria-label="Primary">
+      @for (item of context.navigation) {
+        <a href="{{ item.route }}" [class.current]="item.current" [attr.aria-current]="item.aria_current">{{ item.title }}</a>
+      } @empty {
+        <span>No pages</span>
+      }
+    </nav>
+
+    <main>
+      <h1>{{ context.page.title }}</h1>
+      {{{ context.page.body_html }}}
+
+      @if (context.headings.length) {
+        <aside class="toc">
+          <ul>
+            @for (heading of context.headings) {
+              <li><a href="{{ heading.href }}">{{ heading.text }}</a></li>
+            }
+          </ul>
+        </aside>
+      }
+
+      @if (context.backlinks.length) {
+        <section class="backlinks">
+          <h2>Linked from</h2>
+          <ul>
+            @for (link of context.backlinks) {
+              <li><a href="{{ link.route }}">{{ link.title }}</a></li>
+            }
+          </ul>
+        </section>
+      }
+    </main>
+  </body>
+</html>

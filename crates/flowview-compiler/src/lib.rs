@@ -1,3 +1,55 @@
+//! Flowview template compiler.
+//!
+//! One parser and one AST feed two backends:
+//!
+//! - [`compile`] emits a JavaScript render function (used by the npm packages).
+//! - [`compile_static`] / [`render_static`] render `template + JSON → HTML`
+//!   natively, with no JavaScript runtime. The output is final HTML and needs
+//!   no Flowview client code.
+//!
+//! # Embedding in a Rust tool
+//!
+//! Compile a template once, then render it for as many page models as you
+//! like. A [`CompiledStaticTemplate`] is immutable and `Send + Sync`, so it
+//! can be shared across threads.
+//!
+//! ```
+//! use flowview_compiler::{compile_static, StaticCompileOptions};
+//! use serde::Serialize;
+//!
+//! const TEMPLATE: &str = r#"<h1>{{ context.title }}</h1>{{{ context.body_html }}}"#;
+//!
+//! #[derive(Serialize)]
+//! struct PageModel {
+//!     title: String,
+//!     body_html: String, // trusted, rendered by the caller
+//! }
+//!
+//! let template = compile_static(
+//!     TEMPLATE,
+//!     StaticCompileOptions::default().with_filename("page.flow"),
+//! )
+//! .expect("template compiles");
+//!
+//! let model = PageModel {
+//!     title: "A & B".into(),
+//!     body_html: "<p>Rendered elsewhere.</p>".into(),
+//! };
+//! let value = serde_json::to_value(model).unwrap();
+//! let html = template.render(&value).expect("context renders");
+//!
+//! assert_eq!(html, "<h1>A &amp; B</h1><p>Rendered elsewhere.</p>");
+//! ```
+//!
+//! `{{ value }}` is always HTML-escaped. `{{{ value }}}` emits a string
+//! verbatim and must only receive content you trust.
+//!
+//! # Diagnostics
+//!
+//! Failures are returned as `Vec<`[`Diagnostic`]`>` carrying a code
+//! (`FVxxxx`), severity, line, column and byte span; they never panic. Use
+//! [`DiagnosticFormatter`] for human or JSON output with your own display name.
+
 pub mod ast;
 pub mod codegen;
 pub mod cursor;

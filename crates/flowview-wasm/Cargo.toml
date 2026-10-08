@@ -4,6 +4,7 @@ version = "0.1.1"
 edition = "2021"
 license = "MIT"
 description = "WASM wrapper for the flowview template compiler."
+publish = false
 repository = "https://github.com/andersseen/flowview"
 keywords = ["template", "compiler", "html", "wasm"]
 categories = ["template-engine", "wasm"]

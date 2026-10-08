@@ -483,6 +483,23 @@ mod raw_interpolation {
     }
 
     #[test]
+    fn matches_the_shared_layout_parity_fixtures() {
+        let fixtures: Value =
+            serde_json::from_str(include_str!("../../tests/fixtures/layout-parity.json")).unwrap();
+        for case in fixtures["cases"].as_array().unwrap() {
+            let name = case["name"].as_str().unwrap();
+            let html = render_static(
+                case["template"].as_str().unwrap(),
+                &case["context"],
+                StaticRenderOptions::default(),
+            )
+            .unwrap_or_else(|errors| panic!("{name}: {errors:?}"))
+            .html;
+            assert_eq!(html, case["expected"].as_str().unwrap(), "{name}");
+        }
+    }
+
+    #[test]
     fn matches_the_shared_javascript_target_fixtures() {
         let fixtures: Value = serde_json::from_str(include_str!(
             "../../tests/fixtures/raw-interpolation-parity.json"
