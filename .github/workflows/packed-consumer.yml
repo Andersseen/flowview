@@ -41,7 +41,7 @@ jobs:
           pnpm run build:vite
 
       - name: Pack publish artifacts
-        run: pnpm run pack:consumer-artifacts -- "${{ runner.temp }}/flowview-packed-artifacts"
+        run: pnpm run pack:consumer-artifacts "${{ runner.temp }}/flowview-packed-artifacts"
 
       - name: Upload packed npm artifacts
         uses: actions/upload-artifact@v4

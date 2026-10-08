@@ -636,6 +636,7 @@ function collectExportTargets(value) {
 const verificationModule = `import { compileFlowview } from "@flowview/compiler";
 import { eachMapping, TraceMap } from "@jridgewell/trace-mapping";
 import { build, createServer } from "vite";
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { syncBuiltinESMExports } from "node:module";
@@ -643,7 +644,7 @@ import childProcess from "node:child_process";
 
 delete process.env.FLOWVIEW_COMPILER_PATH;
 installNativeProcessGuard();
-const projectRoot = fileURLToPath(new URL(".", import.meta.url));
+const projectRoot = realpathSync.native(process.cwd());
 const packageNames = ["@flowview/compiler", "@flowview/runtime", "@flowview/vite"];
 const resolved = Object.fromEntries(packageNames.map((name) => [name, import.meta.resolve(name)]));
 const args = new Set(process.argv.slice(2));
