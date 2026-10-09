@@ -1,0 +1,6 @@
+<!-- {{ value }} @if (x) {literal} --><script>const s = `{{ nested }}`; /a+\\/b/.test(s);</script><style>.x{content:'@for'}</style>
+\{{ escaped }} \{{{ raw }} \@if (email@example.test) {x}
+<div title='single' data-x="double" data-y=`backtick`>emoji 🌱 nested {{{a: {b: 1}}}}</div>
+@if (context.ok) {@for (item of context.items) {@switch (item.kind) {@case ('x') {x}}}}
+<a><b><c><d><e>deep elements with a deliberately longer text run 0123456789 abcdefghijklmnopqrstuvwxyz</e></d></c></b></a>
+unclosed {{ value <section title="broken

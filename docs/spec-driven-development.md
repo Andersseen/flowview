@@ -240,19 +240,16 @@ these, the task is wrong — stop and report.
 
 ## 6. Current state (honest assessment)
 
-Verified 2026-10-08:
+Verified against the current repository state:
 
-- `cargo test --workspace --locked`: **199 tests passing**. `cargo fmt` and
-  strict workspace Clippy pass locally.
-- The full `pnpm run test` suite and `pnpm run typecheck` pass, including the
-  compiler/Vite/Astro source-map assertions, a runtime-failure mapping check,
-  VS Code grammar checks, and Astro demo unit tests. Both demo Playwright suites
-  also pass locally.
+- Rust formatting, strict workspace Clippy, Rust tests and docs are gated in CI.
+- TypeScript tests, typecheck, build, and demo checks are gated in CI.
 - CI runs formatting, clippy, Rust tests, JS builds/tests/typecheck, and demo
   checks. Rust portability tests also run on macOS and Windows. External Rust
   consumer/static embedding coverage is present. The packed npm consumer now
   passes locally on macOS; CI packs once and runs that same artifact set on
-  Linux, macOS, and Windows. The first cross-platform CI result is pending.
+  Linux, macOS, and Windows. The post-fix matrix passed for commit
+  `35f8c3f211b1f70099462860d80dec944a27d501`.
   The demo deploys to Cloudflare.
 
 What is already genuinely solid (recent hardening phases A–D):
@@ -287,17 +284,13 @@ What is already genuinely solid (recent hardening phases A–D):
 
 What keeps it from serious production use today (§8 addresses these):
 
-1. **No adversarial testing.** All tests are example-based. There is no
-   fuzzing, no property-based testing, no large real-world HTML corpus run
-   through the parser. For a parser whose whole value is trustworthiness,
-   this is the biggest confidence gap.
-2. **No conformance mapping.** `flowview-spec.md` makes normative claims,
+1. **No conformance mapping.** `flowview-spec.md` makes normative claims,
    but nothing links each claim to the test(s) that enforce it, so spec
    drift is detected only by humans.
-3. **Editor diagnostics don't exist** (grammar + snippets only). The CLI
+2. **Editor diagnostics don't exist** (grammar + snippets only). The CLI
    already emits JSON diagnostics, so the plumbing exists but nothing
    consumes it.
-4. **Static rendering is Rust/CLI only.** The WASM wrapper does not expose
+3. **Static rendering is Rust/CLI only.** The WASM wrapper does not expose
    it, and expressions outside the documented subset are rejected by design.
 
 ---
@@ -317,18 +310,17 @@ enforced by a named test.
 
 ## 8. Workstreams (prioritized; hardening only, no features)
 
-Completed since the first version of this guide: WS2 (Rust JavaScript source
-maps), WS3 (Events capture analysis, superseded by the `<script data-flowview>`
-model), and most of WS6 (release engineering). Rust portability and external
-Rust-consumer checks are also covered. WS1's packed-package workflow is
-implemented and passes locally on macOS; its Linux/macOS/Windows matrix awaits
-its first CI run before WS1 is marked complete. WS4 is the next hardening
-workstream after that gate passes.
+Completed since the first version of this guide: WS1 (packed distribution
+verification), WS2 (Rust JavaScript source maps), WS3 (Events capture analysis,
+superseded by the `<script data-flowview>` model), and most of WS6 (release
+engineering). Rust portability and external Rust-consumer checks are also
+covered. WS4 implementation is in review on its focused branch; it is not
+marked complete before the PR checks and landing.
 
 Work top to bottom. Each workstream is independently shippable. Within one,
 do the steps in order and run the exit checks before moving on.
 
-### WS1 — Distribution: verify the installable compiler (CI matrix pending)
+### WS1 — Distribution: verify the installable compiler (done)
 
 **Done:** the compiler ships as WASM in `@flowview/compiler`; `@flowview/vite`
 and `@flowview/astro` use it in-process with no Rust toolchain, and
@@ -347,11 +339,11 @@ removed from and checked against the consumer `PATH`.
 **Already covered:** external Rust consumption and static embedding tests, plus
 Rust portability jobs on macOS and Windows. These do not verify npm packages.
 
-**CI evidence pending:** the reusable PR and release gate runs the same packed
-artifacts on Linux, macOS, and Windows without setting up Rust in consumer
-jobs. The local macOS run passes; the matrix must pass before this workstream
-is marked complete. Record the WASM-vs-native decision in `docs/decisions/` if
-it is revisited.
+**CI verified:** the reusable PR/release gate ran the same packed artifacts on
+Linux, macOS, and Windows without setting up Rust in consumer jobs. The
+post-fix `main` run for `35f8c3f211b1f70099462860d80dec944a27d501` passed the
+build/pack job and all three external consumer jobs. Record the WASM-vs-native
+decision in `docs/decisions/` if it is revisited.
 
 **Exit checks:** the fresh external Vite project passes in dev and production
 on Linux, macOS, and Windows from the same tarballs, with no Rust toolchain in
@@ -384,29 +376,29 @@ reintroduce frontmatter handlers.
 **Why:** §6.2 — the project's one promise is trustworthiness; example-based
 tests can't establish it.
 
-**What (Rust compiler):**
+**Implemented:** `fuzz/` has one cargo-fuzz `compiler` target converting
+arbitrary bytes lossily to UTF-8 and exercising parse, JavaScript compile,
+static compile, and static render. Its two small authored seeds cover the
+syntax and hostile parser cases. `proptest` integration tests use bounded
+recursive valid templates (256 cases per property) and verify compilation,
+Oxc module parsing, deterministic code and source maps, AST span containment,
+exact static text preservation, raw/escaped routing, and nested control-flow
+structure. The authored, license-clean HTML fixture exercises document
+structure and marker-looking text in comments, scripts, styles, and attributes.
+`fast-check` tests run 1,000 scanner cases, 1,000 handler-expression cases, and
+350 Events compilation cases.
 
-- `cargo-fuzz` target: arbitrary bytes → `compile()` must never panic,
-  hang, or overflow — only succeed or return diagnostics.
-- Property tests (`proptest`): generated valid templates round-trip —
-  compiled output, when executed, preserves static text exactly; every
-  interpolation goes through `renderValue`; block nesting in output
-  matches input nesting.
-- Corpus test: a directory of real-world HTML pages (checked in, license-
-  clean) compiles without spurious control-flow detection, and static
-  content is byte-identical after render.
-- Generated-JS validity property: every successful compile parses as valid
-  ES2020 (validate with the existing JS-expression parser infrastructure or
-  in the JS test layer).
+**CI and reproduction:** ordinary Rust and Vitest suites run these properties.
+`.github/workflows/fuzz.yml` runs the compiler target for 75 seconds on PRs and
+main pushes and 600 seconds on its daily schedule. A failing job uploads
+`fuzz/artifacts/` for 14 days. See `CONTRIBUTING.md` to run the target or replay
+a saved crash. Fuzz discoveries must become deterministic regression tests.
+The local 20-second smoke completed 52,243 executions without a crash; it
+started from the two checked-in seeds and generated no crash artifact.
 
-**What (events compiler):** the same never-throw-unexpectedly guarantee for
-`findEventBindings`/`compileEvents` over arbitrary HTML-ish input (vitest +
-`fast-check`).
-
-**Exit checks:** fuzz target runs locally via documented command and in a
-scheduled CI job (time-boxed, e.g. 5 min per push, longer nightly);
-property suites run in normal CI; any crashes found are fixed with
-regression tests before this workstream closes.
+**Status:** implementation and the listed local checks are complete on the
+focused branch. PR/main GitHub checks remain pending; the scheduled workflow
+has not run yet. WS4 remains open until the PR checks pass and the change lands.
 
 ### WS5 — Spec conformance mapping
 

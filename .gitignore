@@ -35,3 +35,10 @@ coverage/
 
 # Generated demo artifacts
 examples/astro-demo/src/generated/
+
+# cargo-fuzz output
+/fuzz/artifacts/
+/fuzz/target/
+/fuzz/corpus/**/crash-*
+/fuzz/corpus/**/leak-*
+/fuzz/corpus/**/timeout-*

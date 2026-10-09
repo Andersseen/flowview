@@ -295,6 +295,8 @@ Required behavior:
 - Parse self-closing tags.
 - Preserve static text.
 - Preserve static attributes.
+- Emit HTML void elements using self-closing syntax (for example, `<br/>`),
+  including when the source omits the slash.
 - Support quoted attributes.
 - Reject interpolation in unquoted attributes.
 - Avoid detecting flowview control syntax inside:

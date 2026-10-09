@@ -361,8 +361,12 @@ impl<'a> Renderer<'_, 'a> {
     }
 
     fn element(&mut self, element: &ElementNode) -> RenderResult {
+        let source = self.template.source.as_str();
         self.out.push('<');
-        self.out.push_str(&element.tag);
+        let tag_name = source_tag_name(element.span, source)
+            .unwrap_or(&element.tag)
+            .to_owned();
+        self.out.push_str(&tag_name);
 
         let has_class_bindings = element
             .attributes
@@ -380,7 +384,8 @@ impl<'a> Renderer<'_, 'a> {
                         continue;
                     }
                     self.out.push(' ');
-                    self.out.push_str(&plain.name);
+                    let name = source_attribute_name(plain.span, source).unwrap_or(&plain.name);
+                    self.out.push_str(name);
                     if let Some(value) = &plain.value {
                         self.out.push('=');
                         self.out.push(plain.quote);
@@ -428,7 +433,7 @@ impl<'a> Renderer<'_, 'a> {
         self.out.push('>');
         self.nodes(&element.children)?;
         self.out.push_str("</");
-        self.out.push_str(&element.tag);
+        self.out.push_str(&tag_name);
         self.out.push('>');
         Ok(())
     }
@@ -481,6 +486,18 @@ impl<'a> Renderer<'_, 'a> {
         }
         Ok(())
     }
+}
+
+fn source_tag_name(span: Span, source: &str) -> Option<&str> {
+    let rest = source.get(span.start.checked_add(1)?..)?;
+    let end = rest.find(|ch: char| ch.is_ascii_whitespace() || ch == '/' || ch == '>')?;
+    Some(&rest[..end])
+}
+
+fn source_attribute_name(span: Span, source: &str) -> Option<&str> {
+    let rest = source.get(span.start..span.end)?;
+    let end = rest.find(|ch: char| ch.is_ascii_whitespace() || ch == '=')?;
+    Some(&rest[..end])
 }
 
 fn invalid_iterable(source: &str, span: Span, value: &Value) -> Diagnostic {

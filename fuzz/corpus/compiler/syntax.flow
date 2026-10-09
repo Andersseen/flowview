@@ -1,0 +1,5 @@
+<main>Hello {{ context.name }} / {{{ context.html }}}</main>
+@if (context.ok) {yes} @else if (context.other) {other} @else {no}
+@for (item of context.items) {<p [class.active]="item.active">{{ item.name }}</p>} @empty {empty}
+@switch (context.kind) { @case ('a') {A} @default {B} }
+<input [disabled]="context.disabled" [attr.title]="context.title" checked>

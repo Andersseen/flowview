@@ -6,6 +6,12 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+- Added compiler hardening coverage with a cargo-fuzz target and seed corpus,
+  bounded property tests, a license-clean static HTML corpus, and fast-check
+  properties for Events input handling. PR/main fuzz smoke runs and scheduled
+  fuzzing preserve crash artifacts for reproduction.
+- Fixed static HTML rendering to preserve source casing for HTML/SVG tag and
+  attribute names, including case-sensitive SVG attributes such as `viewBox`.
 - Added opt-in Source Map v3 generation to Rust JavaScript codegen and carried
   maps through the WASM compiler, `@flowview/compiler`, native CLI, Vite, and
   Astro. Dynamic expressions and control-flow conditions map to template
