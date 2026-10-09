@@ -18,6 +18,30 @@ Install dependencies:
 pnpm install
 ```
 
+## Adversarial compiler checks
+
+The bounded `proptest` and HTML corpus suites run in the normal Rust test
+command. Events properties run with `pnpm run test:events` and are part of the
+normal Vitest suite. Fuzz inputs live in `fuzz/corpus/compiler/`; generated
+crashes under `fuzz/artifacts/` are ignored by Git.
+
+Install cargo-fuzz and run the compiler target with nightly Rust:
+
+```sh
+cargo install cargo-fuzz --locked
+cargo +nightly fuzz run compiler -- -max_len=8192 -timeout=10 -rss_limit_mb=4096
+```
+
+Replay a saved crash by passing its artifact path as a corpus input:
+
+```sh
+cargo +nightly fuzz run compiler fuzz/artifacts/compiler/crash-<hash>
+```
+
+Any bug found by fuzzing must be minimized when practical, captured as a
+deterministic regression test, and fixed before the fuzz finding is considered
+resolved.
+
 Run the main checks:
 
 ```sh
