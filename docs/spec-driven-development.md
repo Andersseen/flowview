@@ -6,7 +6,7 @@
 > never become, what state it is in, what to work on, and how to prove your
 > change is correct.
 >
-> **Last verified:** 2026-10-07 (full gate passing: 151 Rust tests, all JS suites, typecheck, lint, and format check; raw interpolation `{{{ }}}` added on top of commit `3cc7f85`).
+> **Last verified:** 2026-10-11 on top of `5b68cd3` plus the UTF-8 diagnostic span fix (Rust format/clippy/tests/docs, JS typecheck/test/lint/format, and a fresh 75-second compiler fuzz run). Scheduled fuzzing is an ongoing gate; see WS4.
 
 ---
 
@@ -314,8 +314,9 @@ Completed since the first version of this guide: WS1 (packed distribution
 verification), WS2 (Rust JavaScript source maps), WS3 (Events capture analysis,
 superseded by the `<script data-flowview>` model), and most of WS6 (release
 engineering). Rust portability and external Rust-consumer checks are also
-covered. WS4 implementation is in review on its focused branch; it is not
-marked complete before the PR checks and landing.
+covered. WS4 landed in PR #31; fuzzing then found a UTF-8 diagnostic span bug
+that is fixed in a follow-up (see WS4 status). Nightly fuzzing continues as a
+regression detector.
 
 Work top to bottom. Each workstream is independently shippable. Within one,
 do the steps in order and run the exit checks before moving on.
@@ -396,9 +397,34 @@ a saved crash. Fuzz discoveries must become deterministic regression tests.
 The local 20-second smoke completed 52,243 executions without a crash; it
 started from the two checked-in seeds and generated no crash artifact.
 
-**Status:** implementation and the listed local checks are complete on the
-focused branch. PR/main GitHub checks remain pending; the scheduled workflow
-has not run yet. WS4 remains open until the PR checks pass and the change lands.
+**Fuzz findings:** the first push fuzz run (2026-10-09) and the scheduled runs
+of 2026-10-10 and 2026-10-11 all failed with the same panic in
+`diagnostics.rs`: `line_and_column` sliced the source at a byte offset inside a
+multibyte character (U+FFFD from `String::from_utf8_lossy`). Replaying and
+minimizing the three crash artifacts gave one root cause. Quoted attribute
+values drop backslash escapes, so offsets Oxc reports inside the unescaped
+expression do not map 1:1 onto source bytes; `Diagnostic::from_source` only
+clamped them to `source.len()`. The smallest reproduction is
+`<p [x]="\\é">`.
+
+**Fix:** `Diagnostic::from_source` now normalizes spans centrally
+(`normalize_span`): offsets are clamped, a start inside a character snaps back
+to its first byte, an end inside a character snaps forward past its last byte,
+zero-width spans stay zero-width, and ASCII offsets never move.
+`line_and_column` is panic-free by construction and keeps character-based
+columns. `parser::parse` re-normalizes every diagnostic that left the parser,
+which covers `to_position`/`to_cursor` spans built without the source, and
+"Unexpected token" now covers the whole offending character instead of one
+byte. Regressions: unit tests over every offset pair of a 1/2/3/4-byte and
+U+FFFD string, `tests/unicode_diagnostics.rs` through
+`parse_ast`/`compile`/`compile_static`/`render_static`, a Unicode-heavy
+`proptest` over malformed FlowView markers (verified to fail before the fix),
+and a readable corpus seed.
+
+**Status:** WS4 is implemented. The fix replays all three recorded crashes and
+their minimizations cleanly and a fresh 75-second fuzz run found nothing. The
+600-second scheduled workflow stays enabled as an ongoing gate; its result on
+the fixed commit is not recorded here until it has run.
 
 ### WS5 — Spec conformance mapping
 

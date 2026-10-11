@@ -6,6 +6,9 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+- Fixed malformed templates containing multibyte Unicode being able to panic
+  diagnostic construction; compiler errors now preserve valid UTF-8 source
+  spans and keep character-based line and column numbers.
 - Added compiler hardening coverage with a cargo-fuzz target and seed corpus,
   bounded property tests, a license-clean static HTML corpus, and fast-check
   properties for Events input handling. PR/main fuzz smoke runs and scheduled

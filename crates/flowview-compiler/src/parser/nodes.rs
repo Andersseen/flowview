@@ -16,7 +16,19 @@ use super::{
 };
 
 /// Parse a full template source into a root node.
+///
+/// Every returned diagnostic is normalized to valid UTF-8 character boundaries
+/// of `source`, whichever parser path produced it.
 pub fn parse(source: &str) -> Result<RootNode, Vec<Diagnostic>> {
+    parse_root(source).map_err(|diagnostics| {
+        diagnostics
+            .into_iter()
+            .map(|diagnostic| diagnostic.normalized_for(source))
+            .collect()
+    })
+}
+
+fn parse_root(source: &str) -> Result<RootNode, Vec<Diagnostic>> {
     let mut cursor = Cursor::new(source);
     let children = parse_nodes(&mut cursor, &[])?;
 
@@ -24,9 +36,10 @@ pub fn parse(source: &str) -> Result<RootNode, Vec<Diagnostic>> {
         Ok(RootNode { children })
     } else {
         let start_mark = cursor.snapshot();
+        cursor.advance(); // cover the whole offending character, not one byte
         Err(vec![Diagnostic::at_cursor("Unexpected token", &start_mark)
             .with_diagnostic_code(DiagnosticCode::UnexpectedToken)
-            .to_position(cursor.position() + 1)])
+            .to_cursor(&cursor)])
     }
 }
 
