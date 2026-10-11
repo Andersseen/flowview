@@ -168,6 +168,11 @@ pub fn find_last_top_level_delimiter(source: &str, delimiter: char) -> Option<us
 }
 
 /// Validate that `expression` is a syntactically valid JavaScript expression.
+///
+/// `expression_start` is where the expression begins in `source`. Oxc offsets
+/// are relative to `expression`, which can be shorter than its source text
+/// (quoted attribute values drop backslash escapes), so the translated span is
+/// untrusted and normalized to character boundaries by `Diagnostic::from_source`.
 pub(crate) fn validate_expression(
     source: &str,
     expression: &str,
@@ -185,13 +190,13 @@ pub(crate) fn validate_expression(
                     let label = error.labels.as_slice().first();
                     let relative_start = label.map_or(0, |label| label.offset() as usize);
                     let relative_end = label
-                        .map(|label| relative_start + label.len() as usize)
+                        .map(|label| relative_start.saturating_add(label.len() as usize))
                         .unwrap_or_else(|| expression.len());
                     Diagnostic::from_source(
                         format!("Invalid JavaScript expression: {}", error.message),
                         source,
-                        expression_start + relative_start,
-                        expression_start + relative_end,
+                        expression_start.saturating_add(relative_start),
+                        expression_start.saturating_add(relative_end),
                     )
                     .with_diagnostic_code(DiagnosticCode::InvalidJavaScriptExpression)
                 })

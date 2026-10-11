@@ -231,3 +231,87 @@ fn depth(node: &Node) -> usize {
     };
     own + children.into_iter().map(depth).max().unwrap_or(0)
 }
+
+fn unicode_malformed_source() -> impl Strategy<Value = String> {
+    let piece = prop_oneof![
+        Just("é"),
+        Just("€"),
+        Just("🙂"),
+        Just("\u{FFFD}"),
+        Just("\u{00A0}"),
+        Just("\u{3000}"),
+        Just("ß"),
+        Just("日本"),
+        Just("{{"),
+        Just("{{{"),
+        Just("}}"),
+        Just("}}}"),
+        Just("@if"),
+        Just("@for"),
+        Just("@switch"),
+        Just("@case"),
+        Just("@else"),
+        Just("("),
+        Just(")"),
+        Just("{"),
+        Just("}"),
+        Just("<"),
+        Just(">"),
+        Just("<p "),
+        Just("</p>"),
+        Just("[x]="),
+        Just("["),
+        Just("]"),
+        Just("\""),
+        Just("'"),
+        Just("`"),
+        Just("\\"),
+        Just("\\\\"),
+        Just(" "),
+        Just("\n"),
+        Just("a"),
+        Just("item of items"),
+    ];
+    // Wrap the payload in constructs that reach the JavaScript expression
+    // validator, where offsets are translated from unescaped text.
+    (0usize..6, proptest::collection::vec(piece, 0..24)).prop_map(|(wrapper, pieces)| {
+        let body = pieces.concat();
+        match wrapper {
+            0 => body,
+            1 => format!("<p [x]=\"{body}\">"),
+            2 => format!("<p [x]='{body}'></p>"),
+            3 => format!("{{{{ {body} }}}}"),
+            4 => format!("{{{{{{ {body} }}}}}}"),
+            _ => format!("@if ({body}) {{ x }}"),
+        }
+    })
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(512))]
+
+    #[test]
+    fn diagnostics_on_unicode_malformed_source_have_valid_utf8_spans(source in unicode_malformed_source()) {
+        let mut diagnostics = Vec::new();
+        if let Err(errors) = parse_ast(&source) {
+            diagnostics.extend(errors);
+        }
+        match compile(&source, options()) {
+            Err(errors) => diagnostics.extend(errors),
+            Ok(output) => diagnostics.extend(output.warnings),
+        }
+        match compile_static(&source, StaticRenderOptions::default()) {
+            Err(errors) => diagnostics.extend(errors),
+            Ok(template) => diagnostics.extend(template.warnings().to_vec()),
+        }
+        if let Err(errors) = render_static(&source, &json!({}), StaticRenderOptions::default()) {
+            diagnostics.extend(errors);
+        }
+        for d in diagnostics {
+            prop_assert!(d.start <= d.end, "{d:?} in {source:?}");
+            prop_assert!(d.end <= source.len(), "{d:?} in {source:?}");
+            prop_assert!(source.is_char_boundary(d.start), "{d:?} in {source:?}");
+            prop_assert!(source.is_char_boundary(d.end), "{d:?} in {source:?}");
+        }
+    }
+}

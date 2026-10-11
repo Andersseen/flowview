@@ -121,12 +121,28 @@ impl Diagnostic {
     }
 
     /// Build a diagnostic from byte offsets in the original source.
+    ///
+    /// Start and end are snapped to UTF-8 character boundaries and clamped, so the result always
+    /// satisfies `start <= end <= source.len()` on UTF-8 character boundaries.
     pub fn from_source(message: impl Into<String>, source: &str, start: usize, end: usize) -> Self {
-        let safe_start = start.min(source.len());
-        let safe_end = end.max(safe_start).min(source.len());
-        let (line, column) = line_and_column(source, safe_start);
+        let (start, end) = normalize_span(source, start, end);
+        let (line, column) = line_and_column(source, start);
 
-        Self::new(message, line, column, safe_start, safe_end)
+        Self::new(message, line, column, start, end)
+    }
+
+    /// Re-normalize the span against `source`, recomputing the line and column
+    /// only when the start had to move. Applied where diagnostics leave the
+    /// parser, because `to_position` and `to_cursor`
+    /// do not know the source.
+    pub(crate) fn normalized_for(mut self, source: &str) -> Self {
+        let (start, end) = normalize_span(source, self.start, self.end);
+        if start != self.start {
+            (self.line, self.column) = line_and_column(source, start);
+        }
+        self.start = start;
+        self.end = end;
+        self
     }
 
     /// Build a diagnostic from a cursor snapshot taken at the start of the offending token.
@@ -152,7 +168,44 @@ impl Diagnostic {
     }
 }
 
+/// Normalize a byte span so it is a valid slice range of `source`.
+///
+/// Both offsets are clamped to `source.len()` and `end` is raised to `start`
+/// if it is smaller. An offset inside a multibyte character is then snapped
+/// outward so the span still covers the whole offending character: `start`
+/// moves back to the character's first byte and `end` forward past its last
+/// byte. A zero-width span stays zero-width and snaps back to the character
+/// start. ASCII offsets are never changed.
+pub(crate) fn normalize_span(source: &str, start: usize, end: usize) -> (usize, usize) {
+    let floored = floor_char_boundary(source, start);
+    let end = if end <= start {
+        floored
+    } else {
+        ceil_char_boundary(source, end)
+    };
+    (floored, end)
+}
+
+fn floor_char_boundary(source: &str, offset: usize) -> usize {
+    let mut offset = offset.min(source.len());
+    while !source.is_char_boundary(offset) {
+        offset -= 1;
+    }
+    offset
+}
+
+fn ceil_char_boundary(source: &str, offset: usize) -> usize {
+    let mut offset = offset.min(source.len());
+    while !source.is_char_boundary(offset) {
+        offset += 1;
+    }
+    offset
+}
+
+/// Line and character-based column (both 1-based) of a byte offset. The offset
+/// is snapped back to a character boundary instead of panicking.
 fn line_and_column(source: &str, offset: usize) -> (usize, usize) {
+    let offset = floor_char_boundary(source, offset);
     let mut line = 1;
     let mut column = 1;
 
@@ -246,5 +299,105 @@ pub(crate) fn severity_name(severity: DiagnosticSeverity) -> &'static str {
     match severity {
         DiagnosticSeverity::Error => "error",
         DiagnosticSeverity::Warning => "warning",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 1-byte, 2-byte (é), 3-byte (€), 4-byte (🙂) and U+FFFD (3-byte) characters.
+    const MIXED: &str = "aé€🙂�z";
+
+    fn assert_valid(source: &str, diagnostic: &Diagnostic) {
+        assert!(diagnostic.start <= diagnostic.end, "{diagnostic:?}");
+        assert!(diagnostic.end <= source.len(), "{diagnostic:?}");
+        assert!(source.is_char_boundary(diagnostic.start), "{diagnostic:?}");
+        assert!(source.is_char_boundary(diagnostic.end), "{diagnostic:?}");
+    }
+
+    #[test]
+    fn every_offset_pair_normalizes_to_char_boundaries() {
+        let max = MIXED.len() + 3;
+        for start in 0..=max {
+            for end in 0..=max {
+                let diagnostic = Diagnostic::from_source("x", MIXED, start, end);
+                assert_valid(MIXED, &diagnostic);
+            }
+        }
+    }
+
+    #[test]
+    fn extreme_offsets_do_not_panic() {
+        let diagnostic = Diagnostic::from_source("x", MIXED, usize::MAX, usize::MAX);
+        assert_valid(MIXED, &diagnostic);
+        assert_eq!(
+            (diagnostic.start, diagnostic.end),
+            (MIXED.len(), MIXED.len())
+        );
+        let diagnostic = Diagnostic::from_source("x", "", 3, 9);
+        assert_eq!((diagnostic.start, diagnostic.end), (0, 0));
+    }
+
+    #[test]
+    fn ascii_offsets_are_unchanged() {
+        let source = "ab\ncd\nef";
+        for start in 0..=source.len() {
+            for end in start..=source.len() {
+                assert_eq!(normalize_span(source, start, end), (start, end));
+            }
+        }
+        let diagnostic = Diagnostic::from_source("x", source, 4, 7);
+        assert_eq!((diagnostic.line, diagnostic.column), (2, 2));
+    }
+
+    #[test]
+    fn start_snaps_back_and_end_snaps_forward() {
+        // a=0, é=1..3, €=3..6, 🙂=6..10, �=10..13, z=13
+        assert_eq!(
+            normalize_span(MIXED, 2, 2),
+            (1, 1),
+            "zero-width stays zero-width"
+        );
+        assert_eq!(normalize_span(MIXED, 2, 4), (1, 6), "different characters");
+        assert_eq!(
+            normalize_span(MIXED, 7, 9),
+            (6, 10),
+            "same 4-byte character"
+        );
+        assert_eq!(normalize_span(MIXED, 11, 12), (10, 13), "U+FFFD");
+        assert_eq!(normalize_span(MIXED, 4, 1), (3, 3), "start after end");
+        assert_eq!(normalize_span(MIXED, 0, 99), (0, MIXED.len()));
+    }
+
+    #[test]
+    fn line_and_column_stay_character_based() {
+        let diagnostic = Diagnostic::from_source("x", MIXED, 13, 14);
+        assert_eq!((diagnostic.line, diagnostic.column), (1, 6));
+        // Inside 🙂: reported at the start of that character.
+        let diagnostic = Diagnostic::from_source("x", MIXED, 8, 8);
+        assert_eq!(
+            (diagnostic.start, diagnostic.line, diagnostic.column),
+            (6, 1, 4)
+        );
+        let multiline = "é\n€🙂x";
+        let diagnostic =
+            Diagnostic::from_source("x", multiline, multiline.len() - 1, multiline.len());
+        assert_eq!((diagnostic.line, diagnostic.column), (2, 3));
+        assert_eq!(line_and_column(multiline, 4), (2, 1), "defensive snap-back");
+    }
+
+    #[test]
+    fn normalized_for_fixes_end_only_spans_and_keeps_position() {
+        let ascii = Diagnostic::new("x", 1, 2, 1, 2).normalized_for("abc");
+        assert_eq!(
+            (ascii.line, ascii.column, ascii.start, ascii.end),
+            (1, 2, 1, 2)
+        );
+        let moved = Diagnostic::new("x", 9, 9, 8, 8).normalized_for(MIXED);
+        assert_eq!(
+            (moved.line, moved.column, moved.start, moved.end),
+            (1, 4, 6, 6)
+        );
     }
 }
