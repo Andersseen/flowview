@@ -41,6 +41,7 @@ fn all_paths(source: &str) {
 
 /// Minimized from the fuzz crashes: `<p[]="\\\xa4\x00"` read through
 /// `String::from_utf8_lossy`.
+// @spec SPEC-HTML-073
 #[test]
 fn minimized_fuzz_crash_reports_valid_spans() {
     let source = String::from_utf8_lossy(b"<p[]=\"\\\\\xa4\x00\"").into_owned();
@@ -51,6 +52,7 @@ fn minimized_fuzz_crash_reports_valid_spans() {
 /// Quoted attribute values drop backslash escapes (`\\\\` becomes `\\`), so offsets
 /// Oxc reports inside the unescaped expression do not map 1:1 onto source
 /// bytes and can fall inside a following multibyte character.
+// @spec SPEC-HTML-073
 #[test]
 fn escaped_attribute_values_before_multibyte_text_report_valid_spans() {
     for tail in ["é", "€", "🙂", "\u{FFFD}"] {
@@ -58,6 +60,7 @@ fn escaped_attribute_values_before_multibyte_text_report_valid_spans() {
     }
 }
 
+// @spec SPEC-HTML-073
 #[test]
 fn invalid_expressions_with_multibyte_characters_report_valid_spans() {
     for ch in ["é", "€", "🙂", "\u{FFFD}", "\u{00A0}", "\u{3000}"] {
@@ -67,6 +70,7 @@ fn invalid_expressions_with_multibyte_characters_report_valid_spans() {
     }
 }
 
+// @spec SPEC-HTML-073
 #[test]
 fn ascii_diagnostic_columns_are_unchanged() {
     let errors = parse_ast("line\n{{ + }}").unwrap_err();

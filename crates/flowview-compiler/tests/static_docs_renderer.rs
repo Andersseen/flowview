@@ -151,6 +151,7 @@ fn large_and_deep_navigation() {
     assert!(html.contains("Item 49.99"));
 }
 
+// @spec SPEC-HTML-018
 #[test]
 fn multiple_raw_fragments_in_one_template() {
     let t = compile_static(
@@ -167,6 +168,7 @@ fn multiple_raw_fragments_in_one_template() {
     );
 }
 
+// @spec SPEC-HTML-004 SPEC-HTML-058
 #[test]
 fn hostile_values_in_every_escaped_position_stay_inert() {
     let t = template();
@@ -191,6 +193,7 @@ fn hostile_values_in_every_escaped_position_stay_inert() {
     assert_eq!(html.matches("<script").count(), 1);
 }
 
+// @spec SPEC-HTML-023 SPEC-HTML-058
 #[test]
 fn raw_body_is_the_only_unescaped_position() {
     let t = template();
@@ -201,6 +204,7 @@ fn raw_body_is_the_only_unescaped_position() {
     assert_eq!(html.matches("<script").count(), 2);
 }
 
+// @spec SPEC-HTML-043
 #[test]
 fn rendering_is_deterministic_and_thread_safe_for_docs_pages() {
     let t = std::sync::Arc::new(template());
@@ -216,6 +220,7 @@ fn rendering_is_deterministic_and_thread_safe_for_docs_pages() {
     }
 }
 
+// @spec SPEC-HTML-062
 #[test]
 fn script_elements_are_opaque_not_interpolated() {
     // Locks the documented behaviour: nothing inside (or on) a `<script>`

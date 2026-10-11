@@ -62,6 +62,7 @@ async function transformAstroResult(
 }
 
 describe("flowview Astro integration", () => {
+  // @spec SPEC-HTML-092
   it("orders embedded template transforms after flowview events when both integrations are installed", () => {
     const plugin = createEmbeddedPlugin();
     const plugins: Plugin[] = [
@@ -84,6 +85,7 @@ describe("flowview Astro integration", () => {
     ]);
   });
 
+  // @spec SPEC-HTML-087 SPEC-HTML-090
   it("transforms inline templates and preserves existing frontmatter", async () => {
     const result = await transformAstro(`---
 const context = { title: "Hello" };
@@ -101,6 +103,7 @@ const context = { title: "Hello" };
     expect(result).toMatch(/^---\nconst context[\s\S]+\n---\n<Fragment/);
   });
 
+  // @spec SPEC-HTML-089 SPEC-HTML-090
   it("creates frontmatter when an Astro file does not have it", async () => {
     const result = await transformAstro(
       `<template flowview context={{ title: "Hello" }}><h1>{{ context.title }}</h1></template>`,
@@ -112,6 +115,7 @@ const context = { title: "Hello" };
     );
   });
 
+  // @spec SPEC-HTML-087
   it("supports multiple independent inline templates", async () => {
     const result = await transformAstro(`---
 const first = { value: "A" };
@@ -127,6 +131,7 @@ const second = { value: "B" };
     expect(result).toContain("__flowviewRender1(second)");
   });
 
+  // @spec SPEC-HTML-037 SPEC-HTML-087
   it("uses Astro's parser for complex context expressions and returns a source map", async () => {
     const filename = "/src/pages/filtered.astro";
     const result = await transformAstroResult(
@@ -143,6 +148,7 @@ const second = { value: "B" };
     });
   });
 
+  // @spec SPEC-HTML-035
   it("maps generated expressions in an embedded @for back to the host Astro file", async () => {
     const filename = "/src/pages/list.astro";
     const source = `---\nconst context = { items: [{ title: "A" }] };\n---\n<template flowview context={context}>\n  @for (item of context.items) {\n    <h2>{{ item.title }}</h2>\n  }\n</template>`;
@@ -195,6 +201,7 @@ const second = { value: "B" };
     expect(position?.source).not.toContain("virtual:flowview-astro");
   });
 
+  // @spec SPEC-HTML-095
   it("ignores comments, raw-text elements, and similarly named tags", async () => {
     const result = await transformAstro(`<!--
 <template flowview context={context}>ignored</template>
@@ -206,6 +213,7 @@ const second = { value: "B" };
     expect(result).toBeNull();
   });
 
+  // @spec SPEC-HTML-095
   it("does not close an inline template from comments or raw-text content", async () => {
     const result = await transformAstro(`---
 const context = { title: "Hello" };
@@ -224,6 +232,7 @@ const context = { title: "Hello" };
     expect(result).not.toContain("Nested HTML template");
   });
 
+  // @spec SPEC-HTML-088
   it("supports the short flowview={...} context form", async () => {
     const result = await transformAstro(`---
 const context = { title: "Hello" };
@@ -237,6 +246,7 @@ const context = { title: "Hello" };
     );
   });
 
+  // @spec SPEC-HTML-088
   it("supports inline object expressions in the short form", async () => {
     const result = await transformAstro(
       `<template flowview={{ title: "Hello" }}><h1>{{ context.title }}</h1></template>`,
@@ -247,6 +257,7 @@ const context = { title: "Hello" };
     );
   });
 
+  // @spec SPEC-HTML-088
   it("rejects combining flowview={...} with context={...}", async () => {
     await expect(
       transformAstro(
@@ -255,6 +266,7 @@ const context = { title: "Hello" };
     ).rejects.toThrow("must not combine");
   });
 
+  // @spec SPEC-HTML-094
   it("requires context and a closing template tag", async () => {
     await expect(
       transformAstro("<template flowview><p>Missing context</p></template>"),
@@ -273,6 +285,7 @@ const context = { title: "Hello" };
     ).rejects.toThrow("missing </template>");
   });
 
+  // @spec SPEC-HTML-095
   it("accepts case-insensitive template closing tags", async () => {
     const result = await transformAstro(
       `<template flowview context={context}><p>{{ context.title }}</p></TEMPLATE>`,
@@ -283,6 +296,7 @@ const context = { title: "Hello" };
     );
   });
 
+  // @spec SPEC-HTML-094
   it("throws a located error when context is missing", async () => {
     await expect(
       transformAstro("<template flowview><p>Missing context</p></template>"),
@@ -292,6 +306,7 @@ const context = { title: "Hello" };
     });
   });
 
+  // @spec SPEC-HTML-087
   it("compiles raw interpolation in embedded templates", async () => {
     const plugin = createEmbeddedPlugin();
     const transform = plugin.transform;
@@ -344,5 +359,66 @@ const context = { title: "Hello" };
         "",
       ),
     ).toBe("<h1>&lt;T&gt;</h1><article><h2>Trusted</h2></article>");
+  });
+
+  // @spec SPEC-HTML-086
+  it("registers the flowview Vite plugin for standalone .flow imports", () => {
+    let plugins: Plugin[] = [];
+    const setup = flowview().hooks["astro:config:setup"] as ConfigSetupHook;
+    setup({
+      updateConfig(config) {
+        plugins = config.vite?.plugins ?? [];
+      },
+    });
+
+    expect(plugins.map((plugin) => plugin.name)).toEqual([
+      "@flowview/vite",
+      "@flowview/astro:embedded",
+    ]);
+  });
+
+  // @spec SPEC-HTML-091
+  it("preserves the Astro markup around an embedded template", async () => {
+    const result = await transformAstro(`---
+const context = { title: "Hello" };
+---
+<Layout title="Page">
+  <header class="top"><a href="/">Home</a></header>
+  <template flowview is:raw context={context}><h1>{{ context.title }}</h1></template>
+  <footer>{new Date().getFullYear()}</footer>
+</Layout>`);
+
+    expect(result).toContain(
+      '<Layout title="Page">\n  <header class="top"><a href="/">Home</a></header>\n  <Fragment set:html={__flowviewRender0(context)} />\n  <footer>{new Date().getFullYear()}</footer>\n</Layout>',
+    );
+    expect(result).not.toContain("<template flowview");
+  });
+
+  // @spec SPEC-HTML-093
+  it("reports embedded diagnostics at their line in the host file", async () => {
+    const plugin = createEmbeddedPlugin();
+    const transformed = await transformAstroResult(
+      `---\nconst context = {};\n---\n<main>\n<template flowview is:raw context={context}>\n<p>ok</p>\n@if () {\n<p>bad</p>\n}\n</template>\n</main>`,
+      "/src/pages/broken.astro",
+      plugin,
+    );
+    const publicId = /from "(virtual:flowview-astro\/[^"]+)"/.exec(
+      transformed?.code ?? "",
+    )?.[1];
+    if (publicId === undefined) throw new Error("no virtual module import");
+    const resolveId = plugin.resolveId as (id: string) => string | null;
+    const load = plugin.load as (this: unknown, id: string) => Promise<unknown>;
+    const resolved = resolveId(publicId);
+    if (resolved === null) throw new Error("virtual module did not resolve");
+
+    await expect(load.call({}, resolved)).rejects.toMatchObject({
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({
+          filename: "/src/pages/broken.astro",
+          line: 7,
+          message: "Expression cannot be empty",
+        }),
+      ]),
+    });
   });
 });

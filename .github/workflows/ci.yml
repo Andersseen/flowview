@@ -11,6 +11,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  spec-conformance:
+    name: Spec conformance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Needs only Node: no pnpm install, Rust, or WASM build.
+      - name: Check spec-to-test conformance
+        run: node scripts/spec-coverage.mjs --check
+
   packed-consumer:
     name: Packed npm consumer
     uses: ./.github/workflows/packed-consumer.yml

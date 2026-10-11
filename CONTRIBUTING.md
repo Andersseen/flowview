@@ -84,6 +84,39 @@ pnpm run demo:hono
 - Document syntax changes in `README.md`.
 - Prefer clear diagnostics over panics.
 
+## Spec Conformance
+
+`docs/flowview-spec.md` is the executable contract. Each testable requirement
+has a stable ID (`SPEC-HTML-001`, ...) and is enforced by at least one test.
+To add or change FlowView behavior:
+
+1. Add or edit the requirement in `docs/flowview-spec.md` as a list item of the
+   form `- **SPEC-HTML-123** — The observable behavior.`. Take the next unused
+   number; never renumber or reuse an ID.
+2. Implement or change the behavior.
+3. Put an annotation directly above the enforcing test (Rust `#[test]` or
+   Vitest `it`). It can list several IDs and does not replace the readable
+   test name:
+
+   ```rust
+   // @spec SPEC-HTML-123
+   #[test]
+   fn describes_the_behavior() {}
+   ```
+
+4. Regenerate the report and commit it with the change:
+
+   ```sh
+   node scripts/spec-coverage.mjs --write
+   ```
+
+`pnpm run test:spec` (and the **Spec conformance** CI job) runs
+`node scripts/spec-coverage.mjs --check`. It fails on a requirement without a
+test, an annotation that names an unknown ID, a duplicate or malformed ID, an
+annotation outside a test file, or a stale `docs/spec-coverage.md`. It needs
+only Node. Mentioning an ID in prose is a cross-reference; only the bold
+`**SPEC-HTML-123** —` form at the start of a line declares a requirement.
+
 ## Pull Requests
 
 Before opening a pull request:

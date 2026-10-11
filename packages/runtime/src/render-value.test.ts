@@ -6,53 +6,65 @@ import {
 } from "./render-value";
 
 describe("renderValue", () => {
+  // @spec SPEC-HTML-040
   it("escapes HTML by default", () => {
     expect(renderValue("<b>bold</b>")).toBe("&lt;b&gt;bold&lt;/b&gt;");
   });
 
+  // @spec SPEC-HTML-039
   it("renders null as empty string", () => {
     expect(renderValue(null)).toBe("");
   });
 
+  // @spec SPEC-HTML-039
   it("renders undefined as empty string", () => {
     expect(renderValue(undefined)).toBe("");
   });
 
+  // @spec SPEC-HTML-039
   it("renders false as empty string", () => {
     expect(renderValue(false)).toBe("");
   });
 
+  // @spec SPEC-HTML-039
   it("renders true as the string 'true'", () => {
     expect(renderValue(true)).toBe("true");
   });
 
+  // @spec SPEC-HTML-039
   it("renders zero as the string '0'", () => {
     expect(renderValue(0)).toBe("0");
   });
 
+  // @spec SPEC-HTML-039
   it("renders an empty string as an empty string", () => {
     expect(renderValue("")).toBe("");
   });
 
+  // @spec SPEC-HTML-039
   it("renders primitive values", () => {
     expect(renderValue(123)).toBe("123");
   });
 
+  // @spec SPEC-HTML-039
   it("coerces arrays via String()", () => {
     expect(renderValue([1, 2, 3])).toBe("1,2,3");
   });
 
+  // @spec SPEC-HTML-039
   it("coerces objects via String()", () => {
     expect(renderValue({ key: "value" })).toBe("[object Object]");
   });
 });
 
 describe("renderAttributeValue", () => {
+  // @spec SPEC-HTML-041
   it("omits only null and undefined", () => {
     expect(renderAttributeValue(null)).toBe("");
     expect(renderAttributeValue(undefined)).toBe("");
   });
 
+  // @spec SPEC-HTML-041
   it("preserves false and true as strings", () => {
     expect(renderAttributeValue(false)).toBe("false");
     expect(renderAttributeValue(true)).toBe("true");
@@ -66,21 +78,25 @@ describe("renderAttributeValue", () => {
 });
 
 describe("renderRawValue", () => {
+  // @spec SPEC-HTML-023
   it("returns strings unchanged, without escaping", () => {
     const html = `<h2 class="x">Fish & 'chips'</h2><script>alert(1)</script>`;
     expect(renderRawValue(html)).toBe(html);
   });
 
+  // @spec SPEC-HTML-023
   it("returns an empty string unchanged", () => {
     expect(renderRawValue("")).toBe("");
   });
 
+  // @spec SPEC-HTML-024
   it("renders null, undefined and false as an empty string", () => {
     expect(renderRawValue(null)).toBe("");
     expect(renderRawValue(undefined)).toBe("");
     expect(renderRawValue(false)).toBe("");
   });
 
+  // @spec SPEC-HTML-025
   it("rejects every other type instead of guessing", () => {
     const rejected: Array<[unknown, string]> = [
       [42, "number"],
@@ -105,12 +121,14 @@ describe("renderRawValue", () => {
     }
   });
 
+  // @spec SPEC-HTML-025
   it("explains the contract in its error message", () => {
     expect(() => renderRawValue(42)).toThrow(
       /string, null, undefined or false/,
     );
   });
 
+  // @spec SPEC-HTML-029
   it("does not change escaped rendering", () => {
     expect(renderValue("<b>")).toBe("&lt;b&gt;");
     expect(renderAttributeValue("<b>")).toBe("&lt;b&gt;");

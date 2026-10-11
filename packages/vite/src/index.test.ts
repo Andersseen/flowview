@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { originalPositionFor, TraceMap } from "@jridgewell/trace-mapping";
@@ -10,10 +11,12 @@ const compilerPath = fileURLToPath(
 );
 
 describe("compileFlowview", () => {
+  // @spec SPEC-HTML-083
   it("discovers the workspace compiler without configuration", () => {
     expect(resolveCompilerPath()).toBe(compilerPath);
   });
 
+  // @spec SPEC-HTML-033 SPEC-HTML-034
   it("compiles stdin without temporary files", async () => {
     const { code, map } = await compileFlowview(
       "<p>Hello {{ context.name }}</p>",
@@ -40,6 +43,7 @@ describe("compileFlowview", () => {
     });
   });
 
+  // @spec SPEC-HTML-037
   it("returns equivalent maps from native and bundled WASM compilers", async () => {
     const source = "@for (item of context.items) { {{ item.title }} }";
     const native = await compileFlowview(source, {
@@ -67,6 +71,7 @@ describe("compileFlowview", () => {
     });
   });
 
+  // @spec SPEC-HTML-037 SPEC-HTML-079
   it("returns the compiler map from the Vite transform hook", async () => {
     const plugin = flowview({ compilerPath: "" });
     if (typeof plugin.configResolved === "function") {
@@ -92,6 +97,7 @@ describe("compileFlowview", () => {
     });
   });
 
+  // @spec SPEC-HTML-083
   it("falls back to the npm WASM compiler when no binary is resolved", async () => {
     const { code } = await compileFlowview("<p>Hello {{ context.name }}</p>", {
       filename: "greeting.flow",
@@ -103,6 +109,7 @@ describe("compileFlowview", () => {
     expect(code).toContain("renderValue(context.name)");
   });
 
+  // @spec SPEC-HTML-030
   it("preserves display filenames and line offsets in diagnostics", async () => {
     await expect(
       compileFlowview("@if () { <p>Invalid</p> }", {
@@ -122,6 +129,7 @@ describe("compileFlowview", () => {
     });
   });
 
+  // @spec SPEC-HTML-004 SPEC-HTML-008 SPEC-HTML-009 SPEC-HTML-010 SPEC-HTML-011 SPEC-HTML-012
   it("executes all current control-flow blocks with escaped values", async () => {
     const { code, warnings } = await compileFlowview(
       "@if (context.visible) {<p>{{ context.label }}</p>} @else {<p>hidden</p>}@for (item of context.items; track item.id) {<span>{{ item.name }}</span>} @empty {<span>empty</span>}@switch (context.status) {@case ('ready') {<strong>ready</strong>}@default {<strong>other</strong>}}",
@@ -151,6 +159,7 @@ describe("compileFlowview", () => {
     );
   });
 
+  // @spec SPEC-HTML-023
   it("compiles raw interpolation through the native compiler", async () => {
     const { code } = await compileFlowview(
       "<h1>{{ context.title }}</h1><article>{{{ context.bodyHtml }}}</article>",
@@ -170,6 +179,7 @@ describe("compileFlowview", () => {
     ).toBe("<h1>&lt;T&gt;</h1><article><h2>Trusted</h2></article>");
   });
 
+  // @spec SPEC-HTML-023
   it("compiles raw interpolation through the bundled WASM compiler", async () => {
     const { code } = await compileFlowview("{{{ context.bodyHtml }}}", {
       filename: "raw.flow",
@@ -182,6 +192,7 @@ describe("compileFlowview", () => {
     );
   });
 
+  // @spec SPEC-HTML-020
   it("reports raw interpolation inside attributes with a diagnostic", async () => {
     await expect(
       compileFlowview(`<div title="{{{ context.html }}}"></div>`, {
@@ -201,6 +212,7 @@ describe("compileFlowview", () => {
     });
   });
 
+  // @spec SPEC-HTML-080
   it("builds a real Vite consumer that imports a .flow file", async () => {
     const fixtureRoot = fileURLToPath(
       new URL("../test/fixtures/basic", import.meta.url),
@@ -229,6 +241,143 @@ describe("compileFlowview", () => {
 
     expect(bundle).toContain("flowview");
     expect(bundle).toContain("Hello");
+    // The template was compiled at build time: no template syntax or compiler
+    // is left in the output.
+    expect(bundle).not.toContain("{{");
+    expect(bundle).not.toMatch(/wasm|flowview-compiler|compileFlowview/i);
+  });
+});
+
+describe("flowview Vite plugin hooks", () => {
+  function transformHook(plugin: ReturnType<typeof flowview>) {
+    const transform = plugin.transform;
+    const handler =
+      typeof transform === "function" ? transform : transform?.handler;
+    if (typeof handler !== "function")
+      throw new Error("missing transform hook");
+    return handler;
+  }
+
+  // @spec SPEC-HTML-079
+  it("leaves modules that are not .flow files untouched", async () => {
+    const handler = transformHook(flowview({ compilerPath: "" }));
+    const result = await handler.call(
+      {} as never,
+      "export const answer = 42;",
+      "/project/src/main.ts",
+    );
+    expect(result).toBeNull();
+  });
+
+  // @spec SPEC-HTML-081
+  it("surfaces diagnostics and warnings as located Vite errors and warnings", async () => {
+    const handler = transformHook(flowview({ compilerPath: "" }));
+    const warnings: string[] = [];
+    const errors: Array<{
+      message: string;
+      id: string;
+      loc: { line: number; column: number };
+    }> = [];
+    const context = {
+      warn: (message: string) => warnings.push(message),
+      error: (error: (typeof errors)[number]) => {
+        errors.push(error);
+        throw new Error(error.message);
+      },
+    };
+
+    await handler.call(
+      context as never,
+      "@for (item of context.items; track item.id) {<p>{{ item }}</p>}",
+      "/project/src/list.flow",
+    );
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("/project/src/list.flow:1:");
+    expect(warnings[0]).toContain("track");
+
+    await expect(
+      handler.call(
+        context as never,
+        "<p>ok</p>\n@if () {<p>bad</p>}",
+        "/project/src/broken.flow",
+      ),
+    ).rejects.toThrow("Expression cannot be empty");
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      id: "/project/src/broken.flow",
+      loc: { line: 2 },
+    });
+    expect(errors[0]?.message).toContain("Expression cannot be empty");
+  });
+
+  // @spec SPEC-HTML-082
+  it("uses the explicit compilerPath and reports when it is missing", async () => {
+    expect(resolveCompilerPath("/custom/bin/flowview")).toBe(
+      "/custom/bin/flowview",
+    );
+    await expect(
+      compileFlowview("<p>x</p>", {
+        filename: "x.flow",
+        runtimeImport: "@flowview/runtime",
+        compilerPath: "/definitely/not/a/flowview-binary",
+      }),
+    ).rejects.toThrow(/not found at "\/definitely\/not\/a\/flowview-binary"/);
+  });
+
+  // @spec SPEC-HTML-083
+  it("prefers FLOWVIEW_COMPILER_PATH over workspace discovery but not compilerPath", () => {
+    const previous = process.env.FLOWVIEW_COMPILER_PATH;
+    process.env.FLOWVIEW_COMPILER_PATH = "/env/flowview";
+    try {
+      expect(resolveCompilerPath()).toBe("/env/flowview");
+      expect(resolveCompilerPath("/explicit/flowview")).toBe(
+        "/explicit/flowview",
+      );
+    } finally {
+      if (previous === undefined) delete process.env.FLOWVIEW_COMPILER_PATH;
+      else process.env.FLOWVIEW_COMPILER_PATH = previous;
+    }
+  });
+
+  // @spec SPEC-HTML-084
+  it("ships TypeScript declarations for .flow imports", () => {
+    const declarations = readFileSync(
+      fileURLToPath(new URL("../client.d.ts", import.meta.url)),
+      "utf8",
+    );
+    expect(declarations).toContain('declare module "*.flow"');
+    expect(declarations).toContain(
+      "export function render(context: Record<string, unknown>): string;",
+    );
+    const manifest = JSON.parse(
+      readFileSync(
+        fileURLToPath(new URL("../package.json", import.meta.url)),
+        "utf8",
+      ),
+    ) as { exports: Record<string, { types?: string }> };
+    expect(manifest.exports["./client"]?.types).toBe("./client.d.ts");
+  });
+
+  // @spec SPEC-HTML-085
+  it("invalidates the transformed module when a .flow file changes", () => {
+    const plugin = flowview({ compilerPath: "" });
+    const handleHotUpdate = plugin.handleHotUpdate as (ctx: {
+      file: string;
+      server: unknown;
+    }) => void;
+    const invalidated: unknown[] = [];
+    const node = { id: "/project/src/page.flow" };
+    const server = {
+      moduleGraph: {
+        getModuleById: (id: string) => (id === node.id ? node : undefined),
+        invalidateModule: (module: unknown) => invalidated.push(module),
+      },
+    };
+
+    handleHotUpdate({ file: "/project/src/page.flow", server });
+    handleHotUpdate({ file: "/project/src/other.ts", server });
+
+    expect(invalidated).toEqual([node]);
   });
 });
 

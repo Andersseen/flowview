@@ -6,6 +6,7 @@ use oxc_parser::Parser;
 use oxc_span::SourceType;
 use serde_json::json;
 
+// @spec SPEC-HTML-001 SPEC-HTML-059 SPEC-HTML-060
 #[test]
 fn authored_html_corpus_compiles_parses_and_preserves_static_bytes() {
     let source = include_str!("corpus/document.html");

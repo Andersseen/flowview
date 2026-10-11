@@ -62,38 +62,41 @@ const registry = new Registry({
 const grammar = await registry.loadGrammar("source.flowview");
 assert.ok(grammar, "flowview grammar must load");
 
-const samples = [
-  "@if (context.visible) {",
-  "} @else if (context.pending) {",
-  "} @else {",
-  "@for (product of context.products; track product.id) {",
-  "} @empty {",
-  "@switch (product.status) {",
-  "@case ('available') {",
-  "@default {",
-  "<h1>{{ context.title }}</h1>",
-];
+// @spec SPEC-HTML-096
+{
+  const samples = [
+    "@if (context.visible) {",
+    "} @else if (context.pending) {",
+    "} @else {",
+    "@for (product of context.products; track product.id) {",
+    "} @empty {",
+    "@switch (product.status) {",
+    "@case ('available') {",
+    "@default {",
+    "<h1>{{ context.title }}</h1>",
+  ];
 
-const scopes = samples.flatMap((line) =>
-  grammar.tokenizeLine(line).tokens.flatMap((token) => token.scopes),
-);
+  const scopes = samples.flatMap((line) =>
+    grammar.tokenizeLine(line).tokens.flatMap((token) => token.scopes),
+  );
 
-assert.ok(
-  scopes.includes("keyword.control.flowview"),
-  "control keywords need a theme-compatible scope",
-);
-assert.ok(
-  scopes.includes("keyword.operator.word.flowview"),
-  "of/track operators need their own scope",
-);
-assert.ok(
-  scopes.includes("meta.interpolation.flowview"),
-  "interpolations need an embedded scope",
-);
-assert.ok(
-  scopes.includes("punctuation.section.embedded.begin.flowview"),
-  "interpolation delimiters need punctuation scopes",
-);
+  assert.ok(
+    scopes.includes("keyword.control.flowview"),
+    "control keywords need a theme-compatible scope",
+  );
+  assert.ok(
+    scopes.includes("keyword.operator.word.flowview"),
+    "of/track operators need their own scope",
+  );
+  assert.ok(
+    scopes.includes("meta.interpolation.flowview"),
+    "interpolations need an embedded scope",
+  );
+  assert.ok(
+    scopes.includes("punctuation.section.embedded.begin.flowview"),
+    "interpolation delimiters need punctuation scopes",
+  );
+}
 
 function tokenize(line) {
   return grammar.tokenizeLine(line).tokens.map((token) => ({
@@ -106,6 +109,7 @@ const RAW_SCOPE = "meta.interpolation.raw.flowview";
 const BEGIN_SCOPE = "punctuation.section.embedded.begin.flowview";
 const END_SCOPE = "punctuation.section.embedded.end.flowview";
 
+// @spec SPEC-HTML-096
 {
   const tokens = tokenize("<article>{{{ context.contentHtml }}}</article>");
   const begin = tokens.find((token) => token.scopes.includes(BEGIN_SCOPE));
@@ -152,6 +156,7 @@ const END_SCOPE = "punctuation.section.embedded.end.flowview";
   );
 }
 
+// @spec SPEC-HTML-096
 {
   const tokens = tokenize(String.raw`\{{{ literal \}\}\} {{ real }}`);
   assert.ok(
@@ -182,36 +187,42 @@ const END_SCOPE = "punctuation.section.embedded.end.flowview";
   );
 }
 
-const injection = JSON.parse(
-  await fs.readFile(
-    path.join(packageRoot, "syntaxes/flowview-astro-injection.tmLanguage.json"),
-    "utf8",
-  ),
-);
-assert.equal(injection.injectTo, undefined);
-assert.match(injection.patterns[0].begin, /flowview/);
-assert.equal(injection.patterns[0].patterns[0].include, "source.flowview");
-const astroBegin = new RegExp(injection.patterns[0].begin);
-assert.match(
-  "<template flowview is:raw context={context}>",
-  astroBegin,
-  "the canonical Astro wrapper must activate flowview highlighting",
-);
-assert.match(
-  "<template flowview is:raw context={{ items: source.filter((item) => item.visible) }}>",
-  astroBegin,
-  "braced context expressions may contain arrow functions",
-);
-assert.match(
-  "<template flowview={context} is:raw>",
-  astroBegin,
-  "the short flowview={...} wrapper must activate flowview highlighting",
-);
-assert.doesNotMatch(
-  "<template-card flowview>",
-  astroBegin,
-  "similarly named Astro components must not activate flowview highlighting",
-);
+// @spec SPEC-HTML-099
+{
+  const injection = JSON.parse(
+    await fs.readFile(
+      path.join(
+        packageRoot,
+        "syntaxes/flowview-astro-injection.tmLanguage.json",
+      ),
+      "utf8",
+    ),
+  );
+  assert.equal(injection.injectTo, undefined);
+  assert.match(injection.patterns[0].begin, /flowview/);
+  assert.equal(injection.patterns[0].patterns[0].include, "source.flowview");
+  const astroBegin = new RegExp(injection.patterns[0].begin);
+  assert.match(
+    "<template flowview is:raw context={context}>",
+    astroBegin,
+    "the canonical Astro wrapper must activate flowview highlighting",
+  );
+  assert.match(
+    "<template flowview is:raw context={{ items: source.filter((item) => item.visible) }}>",
+    astroBegin,
+    "braced context expressions may contain arrow functions",
+  );
+  assert.match(
+    "<template flowview={context} is:raw>",
+    astroBegin,
+    "the short flowview={...} wrapper must activate flowview highlighting",
+  );
+  assert.doesNotMatch(
+    "<template-card flowview>",
+    astroBegin,
+    "similarly named Astro components must not activate flowview highlighting",
+  );
+}
 
 console.log("flowview TextMate grammar checks passed.");
 
@@ -273,45 +284,76 @@ const astroRegistry = new Registry({
   },
 });
 
-const astroGrammar = await astroRegistry.loadGrammar("source.astro");
-assert.ok(astroGrammar, "Astro host grammar must load");
+// @spec SPEC-HTML-099
+{
+  const astroGrammar = await astroRegistry.loadGrammar("source.astro");
+  assert.ok(astroGrammar, "Astro host grammar must load");
 
-let ruleStack = null;
-const embeddedLines = [
-  "<template flowview is:raw context={context}>",
-  "  <h1>{{ context.title }}</h1>",
-  "  <article>{{{ context.bodyHtml }}}</article>",
-  "  @if (context.visible) {",
-  "    <span>{{ context.label }}</span>",
-  "  } @else {",
-  "    <span>Hidden</span>",
-  "  }",
-  "</template>",
-];
-const embeddedScopes = [];
+  let ruleStack = null;
+  const embeddedLines = [
+    "<template flowview is:raw context={context}>",
+    "  <h1>{{ context.title }}</h1>",
+    "  <article>{{{ context.bodyHtml }}}</article>",
+    "  @if (context.visible) {",
+    "    <span>{{ context.label }}</span>",
+    "  } @else {",
+    "    <span>Hidden</span>",
+    "  }",
+    "</template>",
+  ];
+  const embeddedScopes = [];
 
-for (const line of embeddedLines) {
-  const result = astroGrammar.tokenizeLine(line, ruleStack);
-  ruleStack = result.ruleStack;
-  embeddedScopes.push(...result.tokens.flatMap((token) => token.scopes));
+  for (const line of embeddedLines) {
+    const result = astroGrammar.tokenizeLine(line, ruleStack);
+    ruleStack = result.ruleStack;
+    embeddedScopes.push(...result.tokens.flatMap((token) => token.scopes));
+  }
+
+  assert.ok(
+    embeddedScopes.includes("meta.embedded.flowview"),
+    "Astro template contents must enter the flowview embedded scope",
+  );
+  assert.ok(
+    embeddedScopes.includes("keyword.control.flowview"),
+    "flowview keywords inside Astro must receive keyword scopes",
+  );
+  assert.ok(
+    embeddedScopes.includes("meta.interpolation.flowview"),
+    "flowview interpolations inside Astro must receive embedded scopes",
+  );
+
+  assert.ok(
+    embeddedScopes.includes("meta.interpolation.raw.flowview"),
+    "flowview raw interpolations inside Astro must receive the raw scope",
+  );
 }
 
-assert.ok(
-  embeddedScopes.includes("meta.embedded.flowview"),
-  "Astro template contents must enter the flowview embedded scope",
-);
-assert.ok(
-  embeddedScopes.includes("keyword.control.flowview"),
-  "flowview keywords inside Astro must receive keyword scopes",
-);
-assert.ok(
-  embeddedScopes.includes("meta.interpolation.flowview"),
-  "flowview interpolations inside Astro must receive embedded scopes",
-);
+// @spec SPEC-HTML-097
+{
+  const snippets = JSON.parse(
+    await fs.readFile(path.join(packageRoot, "snippets/flowview.json"), "utf8"),
+  );
+  const prefixes = Object.values(snippets).map((snippet) => snippet.prefix);
+  for (const prefix of ["@if", "@for", "@switch"]) {
+    assert.ok(prefixes.includes(prefix), `missing ${prefix} snippet`);
+  }
+  assert.ok(
+    snippets["@for"].body.join("\n").includes("@empty"),
+    "the @for snippet includes the @empty branch",
+  );
 
-assert.ok(
-  embeddedScopes.includes("meta.interpolation.raw.flowview"),
-  "flowview raw interpolations inside Astro must receive the raw scope",
-);
+  const astroSnippets = JSON.parse(
+    await fs.readFile(
+      path.join(packageRoot, "snippets/astro-flowview.json"),
+      "utf8",
+    ),
+  );
+  const [astroSnippet] = Object.values(astroSnippets);
+  assert.match(
+    astroSnippet.body.join("\n"),
+    /<template flowview=\{\$\{1:context\}\} is:raw>/,
+    "the Astro snippet uses the recommended is:raw wrapper form",
+  );
+}
 
 console.log("flowview Astro injection checks passed.");
