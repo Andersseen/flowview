@@ -1,5 +1,13 @@
 # @flowview/compiler
 
+## 0.2.3
+
+### Patch Changes
+
+- 4114d19: Fix malformed templates containing multibyte Unicode (including U+FFFD) being
+  able to panic the compiler while building diagnostics. Compiler errors now
+  always report spans on valid UTF-8 character boundaries.
+
 ## 0.2.2
 
 ### Patch Changes
