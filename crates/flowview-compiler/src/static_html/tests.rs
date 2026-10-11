@@ -25,6 +25,7 @@ fn evaluate(expression: &str, context: &Value) -> Result<Value, String> {
 
 // --- renderer -------------------------------------------------------------
 
+// @spec SPEC-HTML-001 SPEC-HTML-060
 #[test]
 fn plain_static_markup() {
     assert_eq!(
@@ -33,6 +34,7 @@ fn plain_static_markup() {
     );
 }
 
+// @spec SPEC-HTML-048
 #[test]
 fn interpolation_and_nested_member_access() {
     let ctx = json!({"user": {"name": "Ada", "age": 36}, "ok": true, "gone": null});
@@ -45,6 +47,7 @@ fn interpolation_and_nested_member_access() {
     );
 }
 
+// @spec SPEC-HTML-003 SPEC-HTML-004 SPEC-HTML-047
 #[test]
 fn escapes_interpolated_text_and_attributes() {
     let ctx = json!({"t": "<b>\"x\" & 'y'</b>"});
@@ -58,11 +61,13 @@ fn escapes_interpolated_text_and_attributes() {
     );
 }
 
+// @spec SPEC-HTML-047
 #[test]
 fn false_renders_empty_in_interpolation() {
     assert_eq!(render("[{{ context.f }}]", json!({"f": false})), "[]");
 }
 
+// @spec SPEC-HTML-008 SPEC-HTML-047
 #[test]
 fn if_else_if_else() {
     let tpl = "@if (context.n === 1) {one} @else if (context.n === 2) {two} @else {many}";
@@ -71,6 +76,7 @@ fn if_else_if_else() {
     assert_eq!(render(tpl, json!({"n": 3})), "many");
 }
 
+// @spec SPEC-HTML-011 SPEC-HTML-054
 #[test]
 fn for_with_empty_and_missing_collection() {
     let tpl = "@for (i of context.xs) {<i>{{ i }}</i>} @empty {none}";
@@ -80,6 +86,7 @@ fn for_with_empty_and_missing_collection() {
     assert_eq!(render(tpl, json!({})), "none");
 }
 
+// @spec SPEC-HTML-010 SPEC-HTML-045
 #[test]
 fn track_is_accepted_and_warned() {
     let out = render_static(
@@ -93,6 +100,7 @@ fn track_is_accepted_and_warned() {
     assert_eq!(out.warnings[0].code.as_deref(), Some("FV0015"));
 }
 
+// @spec SPEC-HTML-009
 #[test]
 fn nested_loops_resolve_lexical_locals() {
     let tpl = "@for (s of context.sections) {<h2>{{ s.title }}</h2>@for (p of s.pages) {<a href=\"{{ p.url }}\">{{ p.title }}</a>}}";
@@ -106,6 +114,7 @@ fn nested_loops_resolve_lexical_locals() {
     );
 }
 
+// @spec SPEC-HTML-009
 #[test]
 fn shadowing_and_scope_cleanup() {
     let tpl = "@for (x of context.a) {@for (x of context.b) {{{ x }}}{{ x }}}";
@@ -114,6 +123,7 @@ fn shadowing_and_scope_cleanup() {
     assert_eq!(diag.code.as_deref(), Some("FV0017"));
 }
 
+// @spec SPEC-HTML-012
 #[test]
 fn switch_case_default_without_fallthrough() {
     let tpl = "@switch (context.k) {@case ('a') {A}@case ('b') {B}@default {D}}";
@@ -122,6 +132,7 @@ fn switch_case_default_without_fallthrough() {
     assert_eq!(render(tpl, json!({"k": "z"})), "D");
 }
 
+// @spec SPEC-HTML-005 SPEC-HTML-047
 #[test]
 fn dynamic_and_boolean_attributes() {
     let ctx = json!({"url": "/x?a=1&b=2", "off": true, "on": false, "nothing": null});
@@ -134,6 +145,7 @@ fn dynamic_and_boolean_attributes() {
     );
 }
 
+// @spec SPEC-HTML-006
 #[test]
 fn attr_bindings() {
     let ctx = json!({"busy": false, "n": 3, "none": null});
@@ -146,6 +158,7 @@ fn attr_bindings() {
     );
 }
 
+// @spec SPEC-HTML-007
 #[test]
 fn class_bindings_merge_and_deduplicate() {
     let ctx = json!({"on": true, "off": false, "dyn": "b  c"});
@@ -169,6 +182,7 @@ fn class_bindings_merge_and_deduplicate() {
     );
 }
 
+// @spec SPEC-HTML-001 SPEC-HTML-047
 #[test]
 fn preserves_whitespace() {
     assert_eq!(
@@ -177,6 +191,7 @@ fn preserves_whitespace() {
     );
 }
 
+// @spec SPEC-HTML-047
 #[test]
 fn nested_control_flow() {
     let tpl =
@@ -185,6 +200,7 @@ fn nested_control_flow() {
     assert_eq!(render(tpl, ctx), "<ul><li>1</li><li>-</li></ul>");
 }
 
+// @spec SPEC-HTML-042
 #[test]
 fn generic_page_fixture() {
     let tpl = include_str!("../../tests/fixtures/static/page.flow");
@@ -196,6 +212,7 @@ fn generic_page_fixture() {
 
 // --- diagnostics ------------------------------------------------------------
 
+// @spec SPEC-HTML-053 SPEC-HTML-072
 #[test]
 fn unsupported_expression_is_a_located_diagnostic() {
     let source = "<p>\n  {{ context.xs.map((x) => x) }}\n</p>";
@@ -208,30 +225,64 @@ fn unsupported_expression_is_a_located_diagnostic() {
     assert!(d.end > d.start);
 }
 
+// @spec SPEC-HTML-044 SPEC-HTML-053
 #[test]
 fn unsupported_expression_reported_even_in_untaken_branch() {
     let d = render_err("@if (false) {{{ context.f() }}}", json!({}));
     assert_eq!(d.code.as_deref(), Some("FV0016"));
 }
 
+// @spec SPEC-HTML-046
 #[test]
 fn invalid_context_input() {
     let d = render_err("x", json!([1]));
     assert_eq!(d.code.as_deref(), Some("FV0021"));
 }
 
+// @spec SPEC-HTML-055
+#[test]
+fn numbers_render_like_javascript() {
+    let cases = [
+        (json!(0), "0"),
+        (json!(42), "42"),
+        (json!(-3), "-3"),
+        (json!(2.0), "2"),
+        (json!(1.5), "1.5"),
+        (json!(0.1), "0.1"),
+        (json!(-0.25), "-0.25"),
+    ];
+    for (value, expected) in cases {
+        assert_eq!(
+            render("<p>{{ context.n }}</p>", json!({ "n": value.clone() })),
+            format!("<p>{expected}</p>"),
+            "{value}"
+        );
+        assert_eq!(
+            render(
+                "<p title=\"{{ context.n }}\"></p>",
+                json!({ "n": value.clone() })
+            ),
+            format!("<p title=\"{expected}\"></p>"),
+            "{value}"
+        );
+    }
+}
+
+// @spec SPEC-HTML-055
 #[test]
 fn array_interpolation_is_rejected() {
     let d = render_err("{{ context.xs }}", json!({"xs": [1]}));
     assert_eq!(d.code.as_deref(), Some("FV0020"));
 }
 
+// @spec SPEC-HTML-054
 #[test]
 fn non_array_iteration_is_rejected() {
     let d = render_err("@for (x of context.s) {a}", json!({"s": "abc"}));
     assert_eq!(d.code.as_deref(), Some("FV0019"));
 }
 
+// @spec SPEC-HTML-044
 #[test]
 fn parse_errors_still_use_shared_parser_diagnostics() {
     let errors =
@@ -241,6 +292,7 @@ fn parse_errors_still_use_shared_parser_diagnostics() {
 
 // --- evaluator ----------------------------------------------------------------
 
+// @spec SPEC-HTML-048
 #[test]
 fn literals() {
     let c = json!({});
@@ -251,6 +303,7 @@ fn literals() {
     assert_eq!(evaluate("(1)", &c), Ok(json!(1.0)));
 }
 
+// @spec SPEC-HTML-048
 #[test]
 fn context_lookup_and_member_access() {
     let c = json!({"a": {"b": [10, 20]}, "s": "héllo"});
@@ -261,12 +314,14 @@ fn context_lookup_and_member_access() {
     assert_eq!(evaluate("context.nope", &c), Ok(json!("<undefined>")));
 }
 
+// @spec SPEC-HTML-051
 #[test]
 fn unknown_identifier() {
     let err = evaluate("window", &json!({})).unwrap_err();
     assert!(err.contains("Unresolved identifier `window`"));
 }
 
+// @spec SPEC-HTML-051
 #[test]
 fn invalid_member_access() {
     let c = json!({"n": null, "num": 1});
@@ -279,6 +334,7 @@ fn invalid_member_access() {
         .contains("number value"));
 }
 
+// @spec SPEC-HTML-049 SPEC-HTML-052
 #[test]
 fn truthiness_and_logic() {
     let c = json!({"z": 0, "e": "", "arr": [], "o": {}, "n": null});
@@ -304,6 +360,7 @@ fn truthiness_and_logic() {
     assert_eq!(evaluate("context.z && context.missing.x", &c), Ok(json!(0)));
 }
 
+// @spec SPEC-HTML-050
 #[test]
 fn comparisons() {
     let c = json!({"n": 3, "s": "b", "z": null});
@@ -332,6 +389,7 @@ fn comparisons() {
         .contains("by reference"));
 }
 
+// @spec SPEC-HTML-053
 #[test]
 fn unsupported_forms_are_rejected_with_reason() {
     for (expr, reason) in [
@@ -357,6 +415,7 @@ fn unsupported_forms_are_rejected_with_reason() {
 mod raw_interpolation {
     use super::*;
 
+    // @spec SPEC-HTML-023
     #[test]
     fn emits_trusted_html_without_escaping() {
         let ctx = json!({
@@ -372,6 +431,7 @@ mod raw_interpolation {
         );
     }
 
+    // @spec SPEC-HTML-023 SPEC-HTML-029 SPEC-HTML-058
     #[test]
     fn security_regression_escaped_stays_escaped_and_raw_is_verbatim() {
         let ctx = json!({"payload": "<script>alert(1)</script>"});
@@ -385,6 +445,7 @@ mod raw_interpolation {
         );
     }
 
+    // @spec SPEC-HTML-024
     #[test]
     fn nullish_false_and_empty_render_nothing() {
         let ctx = json!({"s": "", "n": null, "f": false});
@@ -397,6 +458,7 @@ mod raw_interpolation {
         );
     }
 
+    // @spec SPEC-HTML-025
     #[test]
     fn rejects_values_that_are_not_strings_with_a_structured_diagnostic() {
         for (value, kind) in [
@@ -423,6 +485,7 @@ mod raw_interpolation {
         assert_eq!(render("{{ context.n }} {{ context.t }}", ctx), "42 true");
     }
 
+    // @spec SPEC-HTML-026
     #[test]
     fn does_not_widen_the_static_expression_subset() {
         let err = render_err("{{{ sanitize(context.body) }}}", json!({"body": "x"}));
@@ -433,6 +496,7 @@ mod raw_interpolation {
         assert_eq!(err.code.as_deref(), Some("FV0016"));
     }
 
+    // @spec SPEC-HTML-026
     #[test]
     fn unsupported_raw_expressions_fail_even_in_untaken_branches() {
         let err = render_err(
@@ -442,6 +506,7 @@ mod raw_interpolation {
         assert_eq!(err.code.as_deref(), Some("FV0016"));
     }
 
+    // @spec SPEC-HTML-018
     #[test]
     fn works_in_control_flow() {
         let ctx = json!({
@@ -472,6 +537,7 @@ mod raw_interpolation {
         );
     }
 
+    // @spec SPEC-HTML-044
     #[test]
     fn syntax_errors_surface_through_render_static() {
         let err = render_err("<a title=\"{{{ context.x }}}\"></a>", json!({"x": "y"}));
@@ -482,6 +548,7 @@ mod raw_interpolation {
         assert_eq!(err.code.as_deref(), Some("FV0024"));
     }
 
+    // @spec SPEC-HTML-047
     #[test]
     fn matches_the_shared_layout_parity_fixtures() {
         let fixtures: Value =
@@ -499,6 +566,7 @@ mod raw_interpolation {
         }
     }
 
+    // @spec SPEC-HTML-027 SPEC-HTML-047
     #[test]
     fn matches_the_shared_javascript_target_fixtures() {
         let fixtures: Value = serde_json::from_str(include_str!(

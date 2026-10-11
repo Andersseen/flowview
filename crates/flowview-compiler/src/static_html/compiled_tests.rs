@@ -12,12 +12,14 @@ fn code(errors: Vec<crate::Diagnostic>) -> Option<String> {
     errors.into_iter().next().and_then(|d| d.code)
 }
 
+// @spec SPEC-HTML-043
 #[test]
 fn compiled_template_is_send_and_sync() {
     fn assert_send_sync<T: Send + Sync>() {}
     assert_send_sync::<CompiledStaticTemplate>();
 }
 
+// @spec SPEC-HTML-043
 #[test]
 fn compile_once_render_many_contexts() {
     let template = compile(
@@ -41,6 +43,7 @@ fn compile_once_render_many_contexts() {
     assert!(c.contains("<u>3</u>") && c.contains("<li>z</li>") && !c.contains("<b>1</b>"));
 }
 
+// @spec SPEC-HTML-043
 #[test]
 fn compiled_template_outlives_source() {
     let template = {
@@ -50,6 +53,7 @@ fn compiled_template_outlives_source() {
     assert_eq!(template.render(&json!({"n": 7})).unwrap(), "<p>7</p>");
 }
 
+// @spec SPEC-HTML-009
 #[test]
 fn nested_loops_do_not_leak_scope() {
     let template = compile(
@@ -75,6 +79,7 @@ fn nested_loops_do_not_leak_scope() {
     assert_eq!(second, "[9]c");
 }
 
+// @spec SPEC-HTML-043
 #[test]
 fn failed_render_does_not_corrupt_later_renders() {
     let template = compile(
@@ -88,6 +93,7 @@ fn failed_render_does_not_corrupt_later_renders() {
     assert_eq!(template.render(&good).unwrap(), "a|t");
 }
 
+// @spec SPEC-HTML-044 SPEC-HTML-053
 #[test]
 fn unsupported_expressions_fail_at_compile_time_even_if_unreachable() {
     let errors = compile_static(
@@ -101,6 +107,7 @@ fn unsupported_expressions_fail_at_compile_time_even_if_unreachable() {
     assert_eq!(code(errors).as_deref(), Some("FV0016"));
 }
 
+// @spec SPEC-HTML-044
 #[test]
 fn context_errors_are_render_time_and_recoverable() {
     let template = compile("@for (x of context.xs) {{{ x }}}{{{ context.raw }}}{{ context.a.b }}");
@@ -127,6 +134,7 @@ fn context_errors_are_render_time_and_recoverable() {
     assert_eq!(template.render(&ok).unwrap(), "a<i>1");
 }
 
+// @spec SPEC-HTML-043
 #[test]
 fn raw_values_are_not_cached_between_renders() {
     let template = compile("{{{ context.html }}}|{{ context.html }}");
@@ -140,6 +148,7 @@ fn raw_values_are_not_cached_between_renders() {
     );
 }
 
+// @spec SPEC-HTML-042 SPEC-HTML-043
 #[test]
 fn matches_legacy_render_static() {
     let sources = [
@@ -157,6 +166,7 @@ fn matches_legacy_render_static() {
     }
 }
 
+// @spec SPEC-HTML-045
 #[test]
 fn warnings_are_compile_time_and_stable() {
     let source = "@for (i of context.xs; track i) {{{ i }}}";
@@ -170,6 +180,7 @@ fn warnings_are_compile_time_and_stable() {
     assert_eq!(legacy.warnings, before);
 }
 
+// @spec SPEC-HTML-046
 #[test]
 fn legacy_invalid_context_still_reported_first() {
     let errors =

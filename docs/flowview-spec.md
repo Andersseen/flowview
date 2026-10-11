@@ -15,6 +15,23 @@ flowview HTML is **not** a UI framework. It does not own components, client
 hydration, events, state management, routing, signals, dependency injection, or
 a virtual DOM.
 
+## Conformance Requirements
+
+Normative, testable requirements are declared as list items that start with a
+bold stable ID followed by an em dash, for example
+`- **SPEC-HTML-001** — Plain text is preserved exactly.`. Everything else (examples,
+rationale, security guidance, non-goals, future work) is explanatory.
+
+- IDs are assigned once. They are never renumbered or reused; a new
+  requirement takes the next unused number, and a retired requirement leaves
+  its number unused.
+- Each ID is enforced by at least one executable test carrying a
+  `@spec` annotation naming its ID. `scripts/spec-coverage.mjs` verifies the
+  mapping and generates [spec-coverage.md](spec-coverage.md); see
+  `CONTRIBUTING.md` for the workflow.
+- Mentioning an ID elsewhere in the document (without the bold declaration
+  form) is a cross-reference, not a second declaration.
+
 ## Product Definition
 
 flowview HTML v1 provides a reliable authoring format for HTML-like templates
@@ -52,25 +69,45 @@ DOM events belong to a separate compiler and package: flowview Events.
 
 The stable v1 language surface includes:
 
-- Plain text.
-- HTML-like elements.
-- Quoted attributes, including full-value interpolation: `href="{{ expr }}"`.
-- Binding attributes:
-  - `[disabled]`, `[hidden]`, `[checked]`, `[selected]`, `[required]`,
-    `[readonly]`, `[multiple]`, `[open]` emit the bare attribute when the
-    expression is truthy.
-  - `[attr.name]="expr"` emits `name="value"` unless the value is `null` or
-    `undefined`.
-  - `[class.name]="expr"` adds `name` to `class` when truthy. Plain and
-    dynamic `class` values are merged with these and de-duplicated in order.
-- Escaped interpolation with `{{ expression }}`.
-- Explicit raw HTML interpolation with `{{{ expression }}}` (see
-  [Raw Interpolation](#raw-interpolation)).
-- `@if`, `@else if`, and `@else`.
-- `@for`, optional `track`, and `@empty`.
-- `@switch`, `@case`, and `@default`.
-- Escaping syntax markers: `\@if`, `\{{`, `\{{{`, `\}`.
-- Explicit `context` as the only top-level template data binding.
+- **SPEC-HTML-001** — Plain text is preserved exactly, including Unicode and
+  significant whitespace (such as inside `<pre>`).
+- **SPEC-HTML-002** — HTML-like elements and their static quoted attributes are
+  emitted unchanged.
+- **SPEC-HTML-003** — Quoted attributes support full-value interpolation:
+  `href="{{ expr }}"` renders the escaped value of `expr`. Mixing static text
+  and interpolation inside one attribute value is rejected.
+- **SPEC-HTML-004** — Escaped interpolation `{{ expression }}` renders the
+  HTML-escaped value of `expression`.
+- **SPEC-HTML-005** — Boolean binding attributes `[disabled]`, `[hidden]`,
+  `[checked]`, `[selected]`, `[required]`, `[readonly]`, `[multiple]`, and
+  `[open]` emit the bare attribute when the expression is truthy and nothing
+  otherwise.
+- **SPEC-HTML-006** — `[attr.name]="expr"` emits `name="value"` unless the value
+  is `null` or `undefined`.
+- **SPEC-HTML-007** — `[class.name]="expr"` adds `name` to `class` when truthy.
+  Plain and dynamic `class` values are merged with these and de-duplicated in
+  order.
+- **SPEC-HTML-008** — `@if`, `@else if`, and `@else` render exactly the first
+  branch whose condition is truthy (or the `@else` branch), and nest.
+- **SPEC-HTML-009** — `@for (item of expression)` renders its body once per
+  element, with `item` scoped to the body; loops nest and inner scopes do not
+  leak.
+- **SPEC-HTML-010** — `@for` accepts an optional `track` expression. It is
+  accepted but has no rendering effect in v1, and produces the `FV0015`
+  warning.
+- **SPEC-HTML-011** — `@empty` renders only when the `@for` collection is empty.
+- **SPEC-HTML-012** — `@switch`, `@case`, and `@default` render exactly one
+  matching branch (or the default) without fallthrough.
+- **SPEC-HTML-013** — The escaping syntax markers `\@if`, `\{{`, `\{{{`, and
+  `\}` render as literal text rather than starting flowview syntax.
+- **SPEC-HTML-014** — Explicit `context` is the only top-level template data
+  binding; the compiler does not invent aliases such as `ctx`.
+- **SPEC-HTML-015** — Whitespace after a complete control-flow block is
+  preserved; only whitespace that separates block continuations (`} @else`,
+  `} @empty`) is consumed.
+
+Escaped and raw interpolation, and the raw interpolation syntax
+`{{{ expression }}}`, are specified in [Raw Interpolation](#raw-interpolation).
 
 Example:
 
@@ -103,31 +140,44 @@ template without escaping:
 
 Syntax and parsing:
 
-- The parser recognizes `{{{` before `{{`. It decides the mode once and records
-  it on the AST: `Node::Interpolation` carries `mode: Escaped | Raw`. Backends
-  consume that field and never inspect source text for braces.
-- The expression is scanned and validated exactly like a `{{ }}` expression and
-  ends at the first top-level `}}}`. An expression that begins with an object
-  literal therefore needs a space or parentheses.
-- Raw interpolation is content interpolation only. It works in element content
-  and inside `@if`, `@for`, and `@switch` branches. It is not interpreted in
-  HTML comments, `<script>`, or `<style>`, and it is an error in tag names,
-  attribute names, and attribute values (`FV0022`).
-- `\{{{` escapes the whole marker and renders literal `{{{`. Existing escapes
-  (`\{{`, `\{`, `\}`) are unchanged.
+- **SPEC-HTML-016** — The parser recognizes `{{{` before `{{`, decides the mode
+  once, and records it on the AST: `Node::Interpolation` carries
+  `mode: Escaped | Raw`. Backends consume that field and never inspect source
+  text for braces.
+- **SPEC-HTML-017** — The expression is scanned and validated exactly like a
+  `{{ }}` expression and ends at the first top-level `}}}`. An expression that
+  begins with an object literal therefore needs a space or parentheses.
+- **SPEC-HTML-018** — Raw interpolation works in element content and inside
+  `@if`, `@for`, and `@switch` branches.
+- **SPEC-HTML-019** — Raw interpolation is not interpreted in HTML comments,
+  `<script>`, or `<style>`.
+- **SPEC-HTML-020** — Raw interpolation in tag names, attribute names, and
+  attribute values is an error (`FV0022`).
+- **SPEC-HTML-021** — `\{{{` escapes the whole marker and renders literal
+  `{{{`. Existing escapes (`\{{`, `\{`, `\}`) are unchanged.
+- **SPEC-HTML-022** — An empty raw interpolation is `FV0023` and an unclosed one
+  is `FV0024`.
 
 Value contract (identical in both targets):
 
-| value                         | result                                           |
-| ----------------------------- | ------------------------------------------------ |
-| string (including `""`)       | inserted unchanged                               |
-| `null`, `undefined`, `false`  | empty string                                     |
-| number, `true`, array, object | error: never stringified, never inferred as HTML |
-
-The JavaScript target throws a `TypeError` from `renderRawValue`; the static
-target reports `FV0025` with the template location. Raw interpolation does not
-widen the static expression subset: `{{{ sanitize(context.body) }}}` is
-`FV0016`.
+- **SPEC-HTML-023** — A string value (including `""`) is inserted unchanged. It
+  is never sanitized, inspected, or classified.
+- **SPEC-HTML-024** — `null`, `undefined`, and `false` render as an empty
+  string.
+- **SPEC-HTML-025** — Any other value (number, `true`, array, object) is an
+  error and is never stringified or inferred as HTML. The JavaScript target
+  throws a `TypeError` from `renderRawValue`; the static target reports
+  `FV0025` with the template location.
+- **SPEC-HTML-026** — Raw interpolation does not widen the static expression
+  subset: `{{{ sanitize(context.body) }}}` is `FV0016`.
+- **SPEC-HTML-027** — The JavaScript and static targets produce identical output
+  for the shared raw-interpolation parity fixtures, including their rejected
+  cases.
+- **SPEC-HTML-028** — Generated modules import `renderRawValue` only when the
+  template uses `{{{ }}}`, so templates without raw interpolation keep the same
+  imports as before.
+- **SPEC-HTML-029** — The existence of raw interpolation does not change how
+  `{{ }}` behaves: both can share a template and `{{ }}` stays escaped.
 
 There is no configuration option that disables escaping globally. The choice is
 made at the exact template location where raw HTML is inserted. flowview does
@@ -148,22 +198,35 @@ The compiler accepts:
   integrations request maps for JavaScript transforms. Static HTML compilation
   does not generate JavaScript maps.
 
-The JavaScript target returns generated JavaScript code, an optional source map,
-and structured warnings, or structured diagnostics. Maps identify the
-configured source filename and map expression and control-flow positions to
-template locations. Embedded Astro compilation applies the host line and
-first-line column offsets once and includes the complete host file as
-`sourcesContent`. Static HTML compilation returns HTML or structured
-diagnostics and does not include source-map data. Neither target performs
-filesystem I/O; callers decide where output goes.
+- **SPEC-HTML-030** — The JavaScript target returns generated JavaScript code,
+  an optional source map, and structured warnings, or structured diagnostics.
+  Diagnostics carry the configured display filename and the line offset.
+- **SPEC-HTML-031** — Generated modules export exactly one function,
+  `render(context)`:
 
-Generated modules export:
+  ```ts
+  export function render(context: Record<string, unknown>): string;
+  ```
 
-```ts
-export function render(context: Record<string, unknown>): string;
-```
+- **SPEC-HTML-032** — Source maps are opt-in; the generated code is identical
+  with and without a map.
+- **SPEC-HTML-033** — Maps identify the configured source filename, include the
+  template as `sourcesContent`, and expose no absolute local filesystem paths.
+- **SPEC-HTML-034** — Maps map expression and control-flow positions (including
+  interpolation, `@if`, `@for`, `@switch`, and attribute bindings) and the start
+  of static HTML to template locations.
+- **SPEC-HTML-035** — Embedded Astro compilation applies the host line and
+  first-line column offsets once and includes the complete host file as
+  `sourcesContent`.
+- **SPEC-HTML-036** — A failure thrown while rendering generated code resolves,
+  through the source map, to the template expression that caused it.
+- **SPEC-HTML-037** — The Rust API, CLI, and WASM compiler expose the same
+  generated code and source map, and the Vite and Astro integrations return the
+  compiler map from their transforms.
 
-The compiler must not invent implicit aliases such as `ctx`.
+Static HTML compilation returns HTML or structured diagnostics and does not
+include source-map data. Neither target performs filesystem I/O; callers decide
+where output goes.
 
 ## Runtime Contract
 
@@ -174,6 +237,7 @@ Required exports:
 ```ts
 export function escapeHtml(value: unknown): string;
 export function renderValue(value: unknown): string;
+export function renderAttributeValue(value: unknown): string;
 export function renderRawValue(value: unknown): string;
 
 export type RenderContext = Record<string, unknown>;
@@ -185,83 +249,96 @@ export type RenderFunction<C extends RenderContext = RenderContext> = (
 
 Runtime behavior for v1:
 
-- `null`, `undefined`, and `false` render as an empty string.
-- Other values are converted to strings with `String(value)`.
-- Interpolated values are HTML-escaped by default.
-- Escaping is valid for normal text and quoted HTML attribute values.
-- Escaping is not URL, CSS, JavaScript, or policy-level sanitization.
+- **SPEC-HTML-038** — The runtime package exports `escapeHtml`, `renderValue`,
+  `renderAttributeValue`, `renderRawValue`, and the `RenderContext` and
+  `RenderFunction` types.
+- **SPEC-HTML-039** — `renderValue` renders `null`, `undefined`, and `false` as
+  an empty string and converts other values with `String(value)`.
+- **SPEC-HTML-040** — Interpolated values are HTML-escaped by default
+  (`&`, `<`, `>`, `"`, `'`), which is valid for normal text and quoted HTML
+  attribute values.
+- **SPEC-HTML-041** — `renderAttributeValue` (used for dynamic quoted attribute
+  values and `[attr.name]`) renders only `null` and `undefined` as an empty
+  string, keeps `false` and `true` as strings, and escapes like `renderValue`.
 
-`renderRawValue` backs `{{{ }}}`: it returns strings unchanged, renders `null`,
-`undefined`, and `false` as an empty string, and throws a `TypeError` for every
-other value. Generated modules import it only when the template uses `{{{ }}}`,
-so templates without raw interpolation keep the same imports as before.
+Escaping is not URL, CSS, JavaScript, or policy-level sanitization.
+
+`renderRawValue` backs `{{{ }}}` and implements the value contract of
+[Raw Interpolation](#raw-interpolation) (SPEC-HTML-023, SPEC-HTML-024,
+SPEC-HTML-025, SPEC-HTML-028).
 
 ## Static HTML Target
 
-`render_static(template, &context, StaticRenderOptions)` renders
-`template + context → HTML string` natively in Rust. It does not generate or
-execute JavaScript and needs no Node.js, browser, or `@flowview/*` package.
-`compile_static(template, options)` returns an immutable
-`CompiledStaticTemplate` that owns the AST, source text, lowered expressions,
-and compile-time warnings. `template.render(&context)` returns the HTML and
-can be called any number of times, with no state shared between calls.
-Syntax errors and unsupported or invalid expressions (even in branches a given
-context would never reach) are reported by `compile_static`; errors that depend
-on the context (`FV0017`–`FV0021`, `FV0025`) are reported by `render`.
-Warnings such as `FV0015` are produced once at compile time and exposed through
-`template.warnings()`; `render_static()` returns the same warnings in its output.
-`render_static()` is the one-off convenience over this pair.
-It is not a static-site generator: Markdown, routing, multi-page output,
-assets, themes, and components belong to the caller.
+- **SPEC-HTML-042** — `render_static(template, &context, StaticRenderOptions)`
+  renders `template + context → HTML string` natively in Rust, without
+  generating or executing JavaScript.
+- **SPEC-HTML-043** — `compile_static(template, options)` returns an immutable
+  `CompiledStaticTemplate`. `template.render(&context)` returns the HTML and can
+  be called any number of times (including concurrently), with no state shared
+  between calls. `render_static()` is the one-off convenience over this pair.
+- **SPEC-HTML-044** — Syntax errors and unsupported or invalid expressions (even
+  in branches a given context would never reach) are reported by
+  `compile_static`; errors that depend on the context (`FV0017`–`FV0021`,
+  `FV0025`) are reported by `render`.
+- **SPEC-HTML-045** — Warnings such as `FV0015` are produced once at compile
+  time and exposed through `template.warnings()`; `render_static()` returns the
+  same warnings in its output.
+- **SPEC-HTML-046** — The context must be a JSON object and is visible to
+  templates as `context`; anything else is `FV0021`, never a panic.
+- **SPEC-HTML-047** — All control flow and attribute bindings are supported,
+  and output matches the JavaScript target for the same data (including
+  whitespace, escaping, `null`/`undefined`/`false` handling, and class
+  merging).
 
-The context must be a JSON object and is visible to templates as `context`.
-All existing control flow and attribute bindings are supported, and output
-matches the JavaScript target for the same data (including whitespace,
-escaping, `null`/`undefined`/`false` handling, and class merging).
+The static target is not a static-site generator: Markdown, routing, multi-page
+output, assets, themes, and components belong to the caller.
 
 ### Static expression subset
 
 The JavaScript target accepts the full validated JavaScript expression
-surface. The static target evaluates only this subset, with explicit scope
-(`context` plus `@for` loop variables):
+surface. The static target intentionally evaluates only the deterministic
+subset below, with explicit scope (`context` plus `@for` loop variables):
 
-- Literals: strings, numbers (including a leading `-`), `true`, `false`,
-  `null`.
-- Identifiers: `context` and enclosing `@for` item names.
-- Member access: `a.b`, `a['b']`, `a[0]` (computed keys must be string or
-  non-negative integer literals).
-- `.length` of strings (UTF-16 units) and arrays.
-- Unary `!`; logical `&&`, `||`, `??`; parentheses.
-- `===`, `!==`, `==`, `!=` on primitives (loose equality only between
-  same-type values or null/undefined), and `<`, `<=`, `>`, `>=` on
+- **SPEC-HTML-048** — Literals (strings, numbers including a leading `-`,
+  `true`, `false`, `null`), identifiers (`context` and enclosing `@for` item
+  names), member access (`a.b`, `a['b']`, `a[0]`; computed keys must be string
+  or non-negative integer literals), and `.length` of strings (UTF-16 units)
+  and arrays.
+- **SPEC-HTML-049** — Unary `!`, logical `&&`, `||`, `??`, and parentheses.
+- **SPEC-HTML-050** — `===`, `!==`, `==`, `!=` on primitives (loose equality
+  only between same-type values or null/undefined), and `<`, `<=`, `>`, `>=` on
   number/number or string/string.
+- **SPEC-HTML-051** — A missing object key or out-of-range index is
+  `undefined`. Reading a property of `undefined`/`null` or of a number/boolean
+  is `FV0018`; an unresolved identifier is `FV0017`.
+- **SPEC-HTML-052** — Truthiness follows JavaScript (`0`, `""`, `null`,
+  `undefined`, `false` are falsy; empty arrays and objects are truthy).
+- **SPEC-HTML-053** — Anything else (function calls, arrow functions,
+  ternaries, template literals, optional chaining, arithmetic, array/object
+  literals, computed keys, ...) is rejected with `FV0016` even though it is
+  valid for the JavaScript target. All expressions are checked before
+  rendering, so errors do not depend on the data or on which branch runs.
+- **SPEC-HTML-054** — In the static target `@for` accepts an array;
+  `null`/`undefined` count as empty. Other values fail with `FV0019`.
+- **SPEC-HTML-055** — Arrays and objects cannot be interpolated or used as
+  attribute values (`FV0020`). Numbers render like JavaScript for integers and
+  ordinary decimals.
 
-A missing object key or out-of-range index is `undefined`. Reading a property
-of `undefined`/`null` or of a number/boolean is an error. Truthiness follows
-JavaScript (`0`, `""`, `null`, `undefined`, `false` are falsy; empty arrays
-and objects are truthy).
-
-Anything else (function calls, arrow functions, ternaries, template literals,
-optional chaining, arithmetic, array/object literals, computed keys, ...)
-is rejected with `FV0016` even though it is valid for the JavaScript target.
-All expressions are checked before rendering, so errors do not depend on the
-data or on which branch runs.
-
-`@for` accepts an array; `null`/`undefined` count as empty. Other values fail
-with `FV0019`. Arrays and objects cannot be interpolated or used as attribute
-values (`FV0020`). Numbers render like JavaScript for integers and ordinary
-decimals.
-
-Raw interpolation (`{{{ }}}`) renders string values verbatim and other values
-as described in [Raw Interpolation](#raw-interpolation); a value that is not a
-string, `null`, or `false` fails with `FV0025`.
+Raw interpolation (`{{{ }}}`) in the static target follows the value contract
+of [Raw Interpolation](#raw-interpolation) (SPEC-HTML-023 to SPEC-HTML-025).
 
 Static diagnostics: `FV0016` unsupported expression, `FV0017` unresolved
 identifier, `FV0018` invalid member access, `FV0019` invalid iterable, `FV0020`
 unsupported value, `FV0021` invalid context (not a JSON object).
 
-CLI: `flowview compile page.flow --target static-html [--data context.json]
-[--out page.html]`. Without `--data` the context is `{}`.
+- **SPEC-HTML-056** — CLI:
+  `flowview compile page.flow --target static-html [--data context.json]
+[--out page.html]` renders static HTML. Without `--data` the context is `{}`;
+  `--data` is only valid with the static target and must be a JSON object file.
+- **SPEC-HTML-057** — The CLI JavaScript target is the default, compiles a file
+  or stdin, writes to stdout or `--out`, reports diagnostics for humans by
+  default and as JSON with `--diagnostic-format json`, and applies
+  `--line-offset` to diagnostic lines.
 
 ## Security Model
 
@@ -274,7 +351,8 @@ application provides a sandbox.
 v1 documentation must clearly explain:
 
 - Templates are trusted source code.
-- Values interpolated with `{{ }}` are escaped by default.
+- Values interpolated with `{{ }}` are escaped by default (SPEC-HTML-004,
+  SPEC-HTML-040).
 - `{{{ }}}` is an explicit assertion by the template author that the value is
   already trusted or sanitized HTML. flowview does not sanitize it, so passing
   untrusted markup is an XSS vulnerability. Its existence does not change how
@@ -284,6 +362,11 @@ v1 documentation must clearly explain:
   attributes, or URL-bearing attributes without host-side validation.
 - Runtime compilation is not recommended for production.
 
+Observable security boundary:
+
+- **SPEC-HTML-058** — Raw interpolation is the only position that emits a value
+  unescaped; hostile values in every other interpolation position stay inert.
+
 ## HTML Parsing
 
 The compiler is not a full browser-grade HTML parser for v1, but the supported
@@ -291,25 +374,26 @@ subset is explicit and tested.
 
 Required behavior:
 
-- Parse normal opening and closing tags.
-- Parse self-closing tags.
-- Preserve static text.
-- Preserve static attributes.
-- Emit HTML void elements using self-closing syntax (for example, `<br/>`),
-  including when the source omits the slash.
-- Support quoted attributes.
-- Reject interpolation in unquoted attributes.
-- Avoid detecting flowview control syntax inside:
-  - HTML comments.
-  - `<script>`.
-  - `<style>`.
-  - Tag names.
-  - Attribute names.
-  - Attribute values unless explicitly supported.
-- Treat `@` inside normal words or email-like text as plain text.
-- Match HTML tag names case-insensitively.
-- Preserve `<!DOCTYPE>` declarations.
-- Produce clear diagnostics for malformed tags and malformed blocks.
+- **SPEC-HTML-059** — Normal opening and closing tags and self-closing tags are
+  parsed into an element tree.
+- **SPEC-HTML-060** — HTML void elements are emitted using self-closing syntax
+  (for example, `<br/>`), including when the source omits the slash.
+- **SPEC-HTML-061** — Interpolation in unquoted attributes is rejected.
+- **SPEC-HTML-062** — Flowview control syntax is not detected inside HTML
+  comments, `<script>`, or `<style>`.
+- **SPEC-HTML-063** — Flowview control syntax is not detected inside tag names,
+  attribute names, or attribute values (other than the supported interpolation
+  forms).
+- **SPEC-HTML-064** — `@` inside normal words or email-like text is plain text,
+  and control keywords require word boundaries.
+- **SPEC-HTML-065** — HTML tag names, including raw-text elements, match
+  case-insensitively.
+- **SPEC-HTML-066** — `<!DOCTYPE>` declarations are preserved.
+- **SPEC-HTML-067** — Malformed tags and malformed blocks (unclosed tags,
+  unclosed blocks, unexpected `@else`, `@empty`, `@case`, `@default`, malformed
+  `@switch`) produce clear diagnostics.
+
+Static text and static attributes are preserved (SPEC-HTML-001, SPEC-HTML-002).
 
 ## Expression Validation
 
@@ -328,27 +412,35 @@ The compiler validates JavaScript expressions used in:
 Validation uses a real JavaScript parser and applies to both targets. The
 static target then further restricts expressions to the subset above.
 
-Invalid JavaScript expressions fail at compile time with a diagnostic that
-points to the original template location.
+- **SPEC-HTML-068** — Every expression in the positions above is validated at
+  compile time, and invalid JavaScript fails with `FV0011` and a diagnostic
+  that points to the original template location.
+- **SPEC-HTML-069** — Empty expressions and conditions are rejected.
+- **SPEC-HTML-070** — Expression scanning understands JavaScript: closing
+  delimiters, parentheses, and braces inside string, template, and regular
+  expression literals and comments do not end an expression.
+- **SPEC-HTML-071** — The `@for` header is `item of expression` with an optional
+  `; track expression`. Semicolons inside the iterable expression are allowed;
+  an invalid header, an empty `track`, or an invalid or internal loop binding is
+  rejected.
 
 ## Diagnostics
 
-Each diagnostic includes:
-
-- Human-readable message.
-- Severity.
-- Source filename.
-- Line.
-- Column.
-- Start byte offset.
-- End byte offset.
-- Optional diagnostic code.
+- **SPEC-HTML-072** — Each diagnostic includes a human-readable message,
+  severity, source filename, line, column, start byte offset, end byte offset,
+  and an optional diagnostic code.
+- **SPEC-HTML-073** — Start and end offsets are byte offsets within the source
+  that lie on UTF-8 character boundaries, including for multibyte text and
+  malformed input.
+- **SPEC-HTML-074** — Diagnostics render in a human-readable form and as JSON,
+  and name the caller's display filename.
 
 Diagnostic codes are stable, e.g. `FV0011` for invalid JavaScript expressions.
 Static-target codes are `FV0016`–`FV0021` (see Static HTML Target). Raw
 interpolation uses `FV0022` (unsupported location), `FV0023` (empty), `FV0024`
 (unclosed), and, in the static target, `FV0025` (value is not a string, `null`,
-`undefined`, or `false`).
+`undefined`, or `false`). Their behavior is specified by the requirements that
+introduce them.
 
 ## Code Generation
 
@@ -356,16 +448,20 @@ The rules below describe the JavaScript target. Generated JavaScript is predicta
 
 Required behavior:
 
-- Static HTML is emitted efficiently.
-- Dynamic values go through `renderValue`; `{{{ }}}` values go through
-  `renderRawValue`.
-- Dynamic quoted attribute values go through `renderValue`.
-- Generated string literals escape backslashes, quotes, newlines, carriage
-  returns, tabs, Unicode line separators, and other control characters.
-- `@for` normalizes iterables with `Array.from(value ?? [])`.
-- `@empty` renders only when the normalized collection is empty.
-- `track` remains reserved and has no string-rendering runtime effect in v1.
-- `@switch` avoids accidental fallthrough.
+- **SPEC-HTML-075** — Output is deterministic: the same template and options
+  always produce byte-identical code.
+- **SPEC-HTML-076** — Dynamic text values go through `renderValue`, dynamic
+  quoted attribute values go through `renderAttributeValue`, and `{{{ }}}`
+  values go through `renderRawValue`.
+- **SPEC-HTML-077** — Generated string literals escape backslashes, quotes,
+  newlines, carriage returns, tabs, Unicode line separators, and other control
+  characters.
+- **SPEC-HTML-078** — `@for` normalizes iterables with `Array.from(value ?? [])`
+  and renders `@empty` only when the normalized collection is empty
+  (SPEC-HTML-011).
+
+`track` remains reserved (SPEC-HTML-010) and `@switch` avoids accidental
+fallthrough (SPEC-HTML-012).
 
 ## Vite Plugin
 
@@ -373,15 +469,21 @@ The Vite plugin compiles `.flow` imports at build time.
 
 Required behavior:
 
-- Compile `.flow` imports during dev.
-- Compile `.flow` imports during production build.
-- Surface compiler diagnostics as Vite errors.
-- Support custom compiler path.
-- Resolve the compiler automatically in monorepo development.
-- Resolve installed CLI usage from `PATH`.
-- Avoid runtime compilation in production builds.
-- Provide TypeScript declaration support for `.flow` imports.
-- Invalidate transformed modules correctly during dev.
+- **SPEC-HTML-079** — `.flow` imports are compiled by the plugin's transform
+  hook (used by the dev server), and files that are not `.flow` are left alone.
+- **SPEC-HTML-080** — `.flow` imports are compiled during a production build,
+  so the built output contains precompiled render code and no compiler.
+- **SPEC-HTML-081** — Compiler diagnostics (and warnings) surface as Vite errors
+  (and warnings) with the file and template location.
+- **SPEC-HTML-082** — A custom compiler path (`compilerPath`) is supported.
+- **SPEC-HTML-083** — The compiler is resolved in order: explicit
+  `compilerPath`, `FLOWVIEW_COMPILER_PATH`, a native binary in the monorepo
+  `target/` directory, then the bundled WASM compiler (no Rust toolchain or
+  `PATH` lookup required).
+- **SPEC-HTML-084** — TypeScript declarations for `*.flow` imports are provided
+  by `@flowview/vite/client`.
+- **SPEC-HTML-085** — A changed `.flow` file invalidates its transformed module
+  during dev.
 
 ## Astro Integration
 
@@ -389,21 +491,28 @@ Astro is the primary integration path for v1.
 
 Required behavior:
 
-- Support standalone `.flow` imports inside Astro.
-- Support embedded `<template flowview={...} is:raw>` regions.
-- Accept `flowview={expression}` as the shorthand context form and
-  `context={expression}` as the explicit form; reject combining both.
-- Accept regions without `is:raw` at compile time, while documenting that
-  `is:raw` is required for clean `astro check` and editor diagnostics.
-- Preserve Astro frontmatter.
-- Preserve surrounding Astro markup.
-- Compile embedded templates before Astro treats flowview syntax as normal Astro
-  markup.
-- Accept `is:raw` as the recommended editor-compatible form.
-- Produce correct line offsets for embedded diagnostics.
-- Avoid requiring a wrapper component.
-- Avoid manual compiler API calls inside user code.
-- Surface template-discovery errors as located Vite diagnostics.
+- **SPEC-HTML-086** — The Astro integration registers the flowview Vite plugin,
+  so standalone `.flow` imports work inside Astro.
+- **SPEC-HTML-087** — Embedded `<template flowview ... is:raw>` regions are
+  compiled and replaced by their rendered output, without a wrapper component
+  or manual compiler API calls in user code.
+- **SPEC-HTML-088** — `flowview={expression}` is the shorthand context form and
+  `context={expression}` is the explicit form; combining both is rejected.
+- **SPEC-HTML-089** — Regions without `is:raw` are accepted at compile time
+  (`is:raw` is still required for clean `astro check` and editor diagnostics,
+  and is the recommended form).
+- **SPEC-HTML-090** — Existing Astro frontmatter is preserved, and frontmatter
+  is created when the file has none.
+- **SPEC-HTML-091** — Surrounding Astro markup is preserved.
+- **SPEC-HTML-092** — Embedded templates are compiled before Astro treats
+  flowview syntax as normal Astro markup: the embedded plugin is ordered after
+  flowview Events and before `astro:build`.
+- **SPEC-HTML-093** — Embedded diagnostics carry correct host-file line offsets.
+- **SPEC-HTML-094** — Template-discovery errors (a missing `context`, a missing
+  closing tag) surface as located diagnostics.
+- **SPEC-HTML-095** — Template discovery ignores `<template>` text inside HTML
+  comments and raw-text elements and similarly named tags, and accepts
+  case-insensitive closing tags.
 
 ## Server Usage with Hono or Plain Node.js
 
@@ -462,13 +571,15 @@ export default {
 
 v1 includes basic editor support:
 
-- `.flow` syntax highlighting.
-- Snippets for `@if`, `@for`, `@empty`, and `@switch`.
-- A Prettier plugin (`@flowview/prettier`) that wraps prettier-plugin-astro
-  and preserves flowview template regions byte-for-byte, so no
-  `prettier-ignore` comments are needed.
-- Embedded highlighting for `<template flowview is:raw>` inside `.astro`.
-- Astro snippet for the recommended wrapper form.
+- **SPEC-HTML-096** — `.flow` syntax highlighting for control-flow keywords,
+  `of`/`track`, escaped and raw interpolation, and escape markers.
+- **SPEC-HTML-097** — Snippets for `@if`, `@for` (with `@empty`), and
+  `@switch`, and an Astro snippet for the recommended wrapper form.
+- **SPEC-HTML-098** — A Prettier plugin (`@flowview/prettier`) wraps
+  prettier-plugin-astro and preserves flowview template regions byte-for-byte,
+  so no `prettier-ignore` comments are needed.
+- **SPEC-HTML-099** — Embedded highlighting for `<template flowview is:raw>`
+  inside `.astro`.
 
 Future support:
 

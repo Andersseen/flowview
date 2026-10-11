@@ -6,7 +6,7 @@
 > never become, what state it is in, what to work on, and how to prove your
 > change is correct.
 >
-> **Last verified:** 2026-10-11 on top of `5b68cd3` plus the UTF-8 diagnostic span fix (Rust format/clippy/tests/docs, JS typecheck/test/lint/format, and a fresh 75-second compiler fuzz run). Scheduled fuzzing is an ongoing gate; see WS4.
+> **Last verified:** 2026-10-11 on top of `f47fa07` (WS5, spec conformance mapping): `node scripts/spec-coverage.mjs --check` (99/99), Rust format/clippy/tests/docs, `pnpm install --frozen-lockfile`, JS format/typecheck/test/lint. Browser E2E and fuzz were not re-run for this change (tests, docs, scripts, and CI only; no compiler code changed). Scheduled fuzzing is an ongoing gate; see WS4.
 
 ---
 
@@ -312,8 +312,8 @@ enforced by a named test.
 
 Completed since the first version of this guide: WS1 (packed distribution
 verification), WS2 (Rust JavaScript source maps), WS3 (Events capture analysis,
-superseded by the `<script data-flowview>` model), and most of WS6 (release
-engineering). Rust portability and external Rust-consumer checks are also
+superseded by the `<script data-flowview>` model), WS5 (spec conformance
+mapping), and most of WS6 (release engineering). Rust portability and external Rust-consumer checks are also
 covered. WS4 landed in PR #31; fuzzing then found a UTF-8 diagnostic span bug
 that is fixed in a follow-up (see WS4 status). Nightly fuzzing continues as a
 regression detector.
@@ -431,14 +431,25 @@ the fixed commit is not recorded here until it has run.
 **Why:** §6.3 — "spec-driven" requires the spec to be executable, or drift
 is invisible.
 
-**What:** Give every normative requirement in `flowview-spec.md` a stable ID
-(`SPEC-HTML-001` …) and annotate the enforcing tests (Rust: test name
-comment; TS: `describe`/`it` naming). Add a checker script
-(`scripts/spec-coverage.mjs`) that lists IDs without tests and fails CI on
-regressions from a committed baseline.
+**Status:** Implemented. `flowview-spec.md` declares 99 stable
+`SPEC-HTML-xxx` requirements (IDs are never renumbered or reused), each
+enforced by `// @spec SPEC-HTML-xxx`-annotated tests in the existing Rust and
+Vitest/Node suites. `scripts/spec-coverage.mjs` (Node standard library only)
+fails on duplicate or malformed declarations, annotations naming unknown IDs,
+annotations outside recognized test files or not directly above a test,
+requirements without evidence, and a stale `docs/spec-coverage.md`. It runs as
+`pnpm run test:spec` and as the dedicated **Spec conformance** CI job (checkout
+plus Node, no workspace install). Coverage is 100%, with no uncovered
+baseline. The audit added a few focused tests for genuine gaps (no `ctx`
+alias, runtime exports, static number rendering, Vite hooks and declarations,
+Astro registration/markup/line offsets, snippets) and reconciled two stale spec
+statements: the Vite compiler resolution order now matches WS1 (explicit path >
+`FLOWVIEW_COMPILER_PATH` > monorepo binary > bundled WASM; no `PATH` lookup) and
+dynamic attribute values go through `renderAttributeValue`. No implementation
+bug was found. Contributor workflow: `CONTRIBUTING.md`.
 
-**Exit checks:** the script runs in CI; the initial report is committed;
-every _new_ spec sentence added later must land with an ID and a test.
+**Exit checks:** met — the script runs in CI; the report is committed; every
+_new_ spec requirement must land with an ID, a test, and a regenerated report.
 
 ### WS6 — Release engineering (mostly done)
 
@@ -496,6 +507,7 @@ changes so the two targets cannot drift.
 | Rust: lint            | `cargo clippy --workspace --all-targets -- -D warnings` |
 | Rust: tests           | `cargo test --workspace`                                |
 | JS: all package tests | `pnpm run test`                                         |
+| Spec conformance      | `pnpm run test:spec`                                    |
 | JS: formatting        | `pnpm run format:check`                                 |
 | JS: types             | `pnpm run typecheck`                                    |
 | Runtime only          | `pnpm --filter @flowview/runtime test`                  |

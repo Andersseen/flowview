@@ -6,6 +6,11 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+- Added spec conformance mapping: every testable requirement in
+  `docs/flowview-spec.md` has a stable `SPEC-HTML-xxx` ID enforced by
+  `@spec`-annotated tests. `scripts/spec-coverage.mjs` (`pnpm run test:spec`)
+  fails CI on uncovered, duplicate, malformed, or unknown IDs and on a stale
+  `docs/spec-coverage.md`.
 - Fixed malformed templates containing multibyte Unicode being able to panic
   diagnostic construction; compiler errors now preserve valid UTF-8 source
   spans and keep character-based line and column numbers.

@@ -30,6 +30,7 @@ function compiledRender<TContext>(
 }
 
 describe("compileFlowview", () => {
+  // @spec SPEC-HTML-030 SPEC-HTML-031
   it("compiles a template through WASM", () => {
     const result = compileFlowview("<p>Hello {{ context.name }}</p>", {
       filename: "hello.flow",
@@ -53,6 +54,7 @@ describe("compileFlowview", () => {
     ).toMatchObject({ source: "hello.flow", line: 1, column: 12 });
   });
 
+  // @spec SPEC-HTML-036
   it("maps a render-time failure back to its template expression", () => {
     const source = [
       "<main>",
@@ -95,6 +97,7 @@ describe("compileFlowview", () => {
     ).toMatchObject({ source: "throws.flow", line: 3, column: 10 });
   });
 
+  // @spec SPEC-HTML-030 SPEC-HTML-072
   it("throws structured diagnostics", () => {
     expect(() =>
       compileFlowview("@if () { <p>Invalid</p> }", {
@@ -103,6 +106,7 @@ describe("compileFlowview", () => {
     ).toThrow(FlowviewCompilerError);
   });
 
+  // @spec SPEC-HTML-005
   it("renders boolean bindings with HTML boolean attribute semantics", () => {
     const render = compiledRender<{ loading: boolean; canSubmit: boolean }>(
       `<button [disabled]="context.loading" [required]="!context.canSubmit">Save</button>`,
@@ -116,6 +120,7 @@ describe("compileFlowview", () => {
     );
   });
 
+  // @spec SPEC-HTML-006
   it("renders attr bindings with nullable omission and escaped values", () => {
     const render = compiledRender<{
       busy: boolean;
@@ -136,6 +141,7 @@ describe("compileFlowview", () => {
     );
   });
 
+  // @spec SPEC-HTML-007
   it("composes class bindings with static classes without duplicates", () => {
     const render = compiledRender<{ running: boolean; failed: boolean }>(
       `<article class="audit-card error" [class.loading]="context.running" [class.error]="context.failed"></article>`,
@@ -152,6 +158,7 @@ describe("compileFlowview", () => {
     );
   });
 
+  // @spec SPEC-HTML-005 SPEC-HTML-007
   it("renders bindings inside control flow blocks", () => {
     const render = compiledRender<{
       show: boolean;
@@ -215,6 +222,7 @@ const parity = JSON.parse(
 ) as ParityFixtures;
 
 describe("raw interpolation {{{ }}}", () => {
+  // @spec SPEC-HTML-029
   it("keeps {{ }} escaped and {{{ }}} verbatim in one template", () => {
     const render = compiledRender<{ title: string; bodyHtml: string }>(
       `<main><h1>{{ context.title }}</h1><article>{{{ context.bodyHtml }}}</article></main>`,
@@ -227,6 +235,7 @@ describe("raw interpolation {{{ }}}", () => {
     );
   });
 
+  // @spec SPEC-HTML-058
   it("security regression: escaped payloads stay inert, raw ones are verbatim", () => {
     const payload = "<script>alert(1)</script>";
 
@@ -240,6 +249,7 @@ describe("raw interpolation {{{ }}}", () => {
     ).toBe(payload);
   });
 
+  // @spec SPEC-HTML-018
   it("works inside @if, @for and @switch", () => {
     const render = compiledRender<Record<string, unknown>>(
       `@if (context.html) {<s>{{{ context.html }}}</s>}` +
@@ -256,6 +266,7 @@ describe("raw interpolation {{{ }}}", () => {
     ).toBe("<s><em>x</em></s><h2>&lt;A&gt;</h2><p>1</p><i><em>x</em></i>");
   });
 
+  // @spec SPEC-HTML-028
   it("imports renderRawValue only for templates that use it", () => {
     const options = { filename: "x.flow", runtimeImport: "@flowview/runtime" };
 
@@ -267,16 +278,19 @@ describe("raw interpolation {{{ }}}", () => {
     );
   });
 
+  // @spec SPEC-HTML-027 SPEC-HTML-047
   it.each(parity.cases)("parity fixture: $name", (fixture) => {
     const render = compiledRender<Record<string, unknown>>(fixture.template);
     expect(render(fixture.context)).toBe(fixture.expected);
   });
 
+  // @spec SPEC-HTML-047
   it.each(layoutParity.cases)("layout parity fixture: $name", (fixture) => {
     const render = compiledRender<Record<string, unknown>>(fixture.template);
     expect(render(fixture.context)).toBe(fixture.expected);
   });
 
+  // @spec SPEC-HTML-025 SPEC-HTML-027
   it.each(parity.rejects)(
     "parity fixture: rejects $name at render time",
     (fixture) => {
@@ -285,6 +299,7 @@ describe("raw interpolation {{{ }}}", () => {
     },
   );
 
+  // @spec SPEC-HTML-020
   it("rejects raw interpolation in attributes with a structured diagnostic", () => {
     try {
       compileFlowview(`<div title="{{{ context.html }}}"></div>`, {
@@ -303,6 +318,7 @@ describe("raw interpolation {{{ }}}", () => {
     }
   });
 
+  // @spec SPEC-HTML-022
   it("reports empty and unclosed raw interpolation", () => {
     const codeOf = (source: string): string | null | undefined => {
       try {

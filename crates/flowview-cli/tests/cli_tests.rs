@@ -1,6 +1,7 @@
 use assert_cmd::Command;
 use std::{fs, str};
 
+// @spec SPEC-HTML-057
 #[test]
 fn cli_compiles_valid_template() {
     let mut cmd = Command::cargo_bin("flowview").unwrap();
@@ -14,6 +15,7 @@ fn cli_compiles_valid_template() {
     assert!(stdout.contains("renderValue(context.title)"));
 }
 
+// @spec SPEC-HTML-037
 #[test]
 fn cli_transports_javascript_and_source_map_as_json() {
     let mut cmd = Command::cargo_bin("flowview").unwrap();
@@ -33,6 +35,7 @@ fn cli_transports_javascript_and_source_map_as_json() {
     assert!(!map["mappings"].as_str().unwrap().is_empty());
 }
 
+// @spec SPEC-HTML-035 SPEC-HTML-057
 #[test]
 fn cli_accepts_embedded_host_source_through_stdin_without_extra_arguments() {
     let mut cmd = Command::cargo_bin("flowview").unwrap();
@@ -58,6 +61,7 @@ fn cli_accepts_embedded_host_source_through_stdin_without_extra_arguments() {
     );
 }
 
+// @spec SPEC-HTML-057 SPEC-HTML-074
 #[test]
 fn cli_reports_human_errors_by_default() {
     let mut cmd = Command::cargo_bin("flowview").unwrap();
@@ -69,6 +73,7 @@ fn cli_reports_human_errors_by_default() {
     assert!(stderr.contains("FV0011"));
 }
 
+// @spec SPEC-HTML-057 SPEC-HTML-074
 #[test]
 fn cli_reports_json_errors_when_asked() {
     let mut cmd = Command::cargo_bin("flowview").unwrap();
@@ -84,6 +89,7 @@ fn cli_reports_json_errors_when_asked() {
     assert!(stderr.contains("FV0011"));
 }
 
+// @spec SPEC-HTML-057
 #[test]
 fn cli_writes_output_to_file() {
     let temp = tempfile::tempdir().unwrap();
@@ -109,6 +115,7 @@ fn cli_writes_output_to_file() {
     assert!(written.contains("renderValue(context.title)"));
 }
 
+// @spec SPEC-HTML-030 SPEC-HTML-057
 #[test]
 fn cli_applies_line_offset_to_diagnostics() {
     let mut cmd = Command::cargo_bin("flowview").unwrap();
@@ -144,6 +151,7 @@ fn static_cmd(template: &str) -> Command {
     cmd
 }
 
+// @spec SPEC-HTML-057
 #[test]
 fn cli_explicit_js_target_matches_default() {
     let run = |explicit: bool| {
@@ -158,6 +166,7 @@ fn cli_explicit_js_target_matches_default() {
     assert_eq!(run(true), run(false));
 }
 
+// @spec SPEC-HTML-056
 #[test]
 fn cli_static_html_without_data() {
     let output = static_cmd("<h1>Hello</h1>").output().unwrap();
@@ -165,6 +174,7 @@ fn cli_static_html_without_data() {
     assert_eq!(str::from_utf8(&output.stdout).unwrap(), "<h1>Hello</h1>");
 }
 
+// @spec SPEC-HTML-056
 #[test]
 fn cli_static_html_with_data_and_out() {
     let temp = tempfile::tempdir().unwrap();
@@ -183,6 +193,7 @@ fn cli_static_html_with_data_and_out() {
     assert_eq!(fs::read_to_string(out).unwrap(), "<h1>A &amp; B</h1>");
 }
 
+// @spec SPEC-HTML-056
 #[test]
 fn cli_static_html_invalid_json() {
     let temp = tempfile::tempdir().unwrap();
@@ -196,6 +207,7 @@ fn cli_static_html_invalid_json() {
         .contains("Invalid JSON"));
 }
 
+// @spec SPEC-HTML-056
 #[test]
 fn cli_data_requires_static_target() {
     let mut cmd = Command::cargo_bin("flowview").unwrap();
@@ -211,6 +223,7 @@ fn cli_data_requires_static_target() {
         .contains("only valid with --target static-html"));
 }
 
+// @spec SPEC-HTML-053 SPEC-HTML-074
 #[test]
 fn cli_static_unsupported_expression_human_and_json() {
     let human = static_cmd("{{ context.f() }}").output().unwrap();
@@ -229,6 +242,7 @@ fn cli_static_unsupported_expression_human_and_json() {
     assert!(stderr.contains("\"line\":1"));
 }
 
+// @spec SPEC-HTML-023
 #[test]
 fn cli_static_raw_interpolation_renders_trusted_html() {
     let temp = tempfile::tempdir().unwrap();
@@ -251,6 +265,7 @@ fn cli_static_raw_interpolation_renders_trusted_html() {
     );
 }
 
+// @spec SPEC-HTML-025 SPEC-HTML-074
 #[test]
 fn cli_static_raw_value_type_error_is_a_json_diagnostic() {
     let temp = tempfile::tempdir().unwrap();
@@ -274,6 +289,7 @@ fn cli_static_raw_value_type_error_is_a_json_diagnostic() {
     assert!(stderr.contains("\"severity\":\"error\""), "{stderr}");
 }
 
+// @spec SPEC-HTML-020
 #[test]
 fn cli_js_target_rejects_raw_interpolation_in_attributes_with_json_diagnostic() {
     let mut cmd = Command::cargo_bin("flowview").unwrap();
@@ -293,6 +309,7 @@ fn cli_js_target_rejects_raw_interpolation_in_attributes_with_json_diagnostic() 
     assert!(stderr.contains("\"column\":"), "{stderr}");
 }
 
+// @spec SPEC-HTML-028
 #[test]
 fn cli_js_target_emits_raw_helper() {
     let mut cmd = Command::cargo_bin("flowview").unwrap();
@@ -305,6 +322,7 @@ fn cli_js_target_emits_raw_helper() {
     assert!(stdout.contains("renderRawValue(context.body)"));
 }
 
+// @spec SPEC-HTML-056
 #[test]
 fn cli_static_html_reads_template_file_and_prints_to_stdout() {
     let temp = tempfile::tempdir().unwrap();
@@ -328,6 +346,7 @@ fn cli_static_html_reads_template_file_and_prints_to_stdout() {
     );
 }
 
+// @spec SPEC-HTML-046 SPEC-HTML-056
 #[test]
 fn cli_static_html_rejects_non_object_json() {
     let temp = tempfile::tempdir().unwrap();
@@ -344,6 +363,7 @@ fn cli_static_html_rejects_non_object_json() {
     assert!(str::from_utf8(&output.stderr).unwrap().contains("FV0021"));
 }
 
+// @spec SPEC-HTML-056
 #[test]
 fn cli_static_html_missing_data_file() {
     let output = static_cmd("x")
@@ -357,6 +377,7 @@ fn cli_static_html_missing_data_file() {
         .contains("Failed to read definitely-missing-context.json"));
 }
 
+// @spec SPEC-HTML-056
 #[test]
 fn cli_static_html_data_cannot_come_from_stdin() {
     let output = static_cmd("x").args(["--data", "-"]).output().unwrap();
@@ -366,6 +387,7 @@ fn cli_static_html_data_cannot_come_from_stdin() {
         .contains("stdin is reserved for the template"));
 }
 
+// @spec SPEC-HTML-074
 #[test]
 fn cli_static_html_diagnostics_use_display_name() {
     let output = static_cmd("<p>{{ context.f(1) }}</p>")

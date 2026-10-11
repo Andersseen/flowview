@@ -21,6 +21,7 @@ fn expect_warnings(source: &str) -> Vec<flowview_compiler::Diagnostic> {
         .warnings
 }
 
+// @spec SPEC-HTML-033 SPEC-HTML-034
 #[test]
 fn javascript_source_maps_resolve_template_expressions() {
     let cases = [
@@ -80,6 +81,7 @@ fn javascript_source_maps_resolve_template_expressions() {
     }
 }
 
+// @spec SPEC-HTML-032 SPEC-HTML-033 SPEC-HTML-035
 #[test]
 fn source_maps_are_opt_in_and_line_offsets_apply_once() {
     let source = "\n{{ context.name }}";
@@ -104,6 +106,7 @@ fn source_maps_are_opt_in_and_line_offsets_apply_once() {
     );
 }
 
+// @spec SPEC-HTML-034
 #[test]
 fn source_map_includes_a_source_location_for_multiline_static_html() {
     let source = "<p>first\n  second</p>";
@@ -122,6 +125,7 @@ fn source_map_includes_a_source_location_for_multiline_static_html() {
     assert_eq!(token.get_src_col(), 0);
 }
 
+// @spec SPEC-HTML-035
 #[test]
 fn source_map_applies_host_column_offset_to_first_template_line() {
     let source = "{{ context.name }}";
@@ -153,12 +157,14 @@ fn line_column(source: &str, offset: usize) -> (u32, u32) {
     (line, column)
 }
 
+// @spec SPEC-HTML-001
 #[test]
 fn plain_text() {
     let output = compile_source("Hello, world!");
     assert!(output.contains("output += 'Hello, world!';"));
 }
 
+// @spec SPEC-HTML-002
 #[test]
 fn html_like_markup() {
     let source = "<main><h1>Title</h1></main>";
@@ -166,6 +172,7 @@ fn html_like_markup() {
     assert!(output.contains("output += '<main><h1>Title</h1></main>';"));
 }
 
+// @spec SPEC-HTML-004
 #[test]
 fn interpolation() {
     let output = compile_source("<h1>{{ context.title }}</h1>");
@@ -173,6 +180,7 @@ fn interpolation() {
     assert!(output.contains("output += renderValue(context.title);"));
 }
 
+// @spec SPEC-HTML-004
 #[test]
 fn multiple_interpolations() {
     let source = "<p>{{ context.first }} {{ context.last }}</p>";
@@ -185,6 +193,7 @@ fn multiple_interpolations() {
     assert!(output.contains("output += ' ';"));
 }
 
+// @spec SPEC-HTML-001
 #[test]
 fn preserves_significant_space_before_interpolation() {
     let output = compile_source("<p>Hello {{ context.name }}</p>");
@@ -195,12 +204,14 @@ fn preserves_significant_space_before_interpolation() {
     assert!(output.contains("output += '</p>';"));
 }
 
+// @spec SPEC-HTML-001
 #[test]
 fn preserves_preformatted_whitespace() {
     let output = compile_source("<pre>first\n  second</pre>");
     assert!(output.contains("output += '<pre>first\\n  second</pre>';"));
 }
 
+// @spec SPEC-HTML-015
 #[test]
 fn preserves_whitespace_after_complete_control_flow_blocks() {
     let after_if = compile_source("@if (context.visible) {x} next");
@@ -210,6 +221,7 @@ fn preserves_whitespace_after_complete_control_flow_blocks() {
     assert!(after_for.contains("output += ' next';"));
 }
 
+// @spec SPEC-HTML-015
 #[test]
 fn consumes_only_whitespace_that_separates_block_continuations() {
     let if_output = compile_source("@if (context.visible) {x}\n  @else {y} next");
@@ -229,6 +241,7 @@ fn r#if() {
     assert!(output.contains("<p>Visible</p>"));
 }
 
+// @spec SPEC-HTML-008
 #[test]
 fn if_else() {
     let source = "@if (context.visible) { <p>Visible</p> } @else { <p>Hidden</p> }";
@@ -239,6 +252,7 @@ fn if_else() {
     assert!(output.contains("<p>Hidden</p>"));
 }
 
+// @spec SPEC-HTML-008
 #[test]
 fn else_if() {
     let source =
@@ -249,6 +263,7 @@ fn else_if() {
     assert!(output.contains("} else {"));
 }
 
+// @spec SPEC-HTML-008
 #[test]
 fn nested_if() {
     let source = "@if (context.outer) { @if (context.inner) { <p>Both</p> } }";
@@ -256,6 +271,7 @@ fn nested_if() {
     assert_eq!(output.matches("if (").count(), 2);
 }
 
+// @spec SPEC-HTML-009 SPEC-HTML-078
 #[test]
 fn r#for() {
     let source =
@@ -266,6 +282,7 @@ fn r#for() {
     assert!(output.contains("renderValue(product.name)"));
 }
 
+// @spec SPEC-HTML-009 SPEC-HTML-078
 #[test]
 fn for_without_track() {
     let source = "@for (product of context.products) { <p>{{ product.name }}</p> }";
@@ -275,6 +292,7 @@ fn for_without_track() {
     assert!(output.contains("renderValue(product.name)"));
 }
 
+// @spec SPEC-HTML-011 SPEC-HTML-078
 #[test]
 fn for_empty() {
     let source = "@for (item of context.items; track item.id) { <p>{{ item.name }}</p> } @empty { <p>Empty</p> }";
@@ -284,6 +302,7 @@ fn for_empty() {
     assert!(output.contains("for (const item of __flowview_items0) {"));
 }
 
+// @spec SPEC-HTML-009
 #[test]
 fn for_with_set() {
     let source = "@for (item of context.items) { <p>{{ item }}</p> }";
@@ -292,6 +311,7 @@ fn for_with_set() {
     assert!(output.contains("for (const item of __flowview_items0) {"));
 }
 
+// @spec SPEC-HTML-009
 #[test]
 fn nested_for() {
     let source = "@for (row of context.rows; track row.id) { @for (cell of row.cells; track cell.id) { <span>{{ cell.value }}</span> } }";
@@ -301,6 +321,7 @@ fn nested_for() {
     assert_eq!(output.matches("for (const ").count(), 2);
 }
 
+// @spec SPEC-HTML-012
 #[test]
 fn switch_default() {
     let source = "@switch (context.status) { @default { <p>Unknown</p> } }";
@@ -311,6 +332,7 @@ fn switch_default() {
     assert!(!output.contains("break;"));
 }
 
+// @spec SPEC-HTML-012
 #[test]
 fn multiple_switch_cases() {
     let source = "@switch (context.status) { @case ('a') { <p>A</p> } @case ('b') { <p>B</p> } }";
@@ -320,6 +342,7 @@ fn multiple_switch_cases() {
     assert_eq!(output.matches("break;").count(), 2);
 }
 
+// @spec SPEC-HTML-012
 #[test]
 fn switch() {
     let source = "@switch (context.status) { @case ('a') { <p>A</p> } @case ('b') { <p>B</p> } @default { <p>Default</p> } }";
@@ -329,6 +352,7 @@ fn switch() {
     assert!(output.contains("default:"));
 }
 
+// @spec SPEC-HTML-012
 #[test]
 fn blocks_nested_inside_switch_cases() {
     let source = "@switch (context.status) { @case ('a') { @if (context.ok) { <p>OK</p> } } }";
@@ -337,6 +361,7 @@ fn blocks_nested_inside_switch_cases() {
     assert!(output.contains("if (context.ok) {"));
 }
 
+// @spec SPEC-HTML-009
 #[test]
 fn interpolation_inside_loop() {
     let source = "@for (item of context.items; track item.id) { <p>{{ item.value }}</p> }";
@@ -345,6 +370,7 @@ fn interpolation_inside_loop() {
     assert!(output.contains("renderValue(item.value)"));
 }
 
+// @spec SPEC-HTML-008 SPEC-HTML-009
 #[test]
 fn nested_control_flow_blocks() {
     let source = "@if (context.show) { @for (item of context.items; track item.id) { @switch (item.kind) { @case ('a') { <p>A</p> } } } }";
@@ -354,12 +380,14 @@ fn nested_control_flow_blocks() {
     assert!(output.contains("switch (__flowview_switch"));
 }
 
+// @spec SPEC-HTML-010
 #[test]
 fn optional_track_expression() {
     let output = compile_source("@for (item of context.items) { <p></p> }");
     assert!(output.contains("Array.from((context.items) ?? [])"));
 }
 
+// @spec SPEC-HTML-010
 #[test]
 fn track_expression_is_accepted_but_not_emitted() {
     let output =
@@ -368,6 +396,7 @@ fn track_expression_is_accepted_but_not_emitted() {
     assert!(!output.contains("item.id"));
 }
 
+// @spec SPEC-HTML-010
 #[test]
 fn track_expression_emits_warning() {
     let warnings = expect_warnings("@for (item of context.items; track item.id) { <p></p> }");
@@ -380,18 +409,21 @@ fn track_expression_emits_warning() {
     );
 }
 
+// @spec SPEC-HTML-071
 #[test]
 fn invalid_track_syntax() {
     let errors = expect_error("@for (item of context.items; item.id) { <p></p> }");
     assert!(errors.iter().any(|m| m.contains("track")));
 }
 
+// @spec SPEC-HTML-071
 #[test]
 fn empty_track_syntax() {
     let errors = expect_error("@for (item of context.items; track) { <p></p> }");
     assert!(errors.iter().any(|m| m.contains("track")));
 }
 
+// @spec SPEC-HTML-071
 #[test]
 fn rejects_invalid_or_internal_loop_bindings() {
     for binding in [
@@ -407,6 +439,7 @@ fn rejects_invalid_or_internal_loop_bindings() {
     }
 }
 
+// @spec SPEC-HTML-071
 #[test]
 fn supports_semicolons_inside_for_expressions() {
     let output = compile_source(
@@ -415,6 +448,7 @@ fn supports_semicolons_inside_for_expressions() {
     assert!(output.contains("Array.from((context.find('a;b')) ?? [])"));
 }
 
+// @spec SPEC-HTML-070 SPEC-HTML-071
 #[test]
 fn supports_semicolons_inside_regular_expressions_in_for_headers() {
     let source = "@for (item of context.values.filter((value) => /;/.test(value)); track item) { {{ item }} }";
@@ -423,18 +457,21 @@ fn supports_semicolons_inside_regular_expressions_in_for_headers() {
     assert!(output.contains("context.values.filter((value) => /;/.test(value))"));
 }
 
+// @spec SPEC-HTML-071
 #[test]
 fn invalid_for_syntax() {
     let errors = expect_error("@for (item in context.items; track item.id) { <p></p> }");
     assert!(errors.iter().any(|m| m.contains("@for")));
 }
 
+// @spec SPEC-HTML-067
 #[test]
 fn unclosed_interpolation() {
     let errors = expect_error("<p>{{ context.title</p>");
     assert!(errors.iter().any(|m| m.contains("Unclosed interpolation")));
 }
 
+// @spec SPEC-HTML-069
 #[test]
 fn rejects_empty_interpolation_and_conditions() {
     assert!(expect_error("{{ }}")
@@ -445,12 +482,14 @@ fn rejects_empty_interpolation_and_conditions() {
         .any(|message| message.contains("cannot be empty")));
 }
 
+// @spec SPEC-HTML-070
 #[test]
 fn interpolation_supports_object_literals() {
     let output = compile_source("{{ { value: 1 } }}");
     assert!(output.contains("renderValue({ value: 1 })"));
 }
 
+// @spec SPEC-HTML-061
 #[test]
 fn requires_quotes_around_interpolated_attribute_values() {
     let errors = expect_error("<div data-value={{ context.value }}></div>");
@@ -462,24 +501,28 @@ fn requires_quotes_around_interpolated_attribute_values() {
     assert!(output.contains("renderValue(context.value)"));
 }
 
+// @spec SPEC-HTML-070
 #[test]
 fn expressions_ignore_parentheses_inside_comments() {
     let output = compile_source("@if (context.ok /* ) */) { <p>OK</p> }");
     assert!(output.contains("if (context.ok /* ) */)"));
 }
 
+// @spec SPEC-HTML-070
 #[test]
 fn expressions_support_regular_expression_literals() {
     let output = compile_source(r"@if (/\)/.test(context.value)) { <p>OK</p> }");
     assert!(output.contains(r"if (/\)/.test(context.value))"));
 }
 
+// @spec SPEC-HTML-067
 #[test]
 fn unclosed_block() {
     let errors = expect_error("@if (context.visible) { <p>Visible</p>");
     assert!(errors.iter().any(|m| m.contains("Expected '}'")));
 }
 
+// @spec SPEC-HTML-067
 #[test]
 fn requires_a_closing_brace_before_else_and_empty() {
     let if_errors = expect_error("@if (context.visible) {x @else {y}");
@@ -493,30 +536,35 @@ fn requires_a_closing_brace_before_else_and_empty() {
         .any(|message| message.contains("Unexpected '@empty'")));
 }
 
+// @spec SPEC-HTML-067
 #[test]
 fn unexpected_else() {
     let errors = expect_error("<p>Text</p> @else { <p>Else</p> }");
     assert!(errors.iter().any(|m| m.contains("Unexpected '@else'")));
 }
 
+// @spec SPEC-HTML-067
 #[test]
 fn unexpected_empty() {
     let errors = expect_error("<p>Text</p> @empty { <p>Empty</p> }");
     assert!(errors.iter().any(|m| m.contains("Unexpected '@empty'")));
 }
 
+// @spec SPEC-HTML-067
 #[test]
 fn unexpected_case() {
     let errors = expect_error("<p>Text</p> @case ('a') { <p>A</p> }");
     assert!(errors.iter().any(|m| m.contains("Unexpected '@case'")));
 }
 
+// @spec SPEC-HTML-067
 #[test]
 fn unexpected_default() {
     let errors = expect_error("<p>Text</p> @default { <p>Default</p> }");
     assert!(errors.iter().any(|m| m.contains("Unexpected '@default'")));
 }
 
+// @spec SPEC-HTML-013
 #[test]
 fn escaped_control_flow_markers_render_as_text() {
     let output = compile_source(r"\@if \(context.visible) \{ literal \} and \{{ value \}\}");
@@ -524,12 +572,14 @@ fn escaped_control_flow_markers_render_as_text() {
     assert!(output.contains("{{ value }}"));
 }
 
+// @spec SPEC-HTML-064
 #[test]
 fn control_flow_keywords_require_boundaries() {
     let output = compile_source("@foreach is text and @ifx is text");
     assert!(output.contains("@foreach is text and @ifx is text"));
 }
 
+// @spec SPEC-HTML-013
 #[test]
 fn escaped_interpolation_spanning_entire_attribute_value_is_literal() {
     let output = compile_source(r#"<div title="\{{ x }}">hi</div>"#);
@@ -537,6 +587,7 @@ fn escaped_interpolation_spanning_entire_attribute_value_is_literal() {
     assert!(output.contains(r#"title="{{ x }}""#));
 }
 
+// @spec SPEC-HTML-013
 #[test]
 fn escaped_interpolation_mixed_with_text_stays_literal() {
     let output = compile_source(r#"<div title="a \{{ x }} b">hi</div>"#);
@@ -544,18 +595,21 @@ fn escaped_interpolation_mixed_with_text_stays_literal() {
     assert!(output.contains(r#"title="a {{ x }} b""#));
 }
 
+// @spec SPEC-HTML-003
 #[test]
 fn escaped_and_real_interpolation_in_one_attribute_is_an_error() {
     let errors = expect_error(r#"<div title="\{{ x }} {{ y }}">hi</div>"#);
     assert!(errors[0].contains("span the entire attribute value"));
 }
 
+// @spec SPEC-HTML-061
 #[test]
 fn backtick_is_not_an_attribute_quote() {
     let output = compile_source("<div class=`x`>hi</div>");
     assert!(output.contains(r#"class="`x`""#));
 }
 
+// @spec SPEC-HTML-070
 #[test]
 fn expressions_support_escaped_quotes_and_template_literals() {
     let source = r#"@if (context.label === "a \"quoted\" value" || context.label === `a ) literal`) { <p>OK</p> }"#;
@@ -564,6 +618,7 @@ fn expressions_support_escaped_quotes_and_template_literals() {
     assert!(output.contains("context.label === `a ) literal`"));
 }
 
+// @spec SPEC-HTML-070
 #[test]
 fn expressions_support_nested_template_literals() {
     let source = r#"@if (`outer ${`inner ) ${context.value}`}` === context.label) { <p>OK</p> }"#;
@@ -571,6 +626,7 @@ fn expressions_support_nested_template_literals() {
     assert!(output.contains(r#"`outer ${`inner ) ${context.value}`}` === context.label"#));
 }
 
+// @spec SPEC-HTML-070
 #[test]
 fn expressions_support_regex_literals_after_javascript_keywords() {
     let source = r"@if ((() => { return /\)/.test(context.value); })()) { <p>OK</p> }";
@@ -578,18 +634,21 @@ fn expressions_support_regex_literals_after_javascript_keywords() {
     assert!(output.contains(r"return /\)/.test(context.value)"));
 }
 
+// @spec SPEC-HTML-070
 #[test]
 fn interpolation_supports_closing_braces_inside_strings() {
     let output = compile_source(r#"<p>{{ "}}" }}</p>"#);
     assert!(output.contains(r#"renderValue("}}")"#));
 }
 
+// @spec SPEC-HTML-067
 #[test]
 fn malformed_switch_block() {
     let errors = expect_error("@switch (context.status) { <p>Missing case</p> }");
     assert!(errors.iter().any(|m| m.contains("Unexpected")));
 }
 
+// @spec SPEC-HTML-062
 #[test]
 fn html_raw_text_and_comments_do_not_start_flowview_syntax() {
     let source = r#"
@@ -603,6 +662,7 @@ fn html_raw_text_and_comments_do_not_start_flowview_syntax() {
     assert!(output.contains("@for (item of items) {}"));
 }
 
+// @spec SPEC-HTML-063
 #[test]
 fn control_flow_keywords_inside_html_attributes_are_plain_text() {
     let source = r#"
@@ -613,6 +673,7 @@ fn control_flow_keywords_inside_html_attributes_are_plain_text() {
     assert!(output.contains("contact@if.example"));
 }
 
+// @spec SPEC-HTML-064
 #[test]
 fn embedded_at_signs_do_not_start_control_flow() {
     let source = "<p>contact@if.example</p>";
@@ -621,6 +682,7 @@ fn embedded_at_signs_do_not_start_control_flow() {
     assert!(output.contains(source));
 }
 
+// @spec SPEC-HTML-068
 #[test]
 fn invalid_javascript_expressions_are_rejected_by_the_compiler() {
     for source in [
@@ -640,6 +702,7 @@ fn invalid_javascript_expressions_are_rejected_by_the_compiler() {
     }
 }
 
+// @spec SPEC-HTML-077
 #[test]
 fn text_that_is_invalid_inside_javascript_strings_is_escaped() {
     let output = compile_source("first\0second\u{2028}third\u{2029}fourth");
@@ -647,6 +710,18 @@ fn text_that_is_invalid_inside_javascript_strings_is_escaped() {
     assert!(output.contains("first\\u0000second\\u2028third\\u2029fourth"));
 }
 
+// @spec SPEC-HTML-014
+#[test]
+fn generated_modules_bind_only_context() {
+    let output = compile_source("{{ ctx.name }}");
+    assert!(output.contains("export function render(context)"));
+    // `ctx` is not invented as an alias: it stays a plain, unbound identifier.
+    assert!(output.contains("renderValue(ctx.name)"));
+    assert!(!output.contains("const ctx") && !output.contains("let ctx"));
+    assert_eq!(output.matches("export function").count(), 1);
+}
+
+// @spec SPEC-HTML-031
 #[test]
 fn empty_source_compiles_to_empty_render_function() {
     let output = compile_source("");
@@ -655,12 +730,14 @@ fn empty_source_compiles_to_empty_render_function() {
     assert!(output.contains("return output;"));
 }
 
+// @spec SPEC-HTML-001
 #[test]
 fn unicode_characters_are_preserved() {
     let output = compile_source("<p>Hellø 🌍</p>");
     assert!(output.contains("Hellø 🌍"));
 }
 
+// @spec SPEC-HTML-059
 #[test]
 fn ast_models_html_elements_and_attributes() {
     use flowview_compiler::ast::{Attribute, ElementNode, Node};
@@ -759,6 +836,7 @@ fn unsupported_binding_attribute_reports_diagnostic() {
     assert!(errors.iter().any(|m| m.contains("Unsupported binding")));
 }
 
+// @spec SPEC-HTML-068 SPEC-HTML-072
 #[test]
 fn diagnostic_contains_precise_span_and_code() {
     let diagnostics = compile("@if () {}", CompileOptions::new("@flowview/runtime"))
@@ -777,6 +855,7 @@ fn diagnostic_contains_precise_span_and_code() {
     );
 }
 
+// @spec SPEC-HTML-067
 #[test]
 fn malformed_html_reports_error() {
     let errors = expect_error("<div>text</span>");
@@ -785,6 +864,7 @@ fn malformed_html_reports_error() {
         .any(|m| m.contains("Expected closing tag") || m.contains("Unexpected")));
 }
 
+// @spec SPEC-HTML-067
 #[test]
 fn unclosed_tag_reports_error() {
     let errors = expect_error("<div><span>text");
@@ -793,6 +873,7 @@ fn unclosed_tag_reports_error() {
         .any(|m| m.contains("Unclosed tag") || m.contains("Expected closing tag")));
 }
 
+// @spec SPEC-HTML-074
 #[test]
 fn diagnostic_formatter_outputs_human_and_json() {
     use flowview_compiler::{DiagnosticFormatter, DiagnosticSeverity};
@@ -829,6 +910,7 @@ fn ast_serializes_to_json() {
     assert!(json.contains("\"expression\":\"context.name\""));
 }
 
+// @spec SPEC-HTML-068
 #[test]
 fn dynamic_attribute_expression_is_validated() {
     let errors = expect_error(r#"<div class="{{ context. }}"></div>"#);
@@ -840,12 +922,14 @@ fn dynamic_attribute_expression_is_validated() {
     );
 }
 
+// @spec SPEC-HTML-003
 #[test]
 fn dynamic_attribute_expression_valid_parses() {
     let output = compile_source(r#"<div class="{{ context.css }}"></div>"#);
     assert!(output.contains("renderValue(context.css)"));
 }
 
+// @spec SPEC-HTML-003
 #[test]
 fn mixed_interpolation_in_quoted_attribute_is_rejected() {
     let errors = expect_error(r#"<div class="btn {{ context.active }}"></div>"#);
@@ -857,6 +941,7 @@ fn mixed_interpolation_in_quoted_attribute_is_rejected() {
     );
 }
 
+// @spec SPEC-HTML-065
 #[test]
 fn html_closing_tags_are_case_insensitive() {
     // The compiler normalizes tag names to lower case, but accepts any ASCII
@@ -868,6 +953,7 @@ fn html_closing_tags_are_case_insensitive() {
     assert!(output.contains("<div>text</div>"));
 }
 
+// @spec SPEC-HTML-066
 #[test]
 fn doctype_is_preserved() {
     let output = compile_source("<!DOCTYPE html><html></html>");
@@ -875,6 +961,7 @@ fn doctype_is_preserved() {
     assert!(output.contains("<html></html>"));
 }
 
+// @spec SPEC-HTML-065
 #[test]
 fn raw_text_elements_are_case_insensitive() {
     let source = r#"<SCRIPT>const x = "@if";</SCRIPT><STYLE>.a { color: red; }</STYLE>"#;
@@ -883,6 +970,7 @@ fn raw_text_elements_are_case_insensitive() {
     assert!(output.contains(".a { color: red; }"));
 }
 
+// @spec SPEC-HTML-075
 #[test]
 fn javascript_output_matches_committed_baseline() {
     let source = include_str!("fixtures/js/baseline.flow");
@@ -912,6 +1000,7 @@ mod raw_interpolation {
         }
     }
 
+    // @spec SPEC-HTML-016
     #[test]
     fn normal_interpolation_stays_in_escaped_mode() {
         let node = only_interpolation("{{ context.title }}");
@@ -919,6 +1008,7 @@ mod raw_interpolation {
         assert_eq!(node.expression, "context.title");
     }
 
+    // @spec SPEC-HTML-016
     #[test]
     fn triple_braces_produce_a_raw_interpolation_node() {
         let node = only_interpolation("{{{ context.body }}}");
@@ -927,6 +1017,7 @@ mod raw_interpolation {
         assert_eq!((node.span.start, node.span.end), (0, 20));
     }
 
+    // @spec SPEC-HTML-016
     #[test]
     fn raw_mode_is_explicit_in_the_serialized_ast() {
         let escaped = serde_json::to_string(&parse_ast("{{ a }}").unwrap()).unwrap();
@@ -935,6 +1026,7 @@ mod raw_interpolation {
         assert!(raw.contains(r#""mode":"raw""#), "{raw}");
     }
 
+    // @spec SPEC-HTML-017
     #[test]
     fn raw_expressions_use_the_shared_javascript_scanner() {
         let node =
@@ -955,6 +1047,7 @@ mod raw_interpolation {
         assert_eq!(node.expression, "context.body");
     }
 
+    // @spec SPEC-HTML-029
     #[test]
     fn raw_and_escaped_can_share_a_template() {
         let root = parse_ast("<p>{{ a }}</p>{{{ b }}}").unwrap();
@@ -976,6 +1069,7 @@ mod raw_interpolation {
         assert_eq!(inner.mode, InterpolationMode::Escaped);
     }
 
+    // @spec SPEC-HTML-022
     #[test]
     fn empty_raw_interpolation_is_rejected_with_its_own_code() {
         for source in ["{{{}}}", "{{{   }}}", "<p>{{{\n}}}</p>"] {
@@ -985,6 +1079,7 @@ mod raw_interpolation {
         }
     }
 
+    // @spec SPEC-HTML-022
     #[test]
     fn unclosed_raw_interpolation_is_rejected_with_its_own_code() {
         for source in [
@@ -1001,12 +1096,14 @@ mod raw_interpolation {
         }
     }
 
+    // @spec SPEC-HTML-017 SPEC-HTML-068
     #[test]
     fn invalid_javascript_in_raw_interpolation_is_rejected() {
         let diagnostics = errors("{{{ context. }}}");
         assert_eq!(diagnostics[0].code.as_deref(), Some("FV0011"));
     }
 
+    // @spec SPEC-HTML-072
     #[test]
     fn diagnostics_keep_line_column_and_span() {
         let diagnostics = errors("<p>\n  {{{ }}}\n</p>");
@@ -1016,6 +1113,7 @@ mod raw_interpolation {
         assert_eq!(diagnostic.start, 6);
     }
 
+    // @spec SPEC-HTML-021
     #[test]
     fn escaped_triple_brace_marker_is_literal() {
         let output = compile_source(r"\{{{ not raw \}\}\}");
@@ -1024,6 +1122,7 @@ mod raw_interpolation {
         assert!(output.contains("output += '{{{ not raw }}}';"), "{output}");
     }
 
+    // @spec SPEC-HTML-013 SPEC-HTML-021
     #[test]
     fn brace_marker_forms_are_unambiguous() {
         // `\{{`  -> literal `{{`
@@ -1057,6 +1156,7 @@ mod raw_interpolation {
         assert!(output.contains("renderRawValue(context.html)"));
     }
 
+    // @spec SPEC-HTML-021
     #[test]
     fn escaped_triple_brace_is_literal_in_attribute_values() {
         let output = compile_source(r#"<div title="\{{{ x }}}">hi</div>"#);
@@ -1065,6 +1165,7 @@ mod raw_interpolation {
         assert!(output.contains(r#"title="{{{ x }}}""#), "{output}");
     }
 
+    // @spec SPEC-HTML-019
     #[test]
     fn comments_script_and_style_are_not_interpolated() {
         let source =
@@ -1076,6 +1177,7 @@ mod raw_interpolation {
         assert!(output.contains("{{{ z }}}"));
     }
 
+    // @spec SPEC-HTML-020
     #[test]
     fn raw_interpolation_is_rejected_in_attribute_values() {
         let sources = [
@@ -1100,6 +1202,7 @@ mod raw_interpolation {
         }
     }
 
+    // @spec SPEC-HTML-020
     #[test]
     fn raw_interpolation_is_rejected_in_tag_and_attribute_names() {
         for source in [
@@ -1117,6 +1220,7 @@ mod raw_interpolation {
         }
     }
 
+    // @spec SPEC-HTML-003
     #[test]
     fn normal_interpolation_in_attributes_is_unchanged() {
         let output = compile_source(r#"<div title="{{ context.t }}"></div>"#);
@@ -1124,6 +1228,7 @@ mod raw_interpolation {
         assert!(!output.contains("renderRawValue"));
     }
 
+    // @spec SPEC-HTML-028 SPEC-HTML-076
     #[test]
     fn javascript_output_calls_the_raw_helper_and_imports_it_only_when_used() {
         let raw = compile_source("<article>{{{ context.body }}}</article>");
@@ -1147,6 +1252,7 @@ mod raw_interpolation {
         assert!(!escaped.contains("renderRawValue"));
     }
 
+    // @spec SPEC-HTML-018
     #[test]
     fn raw_interpolation_is_emitted_inside_control_flow() {
         let source = "@if (context.a) {{{{ context.a }}}} @else {x}\n\

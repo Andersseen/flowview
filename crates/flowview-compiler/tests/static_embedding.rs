@@ -109,6 +109,7 @@ fn template() -> CompiledStaticTemplate {
     .expect("page template compiles")
 }
 
+// @spec SPEC-HTML-042
 #[test]
 fn static_site_page_renders_final_html() {
     let html = template().render(&value(3)).unwrap();
@@ -141,6 +142,7 @@ fn optional_sections_follow_the_model() {
     assert!(!neither.contains("class=\"toc\"") && !neither.contains("Linked from"));
 }
 
+// @spec SPEC-HTML-011
 #[test]
 fn empty_navigation_uses_the_empty_branch() {
     let mut ctx = value(1);
@@ -151,6 +153,7 @@ fn empty_navigation_uses_the_empty_branch() {
         .contains("<span>No pages</span>"));
 }
 
+// @spec SPEC-HTML-043
 #[test]
 fn compile_once_render_one_hundred_contexts_deterministically() {
     let t = template();
@@ -166,6 +169,7 @@ fn compile_once_render_one_hundred_contexts_deterministically() {
     }
 }
 
+// @spec SPEC-HTML-043
 #[test]
 fn rendering_the_same_context_repeatedly_is_stable() {
     let t = template();
@@ -176,6 +180,7 @@ fn rendering_the_same_context_repeatedly_is_stable() {
     }
 }
 
+// @spec SPEC-HTML-043
 #[test]
 fn one_shot_and_compiled_rendering_agree() {
     let ctx = value(5);
@@ -184,6 +189,7 @@ fn one_shot_and_compiled_rendering_agree() {
     assert_eq!(one_shot.warnings, template().warnings());
 }
 
+// @spec SPEC-HTML-043
 #[test]
 fn compiled_template_renders_in_parallel() {
     fn assert_send_sync<T: Send + Sync>() {}
@@ -215,6 +221,7 @@ fn compiled_template_renders_in_parallel() {
 
 const HOSTILE: &str = "<script>alert(1)</script><img src=x onerror=alert(1)> \"q\" 'a' & <b>";
 
+// @spec SPEC-HTML-058
 #[test]
 fn escaped_interpolation_neutralises_hostile_values() {
     let html = compile_static(
@@ -231,6 +238,7 @@ fn escaped_interpolation_neutralises_hostile_values() {
     assert_eq!(html.matches("title=\"").count(), 1);
 }
 
+// @spec SPEC-HTML-023
 #[test]
 fn raw_interpolation_is_verbatim_and_never_auto_detected() {
     let t = compile_static("[{{{ context.v }}}][{{ context.v }}]", Default::default()).unwrap();
@@ -240,6 +248,7 @@ fn raw_interpolation_is_verbatim_and_never_auto_detected() {
     assert!(html.ends_with("&#39;a&#39; &amp; &lt;b&gt;]"));
 }
 
+// @spec SPEC-HTML-024 SPEC-HTML-025
 #[test]
 fn raw_value_type_contract() {
     let t = compile_static("[{{{ context.v }}}]", Default::default()).unwrap();
@@ -273,6 +282,7 @@ fn assert_located(d: &Diagnostic, code: &str, source: &str) {
     assert!(d.start <= d.end && d.end <= source.len(), "{d:?}");
 }
 
+// @spec SPEC-HTML-044 SPEC-HTML-072
 #[test]
 fn compile_time_diagnostics_are_structured() {
     let unsupported = "<p>{{ context.f(1) }}</p>";
@@ -295,6 +305,7 @@ fn compile_time_diagnostics_are_structured() {
     assert!(errors[0].line >= 1 && errors[0].end <= bad_syntax.len());
 }
 
+// @spec SPEC-HTML-044 SPEC-HTML-072
 #[test]
 fn render_time_diagnostics_are_structured() {
     let cases: [(&str, Value, &str); 4] = [
@@ -314,6 +325,7 @@ fn render_time_diagnostics_are_structured() {
     }
 }
 
+// @spec SPEC-HTML-046
 #[test]
 fn invalid_context_is_a_diagnostic_not_a_panic() {
     let t = compile_static("<p></p>", Default::default()).unwrap();
@@ -323,6 +335,7 @@ fn invalid_context_is_a_diagnostic_not_a_panic() {
     }
 }
 
+// @spec SPEC-HTML-074
 #[test]
 fn diagnostics_format_with_the_callers_display_name() {
     let source = "<p>{{ context.f(1) }}</p>";

@@ -26,6 +26,7 @@ const TEMPLATE = `<template flowview={context} is:raw>
 </template>`;
 
 describe("@flowview/prettier", () => {
+  // @spec SPEC-HTML-098
   it("preserves flowview template regions byte-for-byte", async () => {
     const source = `---
 const context = { releases: [] };
@@ -121,6 +122,7 @@ ${TEMPLATE}
   }
 </template>`;
 
+    // @spec SPEC-HTML-098
     it("preserves triple-brace regions byte-for-byte", async () => {
       const source = `---
 const   context = {title:"Hello"};
@@ -134,6 +136,7 @@ ${RAW_TEMPLATE}
       expect(result).toContain(`const context = { title: "Hello" };`);
     });
 
+    // @spec SPEC-HTML-098
     it("preserves triple-brace regions without is:raw", async () => {
       const template = `<template flowview context={context}>
   <article>{{{ context.contentHtml }}}</article>

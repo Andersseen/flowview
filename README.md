@@ -575,8 +575,8 @@ The integration transforms embedded flowview templates before Astro parses the
 page. `is:raw` is included in the recommended Astro authoring form so Astro's
 Language Server treats the custom syntax as inert; the flowview integration
 replaces the entire element before the application build. The integration
-discovers the monorepo compiler automatically and otherwise uses the prebuilt
-`flowview` CLI from `PATH`. `compilerPath` is only needed as an advanced
+discovers the monorepo compiler automatically and otherwise uses the bundled
+WASM compiler (no Rust toolchain needed). `compilerPath` is only needed as an advanced
 override. The integration never runs Cargo and sends templates over stdin, so
 it does not create temporary source files.
 

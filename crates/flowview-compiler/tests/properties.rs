@@ -11,6 +11,7 @@ use serde_json::json;
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
 
+    // @spec SPEC-HTML-031
     #[test]
     fn structured_templates_compile_and_emit_valid_modules(source in valid_template()) {
         let output = compile(&source, options()).unwrap_or_else(|errors| panic!("generator emitted rejected syntax: {source:?}: {errors:?}"));
@@ -19,6 +20,7 @@ proptest! {
         prop_assert!(parsed.diagnostics.is_empty(), "generated JS failed to parse for {source:?}: {:?}", parsed.diagnostics);
     }
 
+    // @spec SPEC-HTML-075
     #[test]
     fn javascript_compilation_is_deterministic(source in valid_template()) {
         let mapped_options = options().with_source_map(true);
@@ -33,12 +35,14 @@ proptest! {
         prop_assert_eq!(first_static.err(), second_static.err());
     }
 
+    // @spec SPEC-HTML-072
     #[test]
     fn parsed_spans_are_bounded_and_nested(source in valid_template()) {
         let root = parse_ast(&source).unwrap();
         check_nodes(&root, None, &source);
     }
 
+    // @spec SPEC-HTML-076
     #[test]
     fn escaped_and_raw_interpolations_use_distinct_helpers(raw in proptest::collection::vec(any::<bool>(), 1..20)) {
         let source = raw.iter().map(|is_raw| if *is_raw { "{{{ context.value }}}" } else { "{{ context.value }}" }).collect::<Vec<_>>().join("|");
@@ -47,6 +51,7 @@ proptest! {
         prop_assert_eq!(output.matches("renderRawValue(context.value)").count(), raw.iter().filter(|v| **v).count());
     }
 
+    // @spec SPEC-HTML-001
     #[test]
     fn static_templates_preserve_literal_bytes(text in static_text()) {
         let output = render_static(&text, &json!({}), StaticRenderOptions::default()).unwrap();
@@ -290,6 +295,7 @@ fn unicode_malformed_source() -> impl Strategy<Value = String> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(512))]
 
+    // @spec SPEC-HTML-073
     #[test]
     fn diagnostics_on_unicode_malformed_source_have_valid_utf8_spans(source in unicode_malformed_source()) {
         let mut diagnostics = Vec::new();
