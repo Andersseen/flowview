@@ -4,12 +4,20 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Run the gate and `cargo publish --dry-run` only"
+        description: "Run the gates, package inspection and `cargo publish --dry-run` only"
         type: boolean
         default: true
 
+permissions:
+  contents: read
+
 jobs:
+  msrv:
+    name: Rust MSRV gate
+    uses: ./.github/workflows/rust-msrv.yml
+
   publish:
+    needs: msrv
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,6 +32,8 @@ jobs:
           cargo clippy --workspace --all-targets --locked -- -D warnings
           cargo test --workspace --locked
           cargo doc -p flowview-compiler --no-deps --locked
+        env:
+          RUSTDOCFLAGS: -D warnings
 
       - name: Package workspace
         # Workspace tests compile the CLI against the local compiler. Package
@@ -31,10 +41,31 @@ jobs:
         # the compiler API until the Rust release script publishes it.
         run: cargo package --workspace --exclude flowview-wasm --locked --no-verify
 
-      - name: Verify compiler publish
-        run: cargo publish --dry-run -p flowview-compiler --locked
+      - name: Inspect packages
+        # Inspects the real .crate archives produced above (the CLI cannot be
+        # listed alone before its compiler version exists in the registry).
+        run: |
+          ls -l target/package/*.crate
+          for crate in target/package/*.crate; do
+            name="$(basename "$crate" .crate)"
+            echo "::group::$name contents"
+            tar -tzf "$crate"
+            echo "::endgroup::"
+            files="$(tar -tzf "$crate" | sed "s#^$name/##")"
+            for required in README.md LICENSE Cargo.toml; do
+              echo "$files" | grep -qx "$required" || { echo "$name: $required missing from package" >&2; exit 1; }
+            done
+            if echo "$files" | grep -E '^(target|node_modules|fuzz|tests)/|(^|/)\.env'; then
+              echo "$name: unexpected files in package" >&2; exit 1
+            fi
+          done
 
-      - name: Publish flowview-compiler, then flowview-cli
+      - name: Dry-run publish
+        # Compiler always; the CLI only once its exact compiler version is in
+        # the registry (cargo cannot resolve it before that).
+        run: scripts/publish-rust.sh --dry-run
+
+      - name: Publish flowview-compiler, verify it from the registry, publish flowview-cli
         if: ${{ !inputs.dry_run }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

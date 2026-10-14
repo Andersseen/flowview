@@ -1,0 +1,40 @@
+name: Rust MSRV
+
+# Reusable: builds and tests the workspace on EXACTLY the declared MSRV.
+# The version below must equal `rust-version` in Cargo.toml; the first step
+# fails if they drift. Never use `stable` here.
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  MSRV: "1.91.0"
+
+jobs:
+  msrv:
+    name: Rust 1.91.0 (MSRV)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the workflow pins the declared rust-version
+        run: |
+          declared="$(grep -E '^rust-version' Cargo.toml | head -1 | sed -E 's/.*"([0-9.]+)".*/\1/')"
+          test "$declared" = "${MSRV%.0}" || { echo "Cargo.toml rust-version $declared != MSRV $MSRV" >&2; exit 1; }
+
+      - name: Install Rust ${{ env.MSRV }}
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ env.MSRV }}
+
+      - name: Show toolchain
+        run: rustc --version && cargo --version
+
+      - name: Build workspace
+        run: cargo build --workspace --locked
+
+      - name: Test compiler, static embedding and CLI
+        run: cargo test --workspace --locked

@@ -78,20 +78,29 @@ Order matters: `flowview-compiler` first, then `flowview-cli` (which depends on 
    cargo fmt --all -- --check
    cargo clippy --workspace --all-targets --locked -- -D warnings
    cargo test --workspace --locked
-   cargo doc -p flowview-compiler --no-deps
+   RUSTDOCFLAGS="-D warnings" cargo doc -p flowview-compiler --no-deps --locked
    cargo package --workspace --exclude flowview-wasm --locked --no-verify
-   cargo publish --dry-run -p flowview-compiler --locked
+   scripts/publish-rust.sh --dry-run
    ```
 
-   Workspace tests compile the CLI against the local compiler. Cargo cannot
-   dry-run the CLI publish before the compiler version exists in the registry;
-   the release script publishes the compiler first and then the CLI.
+   The MSRV (`rust-version` in `Cargo.toml`, currently 1.91) is tested on exactly
+   that toolchain by `.github/workflows/rust-msrv.yml`, which pins the version
+   and fails if it drifts from `Cargo.toml`. Raising it (for example by bumping
+   Oxc) is a deliberate minor-version change. Workspace tests compile the CLI
+   against the local compiler; cargo cannot dry-run the CLI publish before the
+   compiler version exists in the registry, so `--dry-run` runs the compiler
+   dry-run and runs the CLI one only when the exact compiler version is already
+   public (otherwise it says why it skipped).
 
 3. Publish. Preferred: run the **Rust release** workflow (Actions → Rust release →
    Run workflow) with `dry_run: false`. It needs the `CARGO_REGISTRY_TOKEN`
    repository secret and runs `scripts/publish-rust.sh`: it publishes `flowview-compiler`,
    polls the crates.io index (bounded, 30 × 10 s) until that exact version resolves, then
-   publishes `flowview-cli`. Reruns are safe: a version already public with a matching
+   runs `scripts/verify-registry-consumer.sh`: a throwaway project that depends on
+   `flowview-compiler = "=<version>"` from the registry (no path/git/workspace
+   dependency) and checks `compile_static` + `render` with escaped and trusted-raw
+   output. Only then does it publish `flowview-cli`, and finally it
+   `cargo install`s that exact CLI version from the registry. Reruns are safe: a version already public with a matching
    package checksum is skipped; a checksum mismatch fails the run. Manually, with `cargo login`:
 
    ```bash
@@ -103,6 +112,7 @@ Order matters: `flowview-compiler` first, then `flowview-cli` (which depends on 
    ```bash
    cargo search flowview-compiler
    cargo search flowview-cli
+   scripts/verify-registry-consumer.sh   # exact workspace version, registry only
    ```
 
 Downstream Rust tools should depend on `flowview-compiler = "<released-version>"`,

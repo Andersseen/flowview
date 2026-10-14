@@ -545,6 +545,48 @@ a regression test and a patch changeset.
 **Not here:** the native static renderer is not forced into the browser demo;
 Entwine is its product-level dogfooding. Editor work remains WS7.
 
+### WS6B — Rust consumer readiness (done)
+
+**Why:** A real multi-page Rust tool replaced its page renderer with
+`compile_static` + `CompiledStaticTemplate::render` and proved semantic parity,
+hostile-value escaping, Unicode and Linux/macOS/Windows behaviour, then declined
+to merge because of avoidable adoption costs: no crates.io release, no declared
+MSRV (effective 1.94 through Oxc 0.137), ~1.2 MB of Oxc in the binary, ~24%
+larger raw HTML, a `serde_json::Value` detour, and undocumented static-expression
+behaviour. Full evidence and numbers: [rust-consumer-readiness.md](rust-consumer-readiness.md).
+
+**What (no language change, no npm behaviour change):**
+
+- **Rust 0.2.0** for `flowview-compiler`, `flowview-cli`, `flowview-wasm`
+  (independent of the npm version line). Compiler and CLI are
+  `publish = ["crates-io"]`; wasm stays `publish = false`.
+- **MSRV 1.91**, declared once in `[workspace.package]` and tested on exactly
+  1.91.0 by `.github/workflows/rust-msrv.yml` (PRs and the Rust release gate).
+  1.90 and the old Oxc 0.137 on 1.93.1 are rejected.
+- **Oxc 0.137 → 0.116** (same direct crates, two-line API adaptation, no
+  behaviour change; fuzz corpus + bounded run clean). Footprint outcome B:
+  no clean way to drop Oxc from the static path; no fake feature, no second
+  expression parser.
+- **Release pipeline:** package inspection, `scripts/publish-rust.sh --dry-run`,
+  compiler → exact index wait → registry-consumer smoke
+  (`scripts/verify-registry-consumer.sh`) → CLI → registry `cargo install`.
+  Packages ship README + LICENSE, no tests/fixtures.
+- **Static embedding contract:** truthiness (empty arrays/objects truthy) and
+  `.length` proven through the public API under existing IDs
+  (SPEC-HTML-048/050/051/052); `.length > 0` documented as the collection check;
+  `render_serializable` added as an ergonomic wrapper (not a perf feature).
+- **Evidence tooling** (no assertions): `scripts/measure-static-footprint.sh`,
+  `scripts/measure-whitespace-compression.mjs`, `bench_static` (10/100/1000).
+- **Whitespace:** raw +8–36%, only +3–8% under gzip/Brotli; semantics kept, no
+  minify option.
+
+**Explicitly deferred to v2:** partials/recursion/components, zero-copy typed
+context rendering, void-element output style, whitespace-collapsing option.
+
+**Exit checks:** met — MSRV job green, `cargo publish --dry-run` for the
+compiler succeeds, spec coverage 99/99. Publication itself happens only through
+the Rust release workflow after merge. WS7 is unchanged.
+
 ### WS7 — Editor diagnostics (only after WS1–WS6)
 
 **Why:** Listed as future work in the spec; big DX win; strictly additive.
