@@ -1,0 +1,294 @@
+name: Release readiness
+
+# Reusable gate shared by CI (pull requests, main) and Release. The model:
+#
+#   build once -> pack once -> the same tarballs feed every job below.
+#
+# Declared compatibility (peer ranges, Node floor) is proven against the
+# packed artifacts, in fresh external projects, without Rust or the checkout's
+# workspace links. Versions come from scripts/compatibility.json; the
+# "Compatibility contract" step fails if manifests, matrices and docs drift.
+
+on:
+  workflow_call:
+
+jobs:
+  pack:
+    name: Build and pack artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Rust and WASM target
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install WASM toolchain
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo install wasm-pack --locked
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build publishable packages
+        run: |
+          pnpm run build:runtime
+          pnpm run build:reactive
+          pnpm run build:dom
+          pnpm run build:events
+          pnpm run build:compiler
+          pnpm run build:vite
+          pnpm run build:astro
+          pnpm run build:vite-events
+          pnpm run build:astro-events
+          pnpm run build:prettier
+
+      - name: Pack publishable packages
+        run: pnpm run pack:release-artifacts "$RUNNER_TEMP/flowview-packed-artifacts"
+
+      - name: Archive built package outputs
+        run: tar -czf "$RUNNER_TEMP/flowview-built-packages.tgz" packages/*/dist packages/compiler/pkg
+
+      - name: Upload packed npm artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: flowview-packed-npm-artifacts
+          path: ${{ runner.temp }}/flowview-packed-artifacts
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload built package outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: flowview-built-packages
+          path: ${{ runner.temp }}/flowview-built-packages.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  artifacts:
+    name: Release artifacts
+    needs: pack
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Compatibility contract
+        run: node scripts/check-compatibility.mjs
+
+      - name: Download the packed artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: flowview-packed-npm-artifacts
+          path: ${{ runner.temp }}/flowview-packed-artifacts
+
+      - name: Validate every tarball and npm publish --dry-run
+        run: node scripts/verify-release-artifacts.mjs "$RUNNER_TEMP/flowview-packed-artifacts"
+
+      # What `changeset publish` packs from the built outputs must equal what
+      # was verified, so the release can reuse the pack job's build.
+      - name: Download built package outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: flowview-built-packages
+          path: ${{ runner.temp }}/built
+
+      - name: Re-pack the built outputs in a fresh checkout and compare
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          tar -xzf "$RUNNER_TEMP/built/flowview-built-packages.tgz"
+          node scripts/pack-release-artifacts.mjs "$RUNNER_TEMP/repacked"
+          node scripts/compare-release-artifacts.mjs "$RUNNER_TEMP/flowview-packed-artifacts" "$RUNNER_TEMP/repacked"
+
+  consume:
+    name: Packed npm consumer (${{ matrix.os }})
+    needs: pack
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout verification scripts
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download the same packed artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: flowview-packed-npm-artifacts
+          path: ${{ runner.temp }}/flowview-packed-artifacts
+
+      - name: Vite consumer
+        run: node scripts/verify-packed-vite-consumer.mjs "${{ runner.temp }}/flowview-packed-artifacts"
+
+      - name: Astro consumer
+        run: node scripts/verify-packed-astro-consumer.mjs "${{ runner.temp }}/flowview-packed-artifacts"
+
+  vite:
+    name: Vite compatibility (${{ matrix.vite }})
+    needs: pack
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        vite: [6, 7, 8]
+    steps:
+      - name: Checkout verification scripts
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download the same packed artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: flowview-packed-npm-artifacts
+          path: ${{ runner.temp }}/flowview-packed-artifacts
+
+      - name: Vite ${{ matrix.vite }} + Vite Events consumer
+        run: node scripts/verify-packed-vite-consumer.mjs "${{ runner.temp }}/flowview-packed-artifacts" --vite ${{ matrix.vite }}
+
+  astro:
+    name: Astro compatibility (${{ matrix.astro }})
+    needs: pack
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        astro: [5, 6, 7]
+    steps:
+      - name: Checkout verification scripts
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download the same packed artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: flowview-packed-npm-artifacts
+          path: ${{ runner.temp }}/flowview-packed-artifacts
+
+      - name: Astro ${{ matrix.astro }} + Astro Events consumer
+        run: node scripts/verify-packed-astro-consumer.mjs "${{ runner.temp }}/flowview-packed-artifacts" --astro ${{ matrix.astro }}
+
+  prettier:
+    name: Prettier compatibility (${{ matrix.prettier }})
+    needs: pack
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        prettier: ["3.0.0", "^3.0.0"]
+    steps:
+      - name: Checkout verification scripts
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download the same packed artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: flowview-packed-npm-artifacts
+          path: ${{ runner.temp }}/flowview-packed-artifacts
+
+      - name: Prettier ${{ matrix.prettier }} consumer
+        run: node scripts/verify-packed-prettier-consumer.mjs "${{ runner.temp }}/flowview-packed-artifacts" --prettier "${{ matrix.prettier }}"
+
+  node-minimum:
+    name: Node minimum (22.12.0)
+    needs: pack
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout verification scripts
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+          run_install: false
+
+      - name: Setup Node.js (documented minimum)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+
+      - name: Download the same packed artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: flowview-packed-npm-artifacts
+          path: ${{ runner.temp }}/flowview-packed-artifacts
+
+      - name: Confirm the Node version
+        run: test "$(node -p process.versions.node)" = "22.12.0"
+
+      - name: Vite consumer on the minimum Node
+        run: node scripts/verify-packed-vite-consumer.mjs "${{ runner.temp }}/flowview-packed-artifacts" --vite 8
+
+      - name: Astro consumer on the minimum Node
+        run: node scripts/verify-packed-astro-consumer.mjs "${{ runner.temp }}/flowview-packed-artifacts" --astro 7
+
+      - name: Prettier consumer on the minimum Node
+        run: node scripts/verify-packed-prettier-consumer.mjs "${{ runner.temp }}/flowview-packed-artifacts"

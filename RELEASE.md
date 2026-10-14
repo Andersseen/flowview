@@ -23,22 +23,31 @@ pnpm run publish:npm
 
 This builds runtime, events, compiler, Vite, Astro, Astro Events, and Prettier packages, then runs `changeset publish`.
 
-Before publishing changes to the Vite package graph, reproduce the packed
-consumer check locally after installing the repository dependencies and
-building its WASM compiler:
+Releases are gated by the reusable `Release readiness` workflow
+(`.github/workflows/release-readiness.yml`), which `release.yml` runs before the
+Changesets job: it builds and packs every publishable package once, validates
+every tarball and runs `npm publish --dry-run`, installs those same tarballs
+into fresh external Vite/Astro/Prettier projects on Linux, macOS, and Windows,
+runs the Vite 6/7/8, Astro 5/6/7 and Prettier compatibility cases and the
+Node 22.12.0 minimum, and only then lets the release job restore that exact
+build output and publish. The contract is documented in
+[docs/compatibility.md](docs/compatibility.md).
+
+To reproduce the gates locally after installing the repository dependencies and
+building every package:
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm run build:runtime
-pnpm run build:compiler
-pnpm run build:vite
-node scripts/pack-vite-consumer-artifacts.mjs <empty-temporary-directory>
-node scripts/verify-packed-vite-consumer.mjs <same-temporary-directory>
+pnpm run build
+pnpm run pack:release-artifacts <empty-temporary-directory>
+pnpm run verify:release-artifacts <same-temporary-directory>
+pnpm run verify:packed-vite-consumer <same-temporary-directory> --vite 8
+pnpm run verify:packed-astro-consumer <same-temporary-directory> --astro 7
 ```
 
-The verification installs the generated tarballs into a fresh directory under
-the operating system's temporary directory. It uses a separate pnpm store and
-does not use the workspace lockfile for the consumer.
+The consumer scripts install the generated tarballs into a fresh directory under
+the operating system's temporary directory. They use a separate pnpm store and
+do not use the workspace lockfile for the consumer.
 
 Verify with:
 
