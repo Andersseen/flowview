@@ -1,6 +1,6 @@
 {
   "name": "@flowview/prettier",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Prettier plugin helpers for flowview templates in Astro files.",
   "license": "MIT",
   "type": "module",
