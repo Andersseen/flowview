@@ -20,9 +20,9 @@ fn authored_html_corpus_compiles_parses_and_preserves_static_bytes() {
     let allocator = Allocator::default();
     let js = Parser::new(&allocator, &output.code, SourceType::mjs()).parse();
     assert!(
-        js.diagnostics.is_empty(),
+        js.errors.is_empty(),
         "document.html generated invalid JS: {:?}",
-        js.diagnostics
+        js.errors
     );
     let html = render_static(source, &json!({}), StaticRenderOptions::default())
         .unwrap_or_else(|e| panic!("document.html static render failed: {e:?}"));

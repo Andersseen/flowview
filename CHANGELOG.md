@@ -6,6 +6,31 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+### Rust crates 0.2.0 (not yet published)
+
+- Rust consumer readiness for `flowview-compiler` / `flowview-cli` 0.2.0
+  (versioned independently from the npm packages; no npm package changes).
+  Declared `rust-version = "1.91"` and test it on exactly Rust 1.91.0 in CI.
+  The MSRV drops from an effective 1.94 by moving the Oxc parser dependency
+  from 0.137 to 0.116; behaviour, diagnostics and source maps are unchanged.
+  The Oxc dependency itself remains (about 1.2 MB in a minimal static
+  consumer); see `docs/rust-consumer-readiness.md`.
+- Prepared both crates for crates.io: `publish = ["crates-io"]`, README and
+  LICENSE in the package, tests excluded. The Rust release workflow now runs the
+  MSRV gate, inspects packages, dry-runs the publish, and after publishing the
+  compiler verifies the exact version from the registry with an external
+  consumer before publishing the CLI.
+- Added `CompiledStaticTemplate::render_serializable`, a convenience that
+  serializes a `Serialize` model to JSON and renders it. It does not avoid the
+  `serde_json::Value` allocation.
+- Documented and tested the static expression contract: JavaScript truthiness
+  (empty arrays and objects are truthy), `.length` of arrays and strings, and
+  `.length > 0` as the recommended collection check. No language change.
+- Added reproducible evidence scripts for binary footprint and for the
+  whitespace/gzip/Brotli question. Whitespace preservation is unchanged.
+- Deferred to a future major: partials/recursion, zero-copy typed contexts,
+  void-element formatting, and a whitespace-collapsing option.
+
 - Fixed `@flowview/prettier` corrupting `.astro` files that contain multi-byte
   characters before or inside a FlowView region (UTF-8 byte offsets were used
   as UTF-16 indexes).

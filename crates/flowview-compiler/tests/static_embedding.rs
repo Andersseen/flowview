@@ -14,7 +14,7 @@ use flowview_compiler::{
 use serde::Serialize;
 use serde_json::{json, Value};
 
-const PAGE_TEMPLATE: &str = include_str!("fixtures/site/page.flow");
+const PAGE_TEMPLATE: &str = include_str!("../examples/site-page.flow");
 
 #[derive(Serialize)]
 struct Site {
@@ -349,4 +349,86 @@ fn diagnostics_format_with_the_callers_display_name() {
         serde_json::from_str(&DiagnosticFormatter::new(&errors, &filename, 0).format_json())
             .unwrap();
     assert!(json.to_string().contains("FV0016"));
+}
+
+fn render_json(source: &str, context: Value) -> String {
+    compile_static(source, Default::default())
+        .expect("template compiles")
+        .render(&context)
+        .expect("context renders")
+}
+
+// @spec SPEC-HTML-052
+#[test]
+fn empty_collections_are_truthy_like_javascript() {
+    let source = "@if (context.items) {yes} @else {no}";
+    assert_eq!(render_json(source, json!({ "items": [] })), "yes");
+    assert_eq!(render_json(source, json!({ "items": {} })), "yes");
+    assert_eq!(render_json(source, json!({ "items": [1] })), "yes");
+    // Only the JavaScript falsy primitives (and a missing key) are falsy.
+    for falsy in [json!(null), json!(false), json!(0), json!("")] {
+        assert_eq!(render_json(source, json!({ "items": falsy })), "no");
+    }
+    assert_eq!(render_json(source, json!({})), "no");
+}
+
+// @spec SPEC-HTML-048 SPEC-HTML-050
+#[test]
+fn array_length_is_the_recommended_emptiness_check() {
+    let source = "@if (context.items.length > 0) {some} @else {none}";
+    assert_eq!(render_json(source, json!({ "items": [] })), "none");
+    assert_eq!(render_json(source, json!({ "items": [1, 2] })), "some");
+    // Bare `.length` relies on number truthiness: 0 is falsy, as in JavaScript.
+    let bare = "@if (context.items.length) {some} @else {none}";
+    assert_eq!(render_json(bare, json!({ "items": [] })), "none");
+    assert_eq!(render_json(bare, json!({ "items": [0] })), "some");
+}
+
+// @spec SPEC-HTML-048
+#[test]
+fn string_length_counts_utf16_units() {
+    let source = "{{ context.s.length }}";
+    assert_eq!(render_json(source, json!({ "s": "" })), "0");
+    assert_eq!(render_json(source, json!({ "s": "abc" })), "3");
+    // One astral character is two UTF-16 code units, as in JavaScript.
+    assert_eq!(render_json(source, json!({ "s": "😀" })), "2");
+    let guard = "@if (context.s.length > 0) {text} @else {empty}";
+    assert_eq!(render_json(guard, json!({ "s": "" })), "empty");
+    assert_eq!(render_json(guard, json!({ "s": "x" })), "text");
+}
+
+// @spec SPEC-HTML-051
+#[test]
+fn length_of_a_missing_collection_is_an_error_not_zero() {
+    let t = compile_static("@if (context.items.length > 0) {x}", Default::default()).unwrap();
+    // `context.items` is undefined, so reading `.length` is FV0018.
+    let errors = t.render(&json!({})).unwrap_err();
+    assert_eq!(errors[0].code.as_deref(), Some("FV0018"));
+}
+
+#[test]
+fn render_serializable_matches_render_of_the_json_value() {
+    let t = template();
+    let model = model(3);
+    assert_eq!(
+        t.render_serializable(&model).unwrap(),
+        t.render(&serde_json::to_value(&model).unwrap()).unwrap()
+    );
+}
+
+#[test]
+fn render_serializable_reports_non_object_and_unserializable_contexts() {
+    let t = compile_static("<p></p>", Default::default()).unwrap();
+    let errors = t.render_serializable(&vec![1, 2]).unwrap_err();
+    assert_eq!(errors[0].code.as_deref(), Some("FV0021"));
+
+    struct Broken;
+    impl Serialize for Broken {
+        fn serialize<S: serde::Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
+            Err(serde::ser::Error::custom("no thanks"))
+        }
+    }
+    let errors = t.render_serializable(&Broken).unwrap_err();
+    assert_eq!(errors[0].code.as_deref(), Some("FV0021"));
+    assert!(errors[0].message.contains("no thanks"));
 }

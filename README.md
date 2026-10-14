@@ -684,7 +684,10 @@ Static rendering supports all control flow and attribute bindings, but only a
 deterministic expression subset: `context`, loop variables, member access
 (`a.b`, `a['b']`, `a[0]`), `.length`, literals, `!`, `&&`, `||`, `??`, and
 comparisons. Function calls and other JavaScript fail with diagnostic
-`FV0016`. See the spec for the exact subset. flowview is a renderer, not a
+`FV0016`. Truthiness follows JavaScript, so an empty array or object is
+truthy: test collections with `@if (context.items.length > 0)`, not
+`@if (context.items)`. See the spec and
+[docs/embedding-rust.md](docs/embedding-rust.md) for the exact subset. flowview is a renderer, not a
 static-site generator; routing, Markdown, and multi-page builds are up to the
 caller. The WASM/`@flowview/compiler` wrapper does not expose static rendering
 yet.

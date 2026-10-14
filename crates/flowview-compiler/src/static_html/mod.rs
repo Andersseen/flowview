@@ -8,6 +8,7 @@ mod evaluator;
 
 use std::{borrow::Cow, collections::HashMap};
 
+use serde::Serialize;
 use serde_json::Value;
 
 use crate::{
@@ -122,6 +123,30 @@ impl CompiledStaticTemplate {
             .nodes(&self.root.children)
             .map_err(|diagnostic| vec![diagnostic])?;
         Ok(renderer.out)
+    }
+
+    /// Serialize `context` with `serde_json` and render the result.
+    ///
+    /// This is an ergonomic convenience for typed page models, equivalent to
+    /// `render(&serde_json::to_value(context)?)`. It is **not** a performance
+    /// optimization: the model is still materialized as a [`Value`] on every
+    /// call. A value that fails to serialize, or that does not serialize to a
+    /// JSON object, yields an `FV0021` (invalid static context) diagnostic.
+    pub fn render_serializable<T: Serialize + ?Sized>(
+        &self,
+        context: &T,
+    ) -> Result<String, Vec<Diagnostic>> {
+        let value = serde_json::to_value(context).map_err(|error| {
+            vec![Diagnostic::new(
+                format!("Static render context could not be serialized to JSON: {error}"),
+                1,
+                1,
+                0,
+                0,
+            )
+            .with_diagnostic_code(DiagnosticCode::StaticInvalidContext)]
+        })?;
+        self.render(&value)
     }
 }
 

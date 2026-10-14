@@ -187,10 +187,10 @@ pub(crate) fn validate_expression(
             let diagnostics = errors
                 .into_iter()
                 .map(|error| {
-                    let label = error.labels.as_slice().first();
-                    let relative_start = label.map_or(0, |label| label.offset() as usize);
+                    let label = error.labels.as_deref().and_then(<[_]>::first);
+                    let relative_start = label.map_or(0, |label| label.offset());
                     let relative_end = label
-                        .map(|label| relative_start.saturating_add(label.len() as usize))
+                        .map(|label| relative_start.saturating_add(label.len()))
                         .unwrap_or_else(|| expression.len());
                     Diagnostic::from_source(
                         format!("Invalid JavaScript expression: {}", error.message),

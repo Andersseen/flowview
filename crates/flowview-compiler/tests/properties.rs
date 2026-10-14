@@ -17,7 +17,7 @@ proptest! {
         let output = compile(&source, options()).unwrap_or_else(|errors| panic!("generator emitted rejected syntax: {source:?}: {errors:?}"));
         let allocator = Allocator::default();
         let parsed = Parser::new(&allocator, &output.code, SourceType::mjs()).parse();
-        prop_assert!(parsed.diagnostics.is_empty(), "generated JS failed to parse for {source:?}: {:?}", parsed.diagnostics);
+        prop_assert!(parsed.errors.is_empty(), "generated JS failed to parse for {source:?}: {:?}", parsed.errors);
     }
 
     // @spec SPEC-HTML-075

@@ -8,7 +8,7 @@ use std::time::Instant;
 use flowview_compiler::{compile_static, render_static, StaticCompileOptions};
 use serde_json::{json, Value};
 
-const TEMPLATE: &str = include_str!("../tests/fixtures/site/page.flow");
+const TEMPLATE: &str = include_str!("site-page.flow");
 
 fn page(n: usize) -> Value {
     json!({

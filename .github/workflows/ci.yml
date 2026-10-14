@@ -62,6 +62,10 @@ jobs:
         # whose API can lag changes on main until the Rust release workflow.
         run: cargo package --workspace --exclude flowview-wasm --locked --no-verify
 
+  rust-msrv:
+    name: Rust MSRV
+    uses: ./.github/workflows/rust-msrv.yml
+
   rust-portability:
     name: rust (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

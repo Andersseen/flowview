@@ -6,9 +6,25 @@
 # the local package checksum and skipped instead of republished. A checksum
 # mismatch fails the run (crates.io versions are immutable; bump the version).
 #
-# Needs CARGO_REGISTRY_TOKEN (read by cargo). Never echoes it.
+# Between the two publications the exact compiler version is consumed from the
+# registry by a throwaway project (scripts/verify-registry-consumer.sh); after
+# the CLI is published, `cargo install` of that exact version is verified.
+#
+# Usage: scripts/publish-rust.sh [--dry-run]
+#   --dry-run  run `cargo publish --dry-run` for the compiler, and for the CLI
+#              only once the exact compiler version is already in the index
+#              (cargo cannot resolve it otherwise). Publishes nothing, needs no token.
+#
+# Needs CARGO_REGISTRY_TOKEN (read by cargo) unless --dry-run. Never echoes it.
 # Env: INDEX_URL (default https://index.crates.io), MAX_ATTEMPTS (30), SLEEP_SECONDS (10).
 set -euo pipefail
+
+DRY_RUN=false
+case "${1:-}" in
+  --dry-run) DRY_RUN=true ;;
+  "") ;;
+  *) echo "usage: $0 [--dry-run]" >&2; exit 2 ;;
+esac
 
 INDEX_URL="${INDEX_URL:-https://index.crates.io}"
 MAX_ATTEMPTS="${MAX_ATTEMPTS:-30}"
@@ -67,6 +83,18 @@ wait_for_public() {
   return 1
 }
 
+dry_run() {
+  local name="$1" version
+  version="$(crate_version "$name")"
+  if [ "$name" = flowview-cli ] && [ -z "$(public_checksum flowview-compiler "$(crate_version flowview-compiler)")" ]; then
+    echo "Skipping flowview-cli dry-run: flowview-compiler $(crate_version flowview-compiler) is not in the registry yet."
+    echo "(cargo cannot resolve it before the compiler is published; the real run publishes the compiler first.)"
+    return 0
+  fi
+  echo "Dry-run publishing $name $version..."
+  cargo publish --dry-run -p "$name" --locked
+}
+
 publish() {
   local name="$1" version existing
   version="$(crate_version "$name")"
@@ -89,5 +117,24 @@ publish() {
   wait_for_public "$name" "$version"
 }
 
+verify_cli_install() {
+  local version root
+  version="$(crate_version flowview-cli)"
+  root="$(mktemp -d)"
+  # Installs the registry artifact itself (no --path), pinned to the exact version.
+  cargo install flowview-cli --version "=$version" --locked --root "$root"
+  "$root/bin/flowview" --version
+  rm -rf "$root"
+  echo "flowview-cli =$version installs from the registry."
+}
+
+if [ "$DRY_RUN" = true ]; then
+  dry_run flowview-compiler
+  dry_run flowview-cli
+  exit 0
+fi
+
 publish flowview-compiler
+scripts/verify-registry-consumer.sh "$(crate_version flowview-compiler)"
 publish flowview-cli
+verify_cli_install
