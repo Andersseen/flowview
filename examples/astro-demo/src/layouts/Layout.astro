@@ -1,6 +1,8 @@
 ---
 import "../styles/global.css";
+import Footer from "../components/Footer.astro";
 import { navItems } from "../data/navigation";
+import { site } from "../data/site";
 
 export interface Props {
   title: string;
@@ -10,8 +12,8 @@ export interface Props {
 
 const {
   title,
-  description = "flowview compiles HTML-like templates with Angular-inspired control flow into plain JavaScript render functions.",
-  siteUrl = "https://flowview.example",
+  description = site.description,
+  siteUrl = site.url,
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, siteUrl).toString();
@@ -41,7 +43,8 @@ const serializedNavItems = JSON.stringify(navItems);
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonical} />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta property="og:site_name" content={site.name} />
+    <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -65,7 +68,6 @@ const serializedNavItems = JSON.stringify(navItems);
     <script>
       import "../scripts/web-components";
     </script>
-    <script is:inline src="/web-editor-lite.min.js"></script>
   </head>
   <body>
     <a
@@ -85,7 +87,7 @@ const serializedNavItems = JSON.stringify(navItems);
         item-variant="filled"
         mobile-breakpoint="768"
         minimal-breakpoint="768"
-        aria-nav-label="flowview navigation"
+        aria-nav-label="FlowView navigation"
       >
         <a
           slot="start"
@@ -97,16 +99,16 @@ const serializedNavItems = JSON.stringify(navItems);
           >
             F
           </span>
-          <span class="hidden sm:inline">flowview</span>
+          <span class="hidden sm:inline">FlowView</span>
         </a>
 
         <div slot="end" class="flex items-center gap-1">
           <a
-            href="https://github.com/andersseen/flowview"
+            href={site.github}
             target="_blank"
             rel="noopener noreferrer"
             class="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            aria-label="View flowview on GitHub"
+            aria-label="FlowView on GitHub"
           >
             <and-icon name="github" size="20" aria-hidden="true"></and-icon>
           </a>
@@ -135,7 +137,7 @@ const serializedNavItems = JSON.stringify(navItems);
 
         <div slot="mobile-nav" class="flex flex-col gap-3 p-4">
           <a
-            href="https://github.com/andersseen/flowview"
+            href={site.github}
             target="_blank"
             rel="noopener noreferrer"
             class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
@@ -174,7 +176,32 @@ const serializedNavItems = JSON.stringify(navItems);
       <main id="main-content">
         <slot />
       </main>
+      <Footer />
     </div>
+
+    <script is:inline>
+      (function () {
+        document.addEventListener("click", function (event) {
+          const button =
+            event.target instanceof Element &&
+            event.target.closest("[data-copy]");
+          if (!button) return;
+          const code = button
+            .closest("[data-code-block]")
+            ?.querySelector("code");
+          if (!code || !navigator.clipboard) return;
+          navigator.clipboard.writeText(code.textContent || "").then(
+            function () {
+              button.textContent = "Copied";
+              setTimeout(function () {
+                button.textContent = "Copy";
+              }, 1500);
+            },
+            function () {},
+          );
+        });
+      })();
+    </script>
 
     <script is:inline>
       (function () {

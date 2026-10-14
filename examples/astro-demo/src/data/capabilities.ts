@@ -45,7 +45,7 @@ export const evidenceLegend: EvidenceLegendEntry[] = [
   {
     kind: "browser-e2e",
     label: "Browser E2E",
-    meaning: "Asserted by Playwright against this site.",
+    meaning: "Asserted in a real browser against this site.",
   },
   {
     kind: "compiler-spec",
@@ -172,7 +172,7 @@ export const capabilityGroups: CapabilityGroup[] = [
         title: "Scope isolation",
         description:
           "Same-named handlers in different templates do not collide.",
-        route: "/e2e/scopes",
+        route: "/events#scopes",
         evidence: ["live-demo", "browser-e2e"],
       },
     ],
@@ -203,7 +203,7 @@ export const capabilityGroups: CapabilityGroup[] = [
         group: "client",
         title: "Events after DOM replacement",
         description: "Delegated handlers keep working with no rebinding code.",
-        route: "/e2e/dynamic",
+        route: "/client-dom#dynamic",
         evidence: ["live-demo", "browser-e2e"],
       },
     ],
@@ -215,7 +215,7 @@ export const capabilityGroups: CapabilityGroup[] = [
       {
         id: "xss",
         group: "safety",
-        title: "XSS-safe by default",
+        title: "Escaped by default",
         description: "Hostile values in {{ }} render as inert text.",
         route: "/security",
         evidence: ALL_RENDERED,
@@ -234,7 +234,7 @@ export const capabilityGroups: CapabilityGroup[] = [
         group: "safety",
         title: "Astro View Transitions",
         description: "Event handling survives client-side navigation.",
-        route: "/e2e/vt-one",
+        route: "/events#scopes",
         evidence: ["live-demo", "browser-e2e"],
       },
       {

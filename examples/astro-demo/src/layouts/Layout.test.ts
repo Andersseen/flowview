@@ -28,7 +28,13 @@ describe("Layout", () => {
     expect(html).toContain("Skip to content");
     expect(html).toContain('id="main-content"');
     expect(html).toContain("<and-navbar");
-    expect(html).toContain("flowview");
+    expect(html).toContain('property="og:site_name" content="FlowView"');
+    expect(html).toContain('name="twitter:card" content="summary"');
+    expect(html).not.toContain("summary_large_image");
+    expect(html).not.toContain("flowview.example");
+    expect(html).toContain("FlowView");
+    expect(html).toContain("Getting started");
+    expect(html).toContain("<footer");
     expect(html).toContain("Page content");
   });
 });

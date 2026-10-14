@@ -1,84 +1,107 @@
 ---
+import CodeBlock from "../components/CodeBlock.astro";
 import Layout from "../layouts/Layout.astro";
+import { pageTitle } from "../data";
+import * as code from "../data/snippets";
 import authoringExample from "../snippets/events-author.astro.txt?raw";
 import compiledExample from "../snippets/events-compiled.html.txt?raw";
 ---
 
 <Layout
-  title="flowview Events compiler"
-  description="Angular-style event binding syntax compiled for Astro pages."
+  title={pageTitle("Events")}
+  description="FlowView Events: native browser event bindings such as (click), (input), (change) and (submit), compiled to delegated listeners for Astro and Vite."
 >
-  <main class="grid gap-8 py-12 md:py-14">
-    <header class="page-frame grid gap-5">
-      <p
-        class="w-fit rounded-md border border-border bg-background px-3 py-1 text-sm font-bold uppercase tracking-normal text-muted-foreground"
-      >
-        flowview Events
-      </p>
+  <div class="page-frame grid gap-12 py-12 md:py-14">
+    <header class="grid gap-4">
+      <p class="eyebrow">FlowView Events</p>
       <h1
-        class="max-w-4xl text-4xl font-black tracking-normal text-foreground md:text-6xl"
+        class="max-w-4xl text-4xl font-black tracking-normal text-foreground md:text-5xl"
       >
-        Use (click) in Astro. Skip the listener boilerplate.
+        Native events in your template, no listener boilerplate
       </h1>
-      <p class="max-w-3xl text-lg text-muted-foreground md:text-xl">
-        The events compiler brings Angular's event-binding DX to plain Astro
-        markup. Write handlers in a <code
-          class="rounded-md border border-border bg-muted/45 px-1 py-0.5 text-[0.9em] text-foreground"
-          >&lt;script data-flowview&gt;</code
-        > block, use
-        <code
-          class="rounded-md border border-border bg-muted/45 px-1 py-0.5 text-[0.9em] text-foreground"
+      <p class="lede">
+        Events is a separate, optional compiler. Write <code class="inline-code"
           >(event)="handler()"</code
-        > in the template, and flowview wires up native browser listeners for you
-        — no bundler tricks, no framework runtime.
+        > next to the markup, declare handlers in one
+        <code class="inline-code">&lt;script data-flowview&gt;</code> block, and FlowView
+        wires up delegated native listeners. It works in Astro (<code
+          class="inline-code">@flowview/astro-events</code
+        >) and plain Vite projects such as Hono (<code class="inline-code"
+          >@flowview/vite-events</code
+        >).
       </p>
     </header>
 
-    <section class="page-frame grid gap-6 md:grid-cols-[0.8fr_1.2fr]">
-      <div class="preview-surface grid min-h-0 content-start gap-5">
+    <section
+      id="live"
+      aria-labelledby="live-heading"
+      class="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]"
+    >
+      <div class="panel grid content-start gap-5">
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <span
-            class="inline-flex w-fit items-center rounded-full border border-border bg-[hsl(var(--warning)_/_0.16)] px-3 py-1 text-xs font-bold text-[hsl(32_95%_34%)]"
-          >
-            Live Astro page
-          </span>
-          <span class="text-sm font-bold text-muted-foreground">
-            Compiled from (click) and (input)
-          </span>
+          <h2 id="live-heading" class="text-lg font-extrabold text-foreground">
+            Live, from this page
+          </h2>
+          <span class="chip chip-ok">Compiled by FlowView Events</span>
         </div>
 
         <div class="flex flex-wrap gap-3">
-          <button
-            (click)="save($event)"
-            class="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+          <button type="button" (click)="save($event)" class="btn btn-primary"
+            >Save</button
           >
-            Save
-          </button>
-
           <button
+            type="button"
             (click)="removeItem('item-1', $el)"
-            class="inline-flex items-center rounded-md border border-border bg-background px-4 py-2 text-sm font-bold text-foreground disabled:opacity-60"
+            class="btn disabled:opacity-60">Remove item 1</button
           >
-            Remove item 1
-          </button>
         </div>
 
         <label
-          class="grid gap-2 text-sm font-extrabold text-foreground"
+          class="grid gap-2 text-sm font-bold text-foreground"
           for="event-demo-input"
         >
-          <span>Try an input event</span>
+          <span>(input) event</span>
           <input
             id="event-demo-input"
             (input)="previewInput($event)"
             placeholder="Type to trigger (input)"
-            class="w-full rounded-md border border-border bg-background px-4 py-3 font-semibold text-foreground placeholder:text-muted-foreground"
+            class="w-full rounded-md border border-border bg-background px-3 py-2 font-semibold text-foreground placeholder:text-muted-foreground"
           />
         </label>
+
+        <label
+          class="grid gap-2 text-sm font-bold text-foreground"
+          for="event-demo-select"
+        >
+          <span>(change) event</span>
+          <select
+            id="event-demo-select"
+            (change)="pickPlan($event)"
+            class="w-full rounded-md border border-border bg-background px-3 py-2 font-semibold text-foreground"
+          >
+            <option value="free">Free</option>
+            <option value="team">Team</option>
+          </select>
+        </label>
+
+        <form
+          id="event-demo-form"
+          (submit)="submitForm($event)"
+          class="flex flex-wrap gap-3"
+        >
+          <input
+            name="email"
+            aria-label="Email"
+            placeholder="you@example.com"
+            class="min-w-0 flex-1 rounded-md border border-border bg-background px-3 py-2 font-semibold text-foreground placeholder:text-muted-foreground"
+          />
+          <button class="btn">Submit</button>
+        </form>
 
         <p
           id="event-output"
           class="min-h-14 rounded-md border border-border bg-background p-4 text-sm font-bold text-muted-foreground"
+          aria-live="polite"
         >
           Click an action to see the compiled event handlers run.
         </p>
@@ -113,122 +136,151 @@ import compiledExample from "../snippets/events-compiled.html.txt?raw";
               output.textContent = `Input event value: ${String(target.value)}`;
             }
           }
-        </script>
 
-        <div class="flex flex-wrap gap-2">
-          <span
-            class="rounded-full border border-border bg-muted/45 px-3 py-1.5 text-xs font-extrabold text-muted-foreground"
-            >$event</span
-          >
-          <span
-            class="rounded-full border border-border bg-muted/45 px-3 py-1.5 text-xs font-extrabold text-muted-foreground"
-            >$el</span
-          >
-          <span
-            class="rounded-full border border-border bg-muted/45 px-3 py-1.5 text-xs font-extrabold text-muted-foreground"
-            >literal args</span
-          >
-          <span
-            class="rounded-full border border-border bg-muted/45 px-3 py-1.5 text-xs font-extrabold text-muted-foreground"
-            >native events</span
-          >
-        </div>
+          function pickPlan(event) {
+            const output = document.querySelector("#event-output");
+            if (output) {
+              output.textContent = `Change event value: ${String(event.target.value)}`;
+            }
+          }
+
+          function submitForm(event) {
+            event.preventDefault();
+            const output = document.querySelector("#event-output");
+            if (output) {
+              output.textContent = "Submit event handled without a page load";
+            }
+          }
+        </script>
       </div>
 
-      <div class="preview-surface grid min-h-0 gap-4">
-        <div
-          class="grid gap-3 rounded-md border border-border bg-background p-5"
-        >
-          <div class="flex items-center justify-between gap-3">
-            <span class="text-sm font-extrabold text-foreground">
-              Author in Astro
-            </span>
-            <code class="text-xs text-muted-foreground">.astro</code>
-          </div>
-          <vertex-editor-lite
-            value={authoringExample}
-            language="html"
-            theme="dark"
-            height="420px"
-            font-size="14"
-            class="h-[260px] overflow-hidden rounded-md border border-border md:h-[420px]"
-          ></vertex-editor-lite>
-        </div>
+      <div class="grid content-start gap-4">
+        <CodeBlock
+          code={authoringExample}
+          lang="astro"
+          label="What you write"
+        />
+        <CodeBlock
+          code={compiledExample}
+          lang="html + js"
+          label="What the build emits"
+        />
+      </div>
+    </section>
 
-        <div
-          class="grid gap-3 rounded-md border border-border bg-background p-5"
-        >
-          <div class="flex items-center justify-between gap-3">
-            <span class="text-sm font-extrabold text-foreground">
-              Compiler output
-            </span>
-            <code class="text-xs text-muted-foreground">HTML + JS</code>
+    <section id="syntax" aria-labelledby="syntax-heading" class="grid gap-5">
+      <h2 id="syntax-heading" class="text-2xl font-bold text-foreground">
+        What a handler can receive
+      </h2>
+      <div class="grid gap-6 lg:grid-cols-2">
+        <dl class="grid content-start gap-4 text-sm">
+          <div>
+            <dt class="font-bold text-foreground">
+              <code class="inline-code">$event</code>
+            </dt>
+            <dd class="text-muted-foreground">The native browser event.</dd>
           </div>
-          <vertex-editor-lite
-            value={compiledExample}
-            language="html"
-            theme="dark"
-            height="270px"
-            font-size="14"
-            class="h-[200px] overflow-hidden rounded-md border border-border md:h-[270px]"
-          ></vertex-editor-lite>
-        </div>
+          <div>
+            <dt class="font-bold text-foreground">
+              <code class="inline-code">$el</code>
+            </dt>
+            <dd class="text-muted-foreground">
+              The element the binding is on.
+            </dd>
+          </div>
+          <div>
+            <dt class="font-bold text-foreground">Literal arguments</dt>
+            <dd class="text-muted-foreground">
+              Strings, numbers and booleans, such as <code class="inline-code"
+                >remove('item-1')</code
+              >, serialized into the markup.
+            </dd>
+          </div>
+          <div>
+            <dt class="font-bold text-foreground">
+              Template-scope property paths
+            </dt>
+            <dd class="text-muted-foreground">
+              Values such as <code class="inline-code">item.id</code> inside an <code
+                class="inline-code">@for</code
+              > loop are read at render time.
+            </dd>
+          </div>
+          <div>
+            <dt class="font-bold text-foreground">Build-time validation</dt>
+            <dd class="text-muted-foreground">
+              Every binding must resolve to a function declared in the file's
+              single script block.
+            </dd>
+          </div>
+        </dl>
+        <CodeBlock
+          code={code.eventsTemplate}
+          lang="html"
+          label="Supported forms"
+        />
       </div>
     </section>
 
     <section
-      class="page-frame grid gap-4 md:grid-cols-3"
-      aria-label="Events compiler pipeline"
+      id="delegation"
+      aria-labelledby="delegation-heading"
+      class="grid gap-3"
     >
-      <article
-        class="grid min-h-44 content-start gap-3 rounded-md border border-border bg-background p-5"
-      >
-        <span
-          class="inline-flex w-fit items-center rounded-full border border-border bg-[hsl(var(--warning)_/_0.16)] px-3 py-1 text-xs font-bold text-[hsl(32_95%_34%)]"
+      <h2 id="delegation-heading" class="text-2xl font-bold text-foreground">
+        Delegated listeners and dynamic DOM
+      </h2>
+      <p class="prose-width text-muted-foreground">
+        The runtime attaches one listener per event type to the document and
+        finds the handler when the event fires. Elements added later, such as a
+        re-rendered <code class="inline-code">@for</code> list or a view replaced
+        by <code class="inline-code">@flowview/dom</code>, work with no
+        rebinding.
+        <a class="font-bold text-primary" href="/client-dom#dynamic"
+          >See it on the client DOM page →</a
         >
-          01
-        </span>
-        <h2 class="text-base font-extrabold tracking-normal">
-          Write event intent in markup
-        </h2>
-        <p class="text-muted-foreground">
-          Use `(click)`, `(input)`, or any native event name where the user
-          action happens.
-        </p>
-      </article>
-      <article
-        class="grid min-h-44 content-start gap-3 rounded-md border border-border bg-background p-5"
-      >
-        <span
-          class="inline-flex w-fit items-center rounded-full border border-border bg-[hsl(var(--success)_/_0.13)] px-3 py-1 text-xs font-bold text-[hsl(var(--success))]"
-        >
-          02
-        </span>
-        <h2 class="text-base font-extrabold tracking-normal">
-          Validate handlers at build time
-        </h2>
-        <p class="text-muted-foreground">
-          flowview checks that every `(event)="handler()"` reference resolves to
-          a function declared in your `&lt;script data-flowview&gt;` block — no
-          manual wiring, no runtime surprises.
-        </p>
-      </article>
-      <article
-        class="grid min-h-44 content-start gap-3 rounded-md border border-border bg-background p-5"
-      >
-        <span
-          class="inline-flex w-fit items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-bold text-secondary-foreground"
-        >
-          03
-        </span>
-        <h2 class="text-base font-extrabold tracking-normal">
-          Bind native listeners at runtime
-        </h2>
-        <p class="text-muted-foreground">
-          The browser receives data attributes plus a small runtime that calls
-          `addEventListener` for you.
-        </p>
-      </article>
+      </p>
     </section>
-  </main>
+
+    <section id="scopes" aria-labelledby="scopes-heading" class="grid gap-3">
+      <h2 id="scopes-heading" class="text-2xl font-bold text-foreground">
+        Scopes and navigation
+      </h2>
+      <p class="prose-width text-muted-foreground">
+        Each template file gets its own handler scope, so two components can
+        both declare <code class="inline-code">save()</code> without colliding. In
+        Astro, handlers keep working across View Transitions navigation. Both behaviors
+        are asserted in the browser suite listed on
+        <a class="font-bold text-primary" href="/capabilities"
+          >the capabilities page</a
+        >.
+      </p>
+    </section>
+
+    <section
+      id="architecture"
+      aria-labelledby="architecture-heading"
+      class="grid gap-3"
+    >
+      <h2 id="architecture-heading" class="text-2xl font-bold text-foreground">
+        Events and the HTML compiler are separate
+      </h2>
+      <p class="prose-width text-muted-foreground">
+        The Events compiler runs first and rewrites <code class="inline-code"
+          >(click)</code
+        > into <code class="inline-code">data-flow-on-click</code> attributes. The
+        Rust HTML compiler never parses event syntax, which keeps the core small and
+        means FlowView templates remain usable without any browser code at all.
+      </p>
+      <p class="prose-width text-sm text-muted-foreground">
+        Install: <code class="inline-code">@flowview/astro-events</code> for Astro,
+        <code class="inline-code">@flowview/vite-events</code> for Vite, both on top
+        of
+        <code class="inline-code">@flowview/events</code>. <a
+          class="font-bold text-primary"
+          href="/getting-started">Setup steps →</a
+        >
+      </p>
+    </section>
+  </div>
 </Layout>

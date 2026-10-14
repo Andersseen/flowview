@@ -1,6 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { site } from "../data/site";
+import { pageTitle, site } from "../data/site";
 import {
   capabilitiesContext,
   interpolationContext,
@@ -10,26 +10,23 @@ import {
 ---
 
 <Layout
-  title={`${site.title} capabilities`}
-  description="What FlowView can do today, with live proofs rendered by the real compiler."
+  title={pageTitle("Capabilities")}
+  description="What FlowView does today, with live results rendered by the real compiler and verified in CI."
   siteUrl={site.url}
 >
   <div class="page-frame grid gap-12 py-12 md:py-14">
     <header class="grid gap-4">
-      <p
-        class="w-fit rounded-md border border-border bg-background px-3 py-1 text-sm font-bold uppercase tracking-normal text-muted-foreground"
-      >
-        Product capabilities
-      </p>
+      <p class="eyebrow">Capabilities</p>
       <h1
         class="max-w-4xl text-4xl font-black tracking-normal text-foreground md:text-5xl"
       >
         What FlowView does today
       </h1>
       <p class="max-w-3xl text-lg text-muted-foreground">
-        Every live result on this page is produced by the real FlowView compiler
-        and runtime. This site doubles as the browser-level acceptance app:
-        Playwright exercises it in development and against the production build.
+        Every capability listed here is exercised by the real FlowView
+        implementation and continuously verified in CI. The live results on this
+        page are rendered by the same compiler you install, and the evidence
+        labels say exactly what checks each one.
       </p>
     </header>
 
@@ -86,7 +83,7 @@ import {
                       href="{{ item.route }}"
                       class="w-fit text-sm font-bold text-primary underline-offset-4 hover:underline"
                     >
-                      See it live<span class="sr-only"> : {{ item.title }}</span>
+                      Learn more<span class="sr-only"> : {{ item.title }}</span>
                     </a>
                   }
                 </li>
@@ -114,15 +111,15 @@ import {
         <div class="grid gap-4 md:grid-cols-3">
           <div class="rounded-md border border-border bg-card p-4">
             <h3 class="text-sm font-bold uppercase text-muted-foreground">Escaped</h3>
-            <p data-testid="interp-escaped">{{ context.html }}</p>
+            <p data-testid="interp-escaped" class="[overflow-wrap:anywhere]">{{ context.html }}</p>
           </div>
           <div class="rounded-md border border-border bg-card p-4">
             <h3 class="text-sm font-bold uppercase text-muted-foreground">Raw (trusted)</h3>
-            <p data-testid="interp-raw">{{{ context.html }}}</p>
+            <p data-testid="interp-raw" class="[overflow-wrap:anywhere]">{{{ context.html }}}</p>
           </div>
           <div class="rounded-md border border-border bg-card p-4">
             <h3 class="text-sm font-bold uppercase text-muted-foreground">Escaped hostile value</h3>
-            <p data-testid="interp-hostile">{{ context.hostile }}</p>
+            <p data-testid="interp-hostile" class="[overflow-wrap:anywhere]">{{ context.hostile }}</p>
           </div>
         </div>
       </template>
@@ -202,8 +199,8 @@ import {
       <p class="max-w-3xl text-sm text-muted-foreground">
         @flowview/dom and @flowview/reactive are independent optional libraries;
         the application composes them explicitly. Native static rendering in
-        Rust is verified by the compiler test suite and is not demonstrated in
-        the browser.
+        Rust is verified by the compiler and specification test suites and is
+        not demonstrated in the browser.
       </p>
     </section>
   </div>

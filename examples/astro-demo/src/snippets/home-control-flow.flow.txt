@@ -1,5 +1,0 @@
-@for (item of context.items) {
-  <article>{{ item.title }}</article>
-} @empty {
-  <p>No items yet</p>
-}

@@ -1,10 +1,11 @@
 /**
- * Navigation items passed to the `<and-navbar>` component in Layout.
- * The GitHub link is rendered as an icon in the navbar end slot instead.
+ * Navigation items passed to the `<and-navbar>` component in Layout. The home
+ * page is the logo link; GitHub is rendered as an icon in the end slot.
  */
 export const navItems = [
-  { id: "home", label: "Home", href: "/" },
-  { id: "control-flow", label: "Control flow", href: "/control-flow" },
+  { id: "getting-started", label: "Getting started", href: "/getting-started" },
+  { id: "packages", label: "Packages", href: "/packages" },
+  { id: "control-flow", label: "Syntax", href: "/control-flow" },
   { id: "events", label: "Events", href: "/events" },
   { id: "capabilities", label: "Capabilities", href: "/capabilities" },
 ];

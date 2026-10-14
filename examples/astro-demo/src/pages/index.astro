@@ -1,208 +1,510 @@
 ---
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import CodeBlock from "../components/CodeBlock.astro";
+import Section from "../components/Section.astro";
 import Layout from "../layouts/Layout.astro";
+import { pageTitle, site } from "../data";
+import * as code from "../data/snippets";
+import { render as renderHeroUsers } from "../views/hero-users.flow";
 
-import { site } from "../data";
-import controlFlowExample from "../snippets/home-control-flow.flow.txt?raw";
-import eventsExample from "../snippets/home-events.astro.txt?raw";
+// The displayed source is the very file that renders below. Read from disk
+// because a `?raw` import would still run through the FlowView plugin.
+const heroSource = readFileSync(
+  join(process.cwd(), "src/views/hero-users.flow"),
+  "utf8",
+);
+
+const heroHtml = renderHeroUsers({
+  users: [
+    { id: 1, name: "Ada Lovelace", active: true },
+    { id: 2, name: "Grace Hopper", active: false },
+  ],
+});
 ---
 
-<Layout title={site.title} description={site.description} siteUrl={site.url}>
-  <section
-    class="grid items-center border-b border-border bg-card py-14 md:min-h-[calc(100vh-76px)] md:py-20"
-  >
+<Layout title={pageTitle()} description={site.description}>
+  <header class="hero-panel">
     <div
-      class="page-frame grid gap-10 md:grid-cols-[0.95fr_1.05fr] md:items-center"
+      class="page-frame grid gap-10 py-14 md:py-20 lg:grid-cols-[1fr_1.05fr] lg:items-center"
     >
-      <div class="grid gap-7">
-        <p
-          class="w-fit rounded-md border border-border bg-background px-3 py-1 text-sm font-bold uppercase tracking-normal text-muted-foreground"
+      <div class="grid content-start gap-6">
+        <p class="eyebrow">Template compiler for HTML</p>
+        <h1
+          class="text-4xl font-black tracking-normal text-foreground md:text-6xl"
         >
-          Compiler playground
-        </p>
-        <div class="grid gap-4">
-          <h1
-            class="max-w-3xl text-4xl font-black tracking-normal text-foreground md:text-6xl"
+          Modern template DX for HTML, without a framework.
+        </h1>
+        <p class="lede">
+          Write <code class="inline-code">@if</code>, <code class="inline-code"
+            >@for</code
           >
-            Angular-style template DX, without Angular.
-          </h1>
-          <p class="max-w-2xl text-lg text-muted-foreground md:text-xl">
-            flowview explores two focused compilers for Astro and server-first
-            HTML: one for declarative control flow, and one for native browser
-            events written as familiar template attributes.
+          and <code class="inline-code">@switch</code> in plain HTML. A Rust compiler
+          turns your template into a <code class="inline-code"
+            >render(context)</code
+          > function, or into HTML directly. Angular-style authoring, without Angular,
+          and with nothing to adopt around it.
+        </p>
+        <ul class="flex list-none flex-wrap gap-2 p-0" aria-label="Highlights">
+          <li class="chip chip-ok">HTML output</li>
+          <li class="chip">Rust compiler</li>
+          <li class="chip">Server-first</li>
+          <li class="chip">Optional browser tools</li>
+        </ul>
+        <div class="flex flex-wrap items-center gap-3">
+          <a href="/getting-started" class="btn btn-primary">Get started</a>
+          <a href="/capabilities" class="btn">See what works today</a>
+          <a
+            href={site.github}
+            class="text-sm font-bold text-muted-foreground underline-offset-4 hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
+        </div>
+      </div>
+
+      <div class="grid gap-4" aria-label="FlowView example">
+        <CodeBlock code={heroSource} lang="flow" label="users.flow" />
+        <div class="panel grid gap-3 hero-live">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-sm font-extrabold text-foreground">
+              Rendered by FlowView
+            </h2>
+            <span class="chip chip-ok">live</span>
+          </div>
+          <div data-testid="hero-live" set:html={heroHtml} />
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <Section
+    id="where"
+    eyebrow="Where it fits"
+    title="One template language, four places to use it"
+    alt
+  >
+    <Fragment slot="intro">
+      FlowView compiles templates. The host decides when to render, where to
+      serve and how to navigate.
+    </Fragment>
+    <div class="grid gap-10">
+      <article class="grid items-start gap-5 lg:grid-cols-2" id="use-astro">
+        <div class="grid gap-2">
+          <h3 class="text-lg font-extrabold text-foreground">Astro</h3>
+          <p class="text-muted-foreground">
+            Embed a <code class="inline-code">&lt;template flowview&gt;</code> region
+            in any
+            <code class="inline-code">.astro</code> file, or import a standalone
+            <code class="inline-code">.flow</code> file. HTML is produced at build
+            or request time. Add FlowView Events for <code class="inline-code"
+              >(click)</code
+            > bindings.
           </p>
         </div>
-        <div class="flex flex-wrap gap-3">
-          <a
-            href="/control-flow"
-            class="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
-          >
-            Control flow compiler
-          </a>
-          <a
-            href="/events"
-            class="inline-flex items-center rounded-md border border-border bg-background px-4 py-2 text-sm font-bold text-foreground"
-          >
-            Events compiler
-          </a>
-          <a
-            href="/capabilities"
-            class="inline-flex items-center rounded-md border border-border bg-background px-4 py-2 text-sm font-bold text-foreground"
-          >
-            Capabilities
-          </a>
+        <CodeBlock code={code.astroEmbedded} lang="astro" />
+      </article>
+      <article class="grid items-start gap-5 lg:grid-cols-2" id="use-vite">
+        <div class="grid gap-2">
+          <h3 class="text-lg font-extrabold text-foreground">
+            Vite and server HTML
+          </h3>
+          <p class="text-muted-foreground">
+            With <code class="inline-code">@flowview/vite</code>, a
+            <code class="inline-code">.flow</code> file becomes
+            <code class="inline-code">export function render(context)</code>.
+            Your server decides when to call it, which makes Hono, Node.js,
+            Cloudflare Workers and other Vite-built servers a natural fit.
+          </p>
         </div>
-        <dl class="grid gap-3 sm:grid-cols-3">
-          <div class="rounded-md border border-border bg-background p-4">
-            <dt class="text-xs font-bold uppercase text-muted-foreground">
-              Output
-            </dt>
-            <dd class="mt-1 text-sm font-extrabold text-foreground">
-              plain JS
-            </dd>
-          </div>
-          <div class="rounded-md border border-border bg-background p-4">
-            <dt class="text-xs font-bold uppercase text-muted-foreground">
-              Runtime
-            </dt>
-            <dd class="mt-1 text-sm font-extrabold text-foreground">
-              tiny helpers
-            </dd>
-          </div>
-          <div class="rounded-md border border-border bg-background p-4">
-            <dt class="text-xs font-bold uppercase text-muted-foreground">
-              Host
-            </dt>
-            <dd class="mt-1 text-sm font-extrabold text-foreground">
-              Astro first
-            </dd>
-          </div>
-        </dl>
-      </div>
+        <CodeBlock code={code.honoRoute} lang="ts" label="Hono" />
+      </article>
+      <article class="grid items-start gap-5 lg:grid-cols-2" id="use-rust">
+        <div class="grid gap-2">
+          <h3 class="text-lg font-extrabold text-foreground">Native Rust</h3>
+          <p class="text-muted-foreground">
+            <code class="inline-code">compile_static()</code> parses once and returns
+            an immutable
+            <code class="inline-code">CompiledStaticTemplate</code>; render it
+            with as many contexts as you like. No JavaScript engine is involved,
+            so templates can only use a small deterministic expression subset:
+            property paths, literals, comparisons and boolean operators.
+          </p>
+        </div>
+        <CodeBlock code={code.rustStatic} lang="rust" />
+      </article>
+      <article class="grid items-start gap-5 lg:grid-cols-2" id="use-browser">
+        <div class="grid gap-2">
+          <h3 class="text-lg font-extrabold text-foreground">
+            Small browser UIs
+          </h3>
+          <p class="text-muted-foreground">
+            Compose <code class="inline-code">@flowview/dom</code>,
+            <code class="inline-code">@flowview/reactive</code> and Events when you
+            want one. FlowView does not make templates reactive. Your code owns the
+            state, and an explicit
+            <code class="inline-code">effect()</code> calls <code
+              class="inline-code">view.update()</code
+            >.
+          </p>
+        </div>
+        <CodeBlock code={code.reactiveCompose} lang="ts" />
+      </article>
+    </div>
+  </Section>
 
+  <Section
+    id="targets"
+    eyebrow="Compiler"
+    title="One parser, two render targets"
+  >
+    <Fragment slot="intro">
+      The same <code class="inline-code">.flow</code> source and the same AST feed
+      a JavaScript backend and a native static HTML backend, and both follow one specification.
+    </Fragment>
+    <div class="grid gap-8 lg:grid-cols-[1fr_1.2fr] lg:items-start">
       <div
-        class="preview-surface grid min-h-0 content-start gap-5 md:min-h-[540px]"
+        class="diagram panel"
+        role="img"
+        aria-label="A .flow template is compiled by the FlowView compiler into either a JavaScript render function or static HTML from Rust."
       >
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <span
-            class="inline-flex w-fit items-center rounded-full border border-border bg-[hsl(var(--success)_/_0.13)] px-3 py-1 text-xs font-bold text-[hsl(var(--success))]"
+        <div class="node">
+          <strong>.flow or embedded template</strong><span
+            >HTML + control flow</span
           >
-            HTML compiler
-          </span>
-          <span
-            class="inline-flex w-fit items-center rounded-full border border-border bg-[hsl(var(--warning)_/_0.16)] px-3 py-1 text-xs font-bold text-[hsl(32_95%_34%)]"
-          >
-            Events compiler
-          </span>
         </div>
-
-        <section
-          class="grid gap-3 rounded-md border border-border bg-background p-5"
-          aria-label="Control flow compiler preview"
+        <span class="arrow" aria-hidden="true">↓</span>
+        <div class="node node-core">
+          <strong>FlowView compiler</strong><span>one parser, one AST</span>
+        </div>
+        <span class="arrow" aria-hidden="true">↓</span>
+        <div class="branch">
+          <div>
+            <div class="node">
+              <strong>JavaScript target</strong><span
+                >render(context): string</span
+              >
+            </div>
+            <span class="arrow" aria-hidden="true">↓</span>
+            <div class="node node-optional">
+              <strong>Astro · Vite · Hono</strong><span
+                >Node · Workers · browser</span
+              >
+            </div>
+          </div>
+          <div>
+            <div class="node">
+              <strong>Native Rust target</strong><span
+                >HTML from a JSON context</span
+              >
+            </div>
+            <span class="arrow" aria-hidden="true">↓</span>
+            <div class="node node-optional">
+              <strong>Rust · CLI</strong><span>static tooling</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="grid gap-6">
+        <div class="grid gap-1">
+          <h3 class="text-base font-extrabold text-foreground">
+            JavaScript target
+          </h3>
+          <p class="text-muted-foreground">
+            For Astro, Vite, Hono, Node and Workers, and for browser code after
+            a build. Source maps point errors back to your
+            <code class="inline-code">.flow</code> file.
+          </p>
+        </div>
+        <div class="grid gap-1">
+          <h3 class="text-base font-extrabold text-foreground">
+            Native static target
+          </h3>
+          <p class="text-muted-foreground">
+            For Rust tools, documentation generators, reports and server-side
+            Rust applications. Structured diagnostics carry a code, line and
+            column.
+          </p>
+        </div>
+        <p class="prose-width text-sm text-muted-foreground">
+          FlowView is not a static site generator. Routing, Markdown and
+          deployment stay with your host.
+        </p>
+        <div class="grid gap-2">
+          <h3 class="text-base font-extrabold text-foreground">
+            Escaped by default, raw on purpose
+          </h3>
+          <p class="text-muted-foreground">
+            <code class="inline-code">{"{{ value }}"}</code> is escaped. <code
+              class="inline-code">{"{{{ value }}}"}</code
+            > inserts trusted HTML exactly as given and is never sanitized. Templates
+            are trusted source.
+          </p>
+        </div>
+        <a
+          href="/control-flow"
+          class="w-fit text-sm font-bold text-primary underline-offset-4 hover:underline"
         >
-          <h2 class="text-base font-extrabold tracking-normal">
-            Control flow becomes render output
-          </h2>
-          <vertex-editor-lite
-            value={controlFlowExample}
-            language="html"
-            theme="dark"
-            height="170px"
-            font-size="13"
-            class="h-[140px] overflow-hidden rounded-md border border-border md:h-[170px]"
-          ></vertex-editor-lite>
-        </section>
+          Read the syntax guide →
+        </a>
+      </div>
+    </div>
+  </Section>
 
-        <section
-          class="grid gap-3 rounded-md border border-border bg-background p-5"
-          aria-label="Events compiler preview"
+  <Section
+    id="events"
+    eyebrow="Events and bindings"
+    title="Native events and honest bindings"
+    alt
+  >
+    <Fragment slot="intro">
+      Events are a separate, optional compiler. Bindings are plain template
+      syntax. Neither needs a component model.
+    </Fragment>
+    <div class="grid gap-6 lg:grid-cols-2">
+      <div class="grid gap-3">
+        <h3 class="text-base font-extrabold text-foreground">Events</h3>
+        <p class="text-muted-foreground">
+          <code class="inline-code">(click)</code>, <code class="inline-code"
+            >(input)</code
+          >, <code class="inline-code">(change)</code>,
+          <code class="inline-code">(submit)</code> and other native events compile
+          to one delegated listener per event type, so DOM you render later keeps
+          working. The Rust HTML compiler never sees <code class="inline-code"
+            >(click)</code
+          >.
+        </p>
+        <CodeBlock code={code.eventsTemplate} lang="html" label="Events" />
+        <a
+          href="/events"
+          class="w-fit text-sm font-bold text-primary underline-offset-4 hover:underline"
         >
-          <h2 class="text-base font-extrabold tracking-normal">
-            Events become native listeners
-          </h2>
-          <vertex-editor-lite
-            value={eventsExample}
-            language="html"
-            theme="dark"
-            height="210px"
-            font-size="13"
-            class="h-[170px] overflow-hidden rounded-md border border-border md:h-[210px]"
-          ></vertex-editor-lite>
-        </section>
-
-        <ol
-          class="grid list-none gap-2 p-0"
-          aria-label="flowview compilation steps"
-        >
-          <li
-            class="border-l-4 border-primary py-1 pl-3 font-bold text-muted-foreground"
+          See Events live →
+        </a>
+      </div>
+      <div class="grid content-start gap-3">
+        <h3 class="text-base font-extrabold text-foreground">Bindings</h3>
+        <p class="text-muted-foreground">
+          Boolean attributes, <code class="inline-code">attr.*</code> and <code
+            class="inline-code">class.*</code
           >
-            Author with familiar syntax
+          bindings, and full-value attribute interpolation. Generic DOM property binding
+          is not supported.
+        </p>
+        <CodeBlock code={code.bindingsDisabled} lang="flow" />
+        <CodeBlock code={code.bindingsClass} lang="flow" />
+        <CodeBlock code={code.bindingsAttr} lang="flow" />
+        <CodeBlock code={code.bindingsInterpolated} lang="flow" />
+      </div>
+    </div>
+  </Section>
+
+  <Section
+    id="ecosystem"
+    eyebrow="Packages"
+    title="Small packages you can pick from"
+  >
+    <Fragment slot="intro">
+      Most projects need two or three. Nothing here is required just because it
+      exists.
+    </Fragment>
+    <div class="grid gap-8 lg:grid-cols-2 lg:items-start">
+      <div
+        class="diagram panel"
+        role="img"
+        aria-label="Package map: the compiler and runtime sit under the Vite and Astro integrations; Events, DOM, Reactive and tooling are optional."
+      >
+        <div class="node node-core">
+          <strong>flowview-compiler</strong><span
+            >@flowview/compiler · @flowview/runtime</span
+          >
+        </div>
+        <span class="arrow" aria-hidden="true">↓</span>
+        <div class="branch">
+          <div class="node">
+            <strong>@flowview/vite</strong><span>Vite 6 · 7 · 8</span>
+          </div>
+          <div class="node">
+            <strong>@flowview/astro</strong><span>Astro 5 · 6 · 7</span>
+          </div>
+        </div>
+        <div class="node node-optional">
+          <strong>Events</strong><span
+            >@flowview/events · vite-events · astro-events</span
+          >
+        </div>
+        <div class="branch">
+          <div class="node node-optional">
+            <strong>@flowview/dom</strong><span>createView()</span>
+          </div>
+          <div class="node node-optional">
+            <strong>@flowview/reactive</strong><span
+              >signal · computed · effect</span
+            >
+          </div>
+        </div>
+        <div class="node node-optional">
+          <strong>Tooling</strong><span>Prettier · VS Code</span>
+        </div>
+      </div>
+      <div class="grid gap-5">
+        <div class="grid gap-2">
+          <h3 class="text-base font-extrabold text-foreground">
+            Optional state
+          </h3>
+          <p class="text-muted-foreground">
+            State lives in your code. A signal changes, an effect runs, and <code
+              class="inline-code">view.update()</code
+            > replaces the target HTML with a fresh render. There is no virtual DOM
+            and no automatic dependency tracking inside templates.
+          </p>
+        </div>
+        <ol class="diagram panel list-none" aria-label="State flow">
+          <li class="node"><strong>state()</strong><span>your signal</span></li>
+          <li class="arrow" aria-hidden="true">↓</li>
+          <li class="node">
+            <strong>effect()</strong><span>re-runs when state changes</span>
           </li>
-          <li
-            class="border-l-4 border-primary py-1 pl-3 font-bold text-muted-foreground"
-          >
-            Compile during Astro build
+          <li class="arrow" aria-hidden="true">↓</li>
+          <li class="node">
+            <strong>view.update()</strong><span>explicit call</span>
           </li>
-          <li
-            class="border-l-4 border-primary py-1 pl-3 font-bold text-muted-foreground"
-          >
-            Ship plain HTML and JavaScript
+          <li class="arrow" aria-hidden="true">↓</li>
+          <li class="node node-core">
+            <strong>FlowView HTML</strong><span>replaces the target</span>
           </li>
         </ol>
+        <a
+          href="/packages"
+          class="w-fit text-sm font-bold text-primary underline-offset-4 hover:underline"
+        >
+          Which packages do I need? →
+        </a>
+      </div>
+    </div>
+  </Section>
+
+  <Section
+    id="trust"
+    eyebrow="Why trust it"
+    title="A compiler should be boring when it breaks"
+    alt
+  >
+    <Fragment slot="intro">
+      FlowView is pre-1.0, and syntax or generated output may still change
+      before 1.0. What is in place today is checked, not just claimed.
+    </Fragment>
+    <ul class="grid list-none gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
+      <li class="panel grid content-start gap-1">
+        <strong class="text-foreground">Executable specification</strong>
+        <span class="text-sm text-muted-foreground"
+          >All 99 HTML requirements are enforced by named tests.</span
+        >
+      </li>
+      <li class="panel grid content-start gap-1">
+        <strong class="text-foreground">Fuzzed and property-tested</strong>
+        <span class="text-sm text-muted-foreground"
+          >The parser faces adversarial input on a schedule.</span
+        >
+      </li>
+      <li class="panel grid content-start gap-1">
+        <strong class="text-foreground">Structured diagnostics</strong>
+        <span class="text-sm text-muted-foreground"
+          >Errors carry a code, line and column. Source maps point back to your
+          template.</span
+        >
+      </li>
+      <li class="panel grid content-start gap-1">
+        <strong class="text-foreground">Packed consumer tests</strong>
+        <span class="text-sm text-muted-foreground"
+          >The npm tarballs are installed into fresh projects without Rust,
+          before every release.</span
+        >
+      </li>
+      <li class="panel grid content-start gap-1">
+        <strong class="text-foreground">Declared compatibility</strong>
+        <span class="text-sm text-muted-foreground"
+          >Node 22.12+, Vite 6, 7 and 8, Astro 5, 6 and 7, Prettier 3. Checked
+          on Linux, macOS and Windows.</span
+        >
+      </li>
+      <li class="panel grid content-start gap-1">
+        <strong class="text-foreground">Browser acceptance</strong>
+        <span class="text-sm text-muted-foreground"
+          >This website is the acceptance app: <a
+            class="font-bold text-primary"
+            href="/capabilities">every listed capability</a
+          > is exercised in a real browser.</span
+        >
+      </li>
+    </ul>
+  </Section>
+
+  <Section id="not" eyebrow="Scope" title="What FlowView deliberately is not">
+    <Fragment slot="intro">
+      Your host owns application architecture. FlowView owns template
+      compilation.
+    </Fragment>
+    <ul class="flex list-none flex-wrap gap-2 p-0" aria-label="Not included">
+      <li class="chip">Not a component framework</li>
+      <li class="chip">Not a router</li>
+      <li class="chip">Not a static site generator</li>
+      <li class="chip">Not a CMS</li>
+      <li class="chip">No dependency injection</li>
+      <li class="chip">No virtual DOM</li>
+      <li class="chip">No automatic hydration</li>
+      <li class="chip">Not an Angular compatibility layer</li>
+    </ul>
+  </Section>
+
+  <section
+    id="start"
+    aria-labelledby="start-heading"
+    class="section section-alt"
+  >
+    <div class="page-frame grid gap-6">
+      <h2
+        id="start-heading"
+        class="text-2xl font-black tracking-normal text-foreground md:text-3xl"
+      >
+        Pick your starting point
+      </h2>
+      <ul class="grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4">
+        <li>
+          <a
+            class="panel block font-bold text-foreground hover:bg-accent"
+            href="/getting-started#astro">Astro</a
+          >
+        </li>
+        <li>
+          <a
+            class="panel block font-bold text-foreground hover:bg-accent"
+            href="/getting-started#vite">Vite and Hono</a
+          >
+        </li>
+        <li>
+          <a
+            class="panel block font-bold text-foreground hover:bg-accent"
+            href="/getting-started#browser">Browser DOM</a
+          >
+        </li>
+        <li>
+          <a
+            class="panel block font-bold text-foreground hover:bg-accent"
+            href="/getting-started#rust">Native Rust</a
+          >
+        </li>
+      </ul>
+      <div class="flex flex-wrap gap-3">
+        <a href="/getting-started" class="btn btn-primary">Get started</a>
+        <a href="/packages" class="btn">Browse packages</a>
       </div>
     </div>
   </section>
 
-  <section class="border-b border-border">
-    <div class="page-frame grid gap-5 py-10 md:grid-cols-3">
-      <article
-        class="grid min-h-44 content-start gap-3 rounded-md border border-border bg-background p-5"
-      >
-        <span
-          class="inline-flex w-fit items-center rounded-full border border-border bg-[hsl(var(--success)_/_0.13)] px-3 py-1 text-xs font-bold text-[hsl(var(--success))]"
-        >
-          1
-        </span>
-        <h2 class="text-base font-extrabold tracking-normal">
-          Write less ceremony
-        </h2>
-        <p class="text-muted-foreground">
-          Keep template logic near the markup: `@if` for branches and `(click)`
-          for user intent.
-        </p>
-      </article>
-      <article
-        class="grid min-h-44 content-start gap-3 rounded-md border border-border bg-background p-5"
-      >
-        <span
-          class="inline-flex w-fit items-center rounded-full border border-border bg-[hsl(var(--warning)_/_0.16)] px-3 py-1 text-xs font-bold text-[hsl(32_95%_34%)]"
-        >
-          2
-        </span>
-        <h2 class="text-base font-extrabold tracking-normal">
-          Compile before runtime
-        </h2>
-        <p class="text-muted-foreground">
-          flowview works as build tooling, so pages receive generated functions
-          and small runtime helpers.
-        </p>
-      </article>
-      <article
-        class="grid min-h-44 content-start gap-3 rounded-md border border-border bg-background p-5"
-      >
-        <span
-          class="inline-flex w-fit items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-bold text-secondary-foreground"
-        >
-          3
-        </span>
-        <h2 class="text-base font-extrabold tracking-normal">
-          Stay framework-light
-        </h2>
-        <p class="text-muted-foreground">
-          No components, router, signals, or hydration model are required for
-          the compiler experiments.
-        </p>
-      </article>
-    </div>
-  </section>
+  <script>
+    import "virtual:flowview-events/src/views/hero-users.flow.ts";
+  </script>
 </Layout>

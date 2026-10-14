@@ -11,29 +11,36 @@ const { context = footerContext } = Astro.props;
 
 <template flowview={context} is:raw>
   <footer class="border-t border-border bg-card">
-    <div class="page-frame flex flex-col gap-6 py-10 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p class="font-bold text-foreground">{{ context.brand }}</p>
-        <p class="text-sm text-muted-foreground">{{ context.tagline }}</p>
+    <div class="page-frame grid gap-10 py-12 md:grid-cols-[1.4fr_2fr]">
+      <div class="grid content-start gap-2">
+        <p class="text-lg font-black text-foreground">{{ context.brand }}</p>
+        <p class="max-w-sm text-sm text-muted-foreground">{{ context.tagline }}</p>
       </div>
-      <nav aria-label="Footer">
-        <ul class="flex flex-wrap gap-4 text-sm">
-          @for (link of context.links; track link.label) {
-            <li>
-              @if (link.external) {
-                <a href="{{ link.href }}" target="_blank" class="font-medium text-foreground hover:underline">
-                  {{ link.label }}
-                </a>
-              } @else {
-                <a href="{{ link.href }}" class="font-medium text-foreground hover:underline">
-                  {{ link.label }}
-                </a>
+      <nav aria-label="Footer" class="grid gap-8 sm:grid-cols-3">
+        @for (column of context.columns; track column.title) {
+          <div class="grid content-start gap-3">
+            <h2 class="eyebrow">{{ column.title }}</h2>
+            <ul class="grid list-none gap-2 p-0 text-sm">
+              @for (link of column.links; track link.label) {
+                <li>
+                  @if (link.external) {
+                    <a href="{{ link.href }}" target="_blank" rel="noopener noreferrer" class="font-medium text-foreground hover:underline">
+                      {{ link.label }}
+                    </a>
+                  } @else {
+                    <a href="{{ link.href }}" class="font-medium text-foreground hover:underline">
+                      {{ link.label }}
+                    </a>
+                  }
+                </li>
               }
-            </li>
-          }
-        </ul>
+            </ul>
+          </div>
+        }
       </nav>
-      <p class="text-sm text-muted-foreground">{{ context.copyright }}</p>
+    </div>
+    <div class="border-t border-border">
+      <p class="page-frame py-5 text-xs text-muted-foreground">{{ context.note }}</p>
     </div>
   </footer>
 </template>

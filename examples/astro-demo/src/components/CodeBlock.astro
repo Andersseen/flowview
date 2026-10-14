@@ -1,0 +1,29 @@
+---
+export interface Props {
+  code: string;
+  lang: string;
+  label?: string;
+  class?: string;
+}
+
+const { code, lang, label, class: className } = Astro.props;
+const text = code.replace(/\n+$/, "");
+---
+
+<figure class:list={["code-block", className]} data-code-block>
+  <header>
+    <span>
+      {label && <span class="font-bold text-[hsl(214_32%_91%)]">{label}</span>}
+      <span class:list={[label && "ml-2"]}>{lang}</span>
+    </span>
+    <button
+      type="button"
+      class="code-copy"
+      data-copy
+      aria-label={`Copy ${label ?? lang} code`}
+    >
+      Copy
+    </button>
+  </header>
+  <pre tabindex="0"><code>{text}</code></pre>
+</figure>

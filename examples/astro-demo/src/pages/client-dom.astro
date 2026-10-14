@@ -1,36 +1,101 @@
 ---
+import CodeBlock from "../components/CodeBlock.astro";
 import Layout from "../layouts/Layout.astro";
-import { site } from "../data/site";
+import { pageTitle } from "../data";
+import * as code from "../data/snippets";
 ---
 
 <Layout
-  title={`${site.title} client DOM`}
-  description="A tiny client-side Flowview DOM runtime demo."
+  title={pageTitle("Client DOM")}
+  description="Render a compiled FlowView template into a DOM element with @flowview/dom, optionally driven by @flowview/reactive signals."
 >
-  <main class="mx-auto grid w-full max-w-5xl gap-8 px-4 py-12 sm:px-6 lg:px-8">
-    <header class="grid gap-3">
-      <p
-        class="text-sm font-medium uppercase tracking-wide text-muted-foreground"
+  <div class="page-frame grid gap-12 py-12 md:py-14">
+    <header class="grid gap-4">
+      <p class="eyebrow">@flowview/dom · @flowview/reactive</p>
+      <h1
+        class="max-w-3xl text-4xl font-black tracking-normal text-foreground md:text-5xl"
       >
-        @flowview/dom
-      </p>
-      <h1 class="text-3xl font-semibold text-foreground md:text-4xl">
-        Minimal client-side DOM views
+        Small client-side views
       </h1>
-      <p class="max-w-2xl text-base leading-7 text-muted-foreground">
-        A compiled .flow template renders an empty target, receives client data,
-        and updates the same native DOM element without app-level template
-        strings.
+      <p class="lede">
+        A compiled <code class="inline-code">.flow</code> template renders into one
+        element. Your application owns the state and decides when to update. FlowView
+        does not make templates reactive on its own.
       </p>
     </header>
 
-    <div
-      id="client-items"
-      class="rounded-md border border-border bg-card p-5 shadow-sm"
-      data-testid="client-items"
+    <section class="grid gap-3" aria-labelledby="live-heading">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="live-heading" class="text-2xl font-bold text-foreground">
+          Live example
+        </h2>
+        <span class="chip chip-ok">Standalone .flow + Events + signal</span>
+      </div>
+      <div id="client-items" class="panel" data-testid="client-items"></div>
+    </section>
+
+    <section id="dom" aria-labelledby="dom-heading" class="grid gap-4">
+      <h2 id="dom-heading" class="text-2xl font-bold text-foreground">
+        @flowview/dom
+      </h2>
+      <div class="grid gap-6 lg:grid-cols-2">
+        <div class="grid content-start gap-2 text-muted-foreground">
+          <p>
+            <code class="inline-code">createView(target, render)</code> binds a render
+            function to an element.
+            <code class="inline-code">render()</code> and <code
+              class="inline-code">update()</code
+            > both replace the target's HTML with a fresh render. There is no virtual
+            DOM and no diffing.
+          </p>
+          <p id="dynamic">
+            Because Events uses delegated listeners, handlers keep working after
+            every replacement. No rebinding code is needed.
+          </p>
+        </div>
+        <CodeBlock code={code.domView} lang="ts" />
+      </div>
+    </section>
+
+    <section
+      id="reactive"
+      aria-labelledby="reactive-heading"
+      class="grid gap-4"
     >
-    </div>
-  </main>
+      <h2 id="reactive-heading" class="text-2xl font-bold text-foreground">
+        @flowview/reactive
+      </h2>
+      <div class="grid gap-6 lg:grid-cols-2">
+        <div class="grid content-start gap-2 text-muted-foreground">
+          <p>
+            An independent, dependency-free signal library: <code
+              class="inline-code">signal()</code
+            >, <code class="inline-code">computed()</code>,
+            <code class="inline-code">effect()</code> and <code
+              class="inline-code">untracked()</code
+            >. It works without FlowView templates.
+          </p>
+          <p>
+            To drive a view, call <code class="inline-code">view.update()</code> from
+            an <code class="inline-code">effect()</code>. That one explicit line
+            is the whole integration; this page uses it.
+          </p>
+        </div>
+        <div class="grid gap-4">
+          <CodeBlock
+            code={code.reactiveStandalone}
+            lang="ts"
+            label="Standalone"
+          />
+          <CodeBlock
+            code={code.reactiveCompose}
+            lang="ts"
+            label="With a view"
+          />
+        </div>
+      </div>
+    </section>
+  </div>
 
   <script>
     import { createView } from "@flowview/dom";

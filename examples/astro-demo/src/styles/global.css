@@ -49,24 +49,6 @@
     font-size: 16px;
   }
 
-  /* Getting Started bento layout */
-  @media (min-width: 1024px) {
-    .bento-install {
-      grid-column: 1;
-      grid-row: 1;
-    }
-
-    .bento-configure {
-      grid-column: 2;
-      grid-row: 1;
-    }
-
-    .bento-write {
-      grid-column: 1 / -1;
-      grid-row: 2;
-    }
-  }
-
   a {
     color: inherit;
     text-decoration: none;
@@ -108,4 +90,293 @@
     color: hsl(var(--card-foreground));
     padding: 24px;
   }
+}
+
+@layer components {
+  .section {
+    padding-block: clamp(3rem, 6vw, 5rem);
+    border-top: 1px solid hsl(var(--border));
+  }
+
+  .section-alt {
+    background: hsl(var(--muted) / 0.4);
+  }
+
+  .eyebrow {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .lede {
+    max-width: 62ch;
+    font-size: 1.0625rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .prose-width {
+    max-width: 68ch;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    border-radius: 999px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+    padding: 0.125rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .chip-ok {
+    background: hsl(var(--success) / 0.13);
+    color: hsl(var(--success));
+  }
+
+  .chip-accent {
+    background: hsl(var(--warning) / 0.16);
+    color: hsl(32 95% 30%);
+  }
+
+  :root[data-mode="dark"] .chip-accent {
+    color: hsl(38 92% 62%);
+  }
+
+  .panel {
+    border-radius: 8px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    padding: 1.25rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+    transition: background-color 120ms ease;
+  }
+
+  .btn:hover {
+    background: hsl(var(--accent));
+  }
+
+  .btn-primary {
+    border-color: transparent;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .btn-primary:hover {
+    background: hsl(var(--primary) / 0.88);
+  }
+
+  :where(a, button, summary, [tabindex]):focus-visible {
+    outline: 2px solid hsl(var(--ring, var(--primary)));
+    outline-offset: 2px;
+  }
+
+  /* Code surfaces are dark in both themes so contrast never depends on mode. */
+  .code-block {
+    margin: 0;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid hsl(222 25% 22%);
+    background: hsl(222 40% 8%);
+    color: hsl(214 32% 91%);
+  }
+
+  .code-block > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-bottom: 1px solid hsl(222 25% 22%);
+    padding: 0.4rem 0.4rem 0.4rem 0.875rem;
+    font-size: 0.75rem;
+    color: hsl(215 20% 72%);
+  }
+
+  .code-block pre {
+    margin: 0;
+    overflow-x: auto;
+    padding: 0.875rem;
+    font-size: 0.8125rem;
+    line-height: 1.65;
+    tab-size: 2;
+  }
+
+  .code-block pre:focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: -2px;
+  }
+
+  .code-copy {
+    border-radius: 4px;
+    border: 1px solid hsl(222 25% 28%);
+    background: transparent;
+    padding: 0.2rem 0.55rem;
+    font: inherit;
+    font-weight: 700;
+    color: hsl(214 32% 91%);
+    cursor: pointer;
+  }
+
+  .code-copy:hover {
+    background: hsl(222 25% 18%);
+  }
+
+  .inline-code {
+    border-radius: 4px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--muted) / 0.6);
+    padding: 0.05rem 0.35rem;
+    font-size: 0.9em;
+    color: hsl(var(--foreground));
+    overflow-wrap: anywhere;
+  }
+
+  /* Architecture diagrams: boxes + connectors, plain HTML/CSS. */
+  .diagram {
+    display: grid;
+    gap: 0.75rem;
+    justify-items: center;
+  }
+
+  .node {
+    width: 100%;
+    max-width: 22rem;
+    border-radius: 8px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+    padding: 0.625rem 0.875rem;
+    text-align: center;
+    font-size: 0.875rem;
+  }
+
+  .node strong {
+    display: block;
+    color: hsl(var(--foreground));
+  }
+
+  .node span {
+    color: hsl(var(--muted-foreground));
+    font-size: 0.8125rem;
+  }
+
+  .node-core {
+    border-color: hsl(var(--primary));
+    border-width: 2px;
+  }
+
+  .node-optional {
+    border-style: dashed;
+  }
+
+  .arrow {
+    font-size: 1rem;
+    line-height: 1;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .branch {
+    display: grid;
+    width: 100%;
+    gap: 0.75rem;
+    justify-items: center;
+  }
+
+  @media (min-width: 640px) {
+    .branch {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
+    }
+
+    .branch-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .branch > div {
+    display: grid;
+    width: 100%;
+    gap: 0.5rem;
+    justify-items: center;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal 380ms ease-out both;
+    }
+  }
+
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+@layer components {
+  .hero-live .user-list {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    gap: 0.5rem;
+  }
+
+  .hero-live .user-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-radius: 6px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .hero-live .user-list li.active {
+    border-color: hsl(var(--primary));
+    font-weight: 700;
+  }
+
+  .hero-live .user-list button {
+    border-radius: 4px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    padding: 0.2rem 0.6rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+    cursor: pointer;
+  }
+}
+
+/* Grid items default to min-width:auto, so long code or package names would
+   widen the whole page on small screens instead of scrolling inside <pre>. */
+main .grid > * {
+  min-width: 0;
 }
