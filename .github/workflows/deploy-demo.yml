@@ -1,4 +1,4 @@
-name: Deploy Astro Demo to Cloudflare Pages
+name: Deploy FlowView Website to Cloudflare Pages
 
 on:
   push:

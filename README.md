@@ -3,7 +3,7 @@
 [![CI](https://github.com/andersseen/flowview/actions/workflows/ci.yml/badge.svg)](https://github.com/andersseen/flowview/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/%40flowview%2Fvite.svg?label=%40flowview%2Fvite)](https://www.npmjs.com/package/@flowview/vite)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Live demo](https://img.shields.io/badge/demo-flowview--demo.pages.dev-4c1)](https://flowview-demo.pages.dev/)
+[![Website](https://img.shields.io/badge/website-flowview--demo.pages.dev-4c1)](https://flowview-demo.pages.dev/)
 
 flowview is a small Rust compiler for HTML-like templates with
 Angular-inspired control flow syntax. It is not a framework. It transforms
@@ -88,8 +88,7 @@ for exactly what is supported and tested.
 - An Astro integration: `@flowview/astro`
 - A separate events compiler: flowview Events (`@flowview/events`, `@flowview/astro-events`)
 - A Prettier plugin: `@flowview/prettier` (formats `.astro` files while preserving flowview regions)
-- A framework-agnostic template experiment
-- A monorepo with a working Astro demo
+- A monorepo that includes the [official website](https://flowview-demo.pages.dev/), which doubles as the browser acceptance app
 
 ## What flowview Is Not
 
@@ -234,7 +233,7 @@ flowview/
 │   └── vscode-flowview/     # Editor support
 ├── examples/
 │   ├── basic/               # Small .flow examples
-│   ├── astro-demo/          # Astro demo site
+│   ├── astro-demo/          # Official website + acceptance app
 │   └── hono-demo/          # Vite + Hono demo site
 ├── Cargo.toml
 ├── package.json

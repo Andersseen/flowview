@@ -1,0 +1,96 @@
+---
+import CodeBlock from "../components/CodeBlock.astro";
+import Layout from "../layouts/Layout.astro";
+import { packagesContext, pageTitle, recipes } from "../data";
+---
+
+<Layout
+  title={pageTitle("Packages")}
+  description="Which FlowView packages to install: core, Vite and Astro integrations, Events, optional DOM and reactive utilities, and tooling."
+>
+  <div class="page-frame grid gap-12 py-12 md:py-14">
+    <header class="grid gap-4">
+      <p class="eyebrow">Packages</p>
+      <h1
+        class="max-w-3xl text-4xl font-black tracking-normal text-foreground md:text-5xl"
+      >
+        Which packages do I actually need?
+      </h1>
+      <p class="lede">
+        Usually a build integration plus the runtime. Events, DOM and reactive
+        utilities are optional and independent. All packages below are on npm,
+        are pre-1.0, and are versioned independently.
+      </p>
+    </header>
+
+    <section id="recipes" aria-labelledby="recipes-heading" class="grid gap-4">
+      <h2 id="recipes-heading" class="text-2xl font-bold text-foreground">
+        Common setups
+      </h2>
+      <ul class="grid list-none gap-4 p-0 md:grid-cols-2">
+        {
+          recipes.map((recipe) => (
+            <li
+              class="panel grid content-start gap-3"
+              data-testid="recipe"
+              data-recipe={recipe.id}
+            >
+              <h3 class="text-base font-extrabold text-foreground">
+                {recipe.goal}
+              </h3>
+              <CodeBlock code={recipe.install} lang="sh" />
+              <p class="text-sm text-muted-foreground">{recipe.note}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <template flowview={packagesContext} is:raw>
+      <div class="grid gap-12">
+        @for (group of context.groups; track group.id) {
+          <section id="{{ group.id }}" aria-label="{{ group.title }}" class="grid gap-5" data-testid="package-group">
+            <div class="grid gap-1">
+              <h2 class="text-2xl font-bold text-foreground">{{ group.title }}</h2>
+              <p class="text-muted-foreground">{{ group.summary }}</p>
+            </div>
+            <ul class="grid list-none gap-4 p-0">
+              @for (pkg of group.packages; track pkg.id) {
+                <li class="panel grid gap-4 lg:grid-cols-[minmax(0,18rem)_1fr]" data-testid="package" data-package="{{ pkg.id }}">
+                  <div class="grid content-start gap-2">
+                    <h3 class="break-words text-base font-extrabold text-foreground">{{ pkg.name }}</h3>
+                    @switch (pkg.status) {
+                      @case ('npm') { <span class="chip chip-ok">On npm</span> }
+                      @case ('crate-git') { <span class="chip chip-accent">Rust · from Git</span> }
+                      @default { <span class="chip">From the repository</span> }
+                    }
+                  </div>
+                  <dl class="grid gap-3 text-sm">
+                    <div>
+                      <dt class="font-bold text-foreground">Owns</dt>
+                      <dd class="text-muted-foreground">{{ pkg.owns }}</dd>
+                    </div>
+                    <div>
+                      <dt class="font-bold text-foreground">Install when</dt>
+                      <dd class="text-muted-foreground">{{ pkg.whenToInstall }}</dd>
+                    </div>
+                    <div>
+                      <dt class="font-bold text-foreground">Does not own</dt>
+                      <dd class="text-muted-foreground">{{ pkg.doesNotOwn }}</dd>
+                    </div>
+                    @if (pkg.install) {
+                      <div>
+                        <dt class="sr-only">Install command</dt>
+                        <dd><pre class="m-0 overflow-x-auto rounded-md border border-border bg-muted/60 p-3 text-xs"><code>{{ pkg.install }}</code></pre></dd>
+                      </div>
+                    }
+                  </dl>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      </div>
+    </template>
+  </div>
+</Layout>

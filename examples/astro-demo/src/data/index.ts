@@ -1,17 +1,11 @@
 /**
- * Centralized data layer for the flowview landing page.
- *
- * Each exported `*Context` object is designed to be passed to a
- * `<template flowview={context} is:raw>` region. See the
- * component files in `src/components/` for concrete usage.
+ * Typed data for the FlowView website. Each `*Context` object is passed to a
+ * `<template flowview={context} is:raw>` region, so the site is rendered by
+ * FlowView itself.
  */
 
 export * from "./types";
-export { exampleSectionContext } from "./exampleSection";
-export { featuresContext } from "./features";
 export { footerContext } from "./footer";
-export { gettingStartedContext } from "./gettingStarted";
-export { heroContext } from "./hero";
 export { navItems } from "./navigation";
-export { site } from "./site";
-export { syntaxContext } from "./syntaxExamples";
+export { packagesContext, recipes } from "./packages";
+export { site, pageTitle } from "./site";

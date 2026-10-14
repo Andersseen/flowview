@@ -1,17 +1,65 @@
 ---
+import Layout from "../layouts/Layout.astro";
+import { pageTitle, site } from "../data";
+
 const context = {
   name: "flowview",
   markup: `<img src=x onerror="globalThis.__flowviewXss = true">`,
 };
 ---
 
-<template flowview={context} is:raw>
-  <main>
-    <p id="space"><span>Hello </span>{{ context.name }}</p>
-    <pre id="pre">first
+<Layout
+  title={pageTitle("Security model")}
+  description="How FlowView treats untrusted values: escaped interpolation by default, explicit raw interpolation for trusted HTML, and trusted template source."
+>
+  <div class="page-frame grid gap-10 py-12 md:py-14">
+    <header class="grid gap-4">
+      <p class="eyebrow">Security model</p>
+      <h1 class="max-w-3xl text-4xl font-black tracking-normal text-foreground md:text-5xl">
+        Escaped by default. Raw on purpose.
+      </h1>
+      <p class="lede">
+        Values you interpolate are escaped unless you explicitly ask otherwise. Template source is code you wrote and is trusted.
+      </p>
+    </header>
+
+    <section class="grid gap-4 md:grid-cols-2" aria-label="Interpolation contract">
+      <div class="panel grid content-start gap-2">
+        <h2 class="text-lg font-extrabold text-foreground">{"{{ value }}"} escapes</h2>
+        <p class="text-muted-foreground">
+          Markup in the value is rendered as text. Use it for anything that comes from a user, a database or a request.
+        </p>
+      </div>
+      <div class="panel grid content-start gap-2">
+        <h2 class="text-lg font-extrabold text-foreground">{"{{{ value }}}"} inserts raw HTML</h2>
+        <p class="text-muted-foreground">
+          The value is emitted verbatim. FlowView does not sanitize it, so only pass HTML you trust or have already sanitized.
+        </p>
+      </div>
+    </section>
+
+    <section class="grid gap-3" aria-labelledby="proof-heading">
+      <h2 id="proof-heading" class="text-2xl font-bold text-foreground">Live check</h2>
+      <p class="prose-width text-muted-foreground">
+        The block below is rendered by FlowView from a hostile value. The markup appears as text and nothing runs.
+      </p>
+      <div class="panel">
+        <template flowview={context} is:raw>
+          <div>
+            <p id="space"><span>Hello </span>{{ context.name }}</p>
+            <pre id="pre">first
   second</pre>
-    <p id="escaped">{{ context.markup }}</p>
-    <!-- @if inside an HTML comment is literal template content. -->
-    <p id="literal-at" title="@if inside an attribute is literal">contact@if.example</p>
-  </main>
-</template>
+            <p id="escaped">{{ context.markup }}</p>
+            <!-- @if inside an HTML comment is literal template content. -->
+            <p id="literal-at" title="@if inside an attribute is literal">contact@if.example</p>
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <p class="prose-width text-sm text-muted-foreground">
+      To report a vulnerability, follow the
+      <a class="font-bold text-primary" href={`${site.github}/blob/main/SECURITY.md`} target="_blank" rel="noopener noreferrer">security policy</a>.
+    </p>
+  </div>
+</Layout>

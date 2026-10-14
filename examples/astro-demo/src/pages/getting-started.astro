@@ -1,0 +1,270 @@
+---
+import CodeBlock from "../components/CodeBlock.astro";
+import Layout from "../layouts/Layout.astro";
+import { pageTitle, site } from "../data";
+import * as code from "../data/snippets";
+
+const environments = [
+  { id: "astro", label: "Astro" },
+  { id: "vite", label: "Vite / Hono" },
+  { id: "browser", label: "Browser DOM" },
+  { id: "rust", label: "Native Rust" },
+];
+
+const itemsFlow = `<ul>
+  @for (item of context.items; track item.id) {
+    <li [class.done]="item.done">{{ item.name }}</li>
+  } @empty {
+    <li>Nothing yet</li>
+  }
+</ul>`;
+---
+
+<Layout
+  title={pageTitle("Getting started")}
+  description="Install FlowView in Astro, Vite and Hono, the browser, or native Rust. Each path takes a few minutes."
+>
+  <div class="page-frame grid gap-12 py-12 md:py-14">
+    <header class="grid gap-4">
+      <p class="eyebrow">Getting started</p>
+      <h1
+        class="max-w-3xl text-4xl font-black tracking-normal text-foreground md:text-5xl"
+      >
+        Pick where you render
+      </h1>
+      <p class="lede">
+        FlowView is pre-1.0. Every npm command below installs a published
+        package. Requires Node.js 22.12 or newer for the JavaScript tooling.
+      </p>
+      <nav aria-label="Environments">
+        <ul class="flex list-none flex-wrap gap-2 p-0">
+          {
+            environments.map((env) => (
+              <li>
+                <a class="btn" href={`#${env.id}`}>
+                  {env.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+    </header>
+
+    <section
+      id="astro"
+      aria-labelledby="astro-heading"
+      class="grid scroll-mt-20 gap-5"
+    >
+      <h2 id="astro-heading" class="text-2xl font-black text-foreground">
+        Astro
+      </h2>
+      <p class="prose-width text-muted-foreground">
+        Supports Astro 5, 6 and 7. Embed templates in <code class="inline-code"
+          >.astro</code
+        > files, or import standalone
+        <code class="inline-code">.flow</code> files.
+      </p>
+      <ol class="grid list-none gap-5 p-0 lg:grid-cols-2">
+        <li class="grid content-start gap-2">
+          <h3 class="font-extrabold text-foreground">1. Install</h3>
+          <CodeBlock
+            code="npm install @flowview/astro @flowview/runtime"
+            lang="sh"
+          />
+        </li>
+        <li class="grid content-start gap-2">
+          <h3 class="font-extrabold text-foreground">2. Configure</h3>
+          <CodeBlock code={code.astroConfig} lang="js" />
+        </li>
+        <li class="grid content-start gap-2 lg:col-span-2">
+          <h3 class="font-extrabold text-foreground">3. Write a template</h3>
+          <CodeBlock code={code.astroEmbedded} lang="astro" />
+        </li>
+      </ol>
+      <details class="panel">
+        <summary class="cursor-pointer font-bold text-foreground"
+          >Add Events to Astro</summary
+        >
+        <div class="mt-4 grid gap-4">
+          <CodeBlock
+            code="npm install @flowview/astro-events @flowview/events @flowview/vite-events"
+            lang="sh"
+          />
+          <CodeBlock code={code.astroEventsConfig} lang="js" />
+          <p class="text-sm text-muted-foreground">
+            Then write <code class="inline-code">(click)="save()"</code> in a template
+            and declare <code class="inline-code">save</code> in one
+            <code class="inline-code">&lt;script data-flowview&gt;</code> block. <a
+              class="font-bold text-primary"
+              href="/events">See Events →</a
+            >
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <section
+      id="vite"
+      aria-labelledby="vite-heading"
+      class="grid scroll-mt-20 gap-5 border-t border-border pt-12"
+    >
+      <h2 id="vite-heading" class="text-2xl font-black text-foreground">
+        Vite, Hono, Node.js and Workers
+      </h2>
+      <p class="prose-width text-muted-foreground">
+        Supports Vite 6, 7 and 8. A <code class="inline-code">.flow</code> import
+        is a module exporting
+        <code class="inline-code">render(context)</code>. Your server decides
+        when to call it.
+      </p>
+      <ol class="grid list-none gap-5 p-0 lg:grid-cols-2">
+        <li class="grid content-start gap-2">
+          <h3 class="font-extrabold text-foreground">1. Install</h3>
+          <CodeBlock
+            code="npm install @flowview/vite @flowview/runtime"
+            lang="sh"
+          />
+        </li>
+        <li class="grid content-start gap-2">
+          <h3 class="font-extrabold text-foreground">2. Configure</h3>
+          <CodeBlock code={code.viteConfig} lang="ts" />
+        </li>
+        <li class="grid content-start gap-2">
+          <h3 class="font-extrabold text-foreground">3. Render from a route</h3>
+          <CodeBlock code={code.honoRoute} lang="ts" label="Hono" />
+        </li>
+        <li class="grid content-start gap-2">
+          <h3 class="font-extrabold text-foreground">Or from a Worker</h3>
+          <CodeBlock
+            code={code.workersRoute}
+            lang="ts"
+            label="Cloudflare Workers"
+          />
+        </li>
+      </ol>
+      <details class="panel">
+        <summary class="cursor-pointer font-bold text-foreground"
+          >Add Events to Vite</summary
+        >
+        <div class="mt-4 grid gap-4">
+          <CodeBlock
+            code="npm install @flowview/vite-events @flowview/events"
+            lang="sh"
+          />
+          <CodeBlock code={code.viteEventsConfig} lang="ts" />
+          <p class="text-sm text-muted-foreground">
+            The <code class="inline-code">&lt;script data-flowview&gt;</code> block
+            is served as a virtual module, so your client entry must import it, and
+            your server must emit that script tag. The repository's Hono example shows
+            the full wiring.
+          </p>
+        </div>
+      </details>
+      <p class="text-sm text-muted-foreground">
+        TypeScript: add <code class="inline-code"
+          >"types": ["@flowview/vite/client"]</code
+        > to import <code class="inline-code">.flow</code> files.
+      </p>
+    </section>
+
+    <section
+      id="browser"
+      aria-labelledby="browser-heading"
+      class="grid scroll-mt-20 gap-5 border-t border-border pt-12"
+    >
+      <h2 id="browser-heading" class="text-2xl font-black text-foreground">
+        Browser DOM
+      </h2>
+      <p class="prose-width text-muted-foreground">
+        For a small client-side UI, compile a <code class="inline-code"
+          >.flow</code
+        > file with Vite or Astro and mount it with
+        <code class="inline-code">@flowview/dom</code>. Each <code
+          class="inline-code">update()</code
+        > replaces the target's HTML. State is yours to manage;
+        <code class="inline-code">@flowview/reactive</code> is optional.
+      </p>
+      <ol class="grid list-none gap-5 p-0 lg:grid-cols-2">
+        <li class="grid content-start gap-2">
+          <h3 class="font-extrabold text-foreground">1. Install</h3>
+          <CodeBlock
+            code="npm install @flowview/dom @flowview/vite @flowview/runtime"
+            lang="sh"
+          />
+          <h3 class="mt-2 font-extrabold text-foreground">2. Template</h3>
+          <CodeBlock code={itemsFlow} lang="flow" label="items.flow" />
+        </li>
+        <li class="grid content-start gap-2">
+          <h3 class="font-extrabold text-foreground">3. Mount and update</h3>
+          <CodeBlock code={code.domView} lang="ts" />
+          <h3 class="mt-2 font-extrabold text-foreground">4. Optional state</h3>
+          <CodeBlock code={code.reactiveCompose} lang="ts" />
+        </li>
+      </ol>
+      <p class="text-sm text-muted-foreground">
+        <a class="font-bold text-primary" href="/client-dom"
+          >See the working example →</a
+        >
+      </p>
+    </section>
+
+    <section
+      id="rust"
+      aria-labelledby="rust-heading"
+      class="grid scroll-mt-20 gap-5 border-t border-border pt-12"
+    >
+      <h2 id="rust-heading" class="text-2xl font-black text-foreground">
+        Native Rust static rendering
+      </h2>
+      <p class="prose-width text-muted-foreground">
+        Render templates to HTML from Rust with no Node.js, browser or
+        JavaScript engine. The context is JSON, and templates use a
+        deterministic expression subset (property paths, literals, comparisons
+        and boolean operators). Function calls are rejected with a diagnostic.
+      </p>
+      <div class="grid gap-5 lg:grid-cols-2">
+        <div class="grid content-start gap-2">
+          <h3 class="font-extrabold text-foreground">Add the crate</h3>
+          <CodeBlock code={code.rustInstall} lang="sh" />
+          <p class="text-sm text-muted-foreground">
+            <code class="inline-code">flowview-compiler</code> is not yet published
+            on crates.io, so the command above uses the Git repository.
+          </p>
+        </div>
+        <div class="grid content-start gap-2">
+          <h3 class="font-extrabold text-foreground">
+            Compile once, render many
+          </h3>
+          <CodeBlock code={code.rustStatic} lang="rust" />
+        </div>
+      </div>
+      <p class="text-sm text-muted-foreground">
+        Prefer the command line? Build the CLI from the repository and run
+        <code class="inline-code"
+          >flowview compile page.flow --target static-html --data context.json</code
+        >. See the
+        <a
+          class="font-bold text-primary"
+          href={`${site.github}/blob/main/docs/embedding-rust.md`}
+          target="_blank"
+          rel="noopener noreferrer">Rust embedding guide</a
+        >.
+      </p>
+    </section>
+
+    <section
+      aria-labelledby="next-heading"
+      class="grid gap-3 border-t border-border pt-12"
+    >
+      <h2 id="next-heading" class="text-2xl font-black text-foreground">
+        Next
+      </h2>
+      <ul class="flex list-none flex-wrap gap-3 p-0">
+        <li><a class="btn btn-primary" href="/packages">Choose packages</a></li>
+        <li><a class="btn" href="/control-flow">Learn the syntax</a></li>
+        <li><a class="btn" href="/events">Add Events</a></li>
+      </ul>
+    </section>
+  </div>
+</Layout>

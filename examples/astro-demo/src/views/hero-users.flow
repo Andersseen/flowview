@@ -1,0 +1,23 @@
+<ul class="user-list">
+  @for (user of context.users; track user.id) {
+    <li [class.active]="user.active">
+      {{ user.name }}
+
+      <button type="button" (click)="select(user.id, $el)">
+        Select
+      </button>
+    </li>
+  } @empty {
+    <li>No users</li>
+  }
+</ul>
+
+<script data-flowview>
+  function select(id, element) {
+    const list = element.closest("ul");
+    for (const item of list.querySelectorAll("li")) {
+      item.classList.toggle("active", item.contains(element));
+    }
+    list.setAttribute("data-selected", String(id));
+  }
+</script>

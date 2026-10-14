@@ -1,34 +1,200 @@
 ---
+import CodeBlock from "../components/CodeBlock.astro";
 import Layout from "../layouts/Layout.astro";
-import ExampleSection from "../components/ExampleSection.astro";
-import Features from "../components/Features.astro";
-import Footer from "../components/Footer.astro";
-import GettingStarted from "../components/GettingStarted.astro";
-import Hero from "../components/Hero.astro";
-import HowItWorks from "../components/HowItWorks.astro";
-import SyntaxShowcase from "../components/SyntaxShowcase.astro";
+import { pageTitle } from "../data";
+import * as code from "../data/snippets";
 
-import {
-  exampleSectionContext,
-  featuresContext,
-  footerContext,
-  gettingStartedContext,
-  heroContext,
-  site,
-  syntaxContext,
-} from "../data";
+const contextExample = `// Astro: the value of context={...} is the template's \`context\`
+<template flowview={{ title: "Hi", items }} is:raw>
+  <h1>{{ context.title }}</h1>
+</template>
+
+// JavaScript target: the argument of render()
+render({ title: "Hi", items });`;
 ---
 
 <Layout
-  title={`${site.title} control flow`}
-  description={site.description}
-  siteUrl={site.url}
+  title={pageTitle("Template syntax")}
+  description="The complete FlowView template syntax: interpolation, @if, @for, @switch, bindings and the context object."
 >
-  <Hero context={heroContext} />
-  <Features context={featuresContext} />
-  <SyntaxShowcase context={syntaxContext} />
-  <HowItWorks />
-  <ExampleSection context={exampleSectionContext} />
-  <GettingStarted context={gettingStartedContext} />
-  <Footer context={footerContext} />
+  <div class="page-frame grid gap-12 py-12 md:py-14">
+    <header class="grid gap-4">
+      <p class="eyebrow">Template syntax</p>
+      <h1
+        class="max-w-3xl text-4xl font-black tracking-normal text-foreground md:text-5xl"
+      >
+        Control flow for HTML
+      </h1>
+      <p class="lede">
+        HTML plus a handful of control-flow blocks, interpolation and bindings.
+        That is the whole language; the compiler adds no components, layouts or
+        partials.
+      </p>
+    </header>
+
+    <section id="context" aria-labelledby="context-heading" class="grid gap-4">
+      <h2 id="context-heading" class="text-2xl font-bold text-foreground">
+        The context object
+      </h2>
+      <p class="prose-width text-muted-foreground">
+        Every template reads its input from a single top-level name, <code
+          class="inline-code">context</code
+        >. There is no implicit alias and no global scope. Whatever your host
+        passes in becomes <code class="inline-code">context</code>.
+      </p>
+      <CodeBlock code={contextExample} lang="astro / ts" />
+    </section>
+
+    <section
+      id="interpolation"
+      aria-labelledby="interpolation-heading"
+      class="grid gap-4"
+    >
+      <h2 id="interpolation-heading" class="text-2xl font-bold text-foreground">
+        Interpolation
+      </h2>
+      <div class="grid gap-6 lg:grid-cols-2">
+        <div class="grid content-start gap-2">
+          <p class="text-muted-foreground">
+            <code class="inline-code">{"{{ value }}"}</code> is escaped, so markup
+            in the value renders as text. It is the default.
+          </p>
+          <p class="text-muted-foreground">
+            <code class="inline-code">{"{{{ value }}}"}</code> inserts a string verbatim.
+            It is for HTML you already trust, and FlowView never sanitizes it. Raw
+            interpolation works in element content only, not inside attributes or
+            tag names.
+          </p>
+          <p class="text-sm text-muted-foreground">
+            Write <code class="inline-code">\@if</code> or <code
+              class="inline-code">\{"{{"}</code
+            > to output the marker literally.
+            <a class="font-bold text-primary" href="/security"
+              >Read the security model →</a
+            >
+          </p>
+        </div>
+        <CodeBlock code={code.interpolation} lang="flow" />
+      </div>
+    </section>
+
+    <section id="if" aria-labelledby="if-heading" class="grid gap-4">
+      <h2 id="if-heading" class="text-2xl font-bold text-foreground">
+        @if, @else if, @else
+      </h2>
+      <div class="grid gap-6 lg:grid-cols-2">
+        <p class="text-muted-foreground">
+          Conditions are JavaScript expressions. The first branch that is truthy
+          renders. In the native Rust target, the same conditions are limited to
+          a deterministic subset (property paths, literals, comparisons, <code
+            class="inline-code">!</code
+          >, <code class="inline-code">&amp;&amp;</code>,
+          <code class="inline-code">||</code>, <code class="inline-code"
+            >??</code
+          >).
+        </p>
+        <CodeBlock code={code.controlFlowIf} lang="flow" />
+      </div>
+    </section>
+
+    <section id="for" aria-labelledby="for-heading" class="grid gap-4">
+      <h2 id="for-heading" class="text-2xl font-bold text-foreground">
+        @for, track, @empty
+      </h2>
+      <div class="grid gap-6 lg:grid-cols-2">
+        <div class="grid content-start gap-2">
+          <p class="text-muted-foreground">
+            Iterate arrays, and in the JavaScript target any iterable. <code
+              class="inline-code">@empty</code
+            > renders when there are no items.
+          </p>
+          <p class="text-muted-foreground">
+            <code class="inline-code">track</code> is accepted syntax. Today it has
+            no runtime effect, because FlowView renders strings and does not diff
+            DOM nodes, and the compiler reports it as a warning.
+          </p>
+        </div>
+        <CodeBlock code={code.controlFlowFor} lang="flow" />
+      </div>
+    </section>
+
+    <section id="switch" aria-labelledby="switch-heading" class="grid gap-4">
+      <h2 id="switch-heading" class="text-2xl font-bold text-foreground">
+        @switch, @case, @default
+      </h2>
+      <div class="grid gap-6 lg:grid-cols-2">
+        <p class="text-muted-foreground">
+          Compare one expression against several cases. <code
+            class="inline-code">@default</code
+          > handles everything else.
+          <a class="font-bold text-primary" href="/capabilities#switch"
+            >See it rendered →</a
+          >
+        </p>
+        <CodeBlock code={code.controlFlowSwitch} lang="flow" />
+      </div>
+    </section>
+
+    <section
+      id="bindings"
+      aria-labelledby="bindings-heading"
+      class="grid gap-4"
+    >
+      <h2 id="bindings-heading" class="text-2xl font-bold text-foreground">
+        Bindings
+      </h2>
+      <p class="prose-width text-muted-foreground">
+        Bindings are evaluated at render time. They are not DOM property
+        bindings: <code class="inline-code">[disabled]</code> adds or removes the
+        attribute in the HTML string. The boolean attribute set is <code
+          class="inline-code">disabled</code
+        >, <code class="inline-code">hidden</code>, <code class="inline-code"
+          >checked</code
+        >,
+        <code class="inline-code">selected</code>, <code class="inline-code"
+          >required</code
+        >, <code class="inline-code">readonly</code>, <code class="inline-code"
+          >multiple</code
+        > and
+        <code class="inline-code">open</code>.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <CodeBlock
+          code={code.bindingsDisabled}
+          lang="flow"
+          label="Boolean attribute"
+        />
+        <CodeBlock code={code.bindingsClass} lang="flow" label="Class toggle" />
+        <CodeBlock code={code.bindingsAttr} lang="flow" label="Any attribute" />
+        <CodeBlock
+          code={code.bindingsInterpolated}
+          lang="flow"
+          label="Attribute value"
+        />
+      </div>
+      <p class="text-sm text-muted-foreground">
+        Event syntax such as <code class="inline-code">(click)</code> belongs to the
+        separate <a class="font-bold text-primary" href="/events"
+          >Events compiler</a
+        >.
+      </p>
+    </section>
+
+    <section id="output" aria-labelledby="output-heading" class="grid gap-4">
+      <h2 id="output-heading" class="text-2xl font-bold text-foreground">
+        What the compiler produces
+      </h2>
+      <div class="grid gap-6 lg:grid-cols-2">
+        <p class="text-muted-foreground">
+          The JavaScript target emits a module exporting <code
+            class="inline-code">render(context)</code
+          >, which returns an HTML string and imports a few escaping helpers
+          from <code class="inline-code">@flowview/runtime</code>. The native
+          Rust target renders the same language to HTML directly. Both are held
+          to one specification.
+        </p>
+        <CodeBlock code={code.compiledOutput} lang="js" />
+      </div>
+    </section>
+  </div>
 </Layout>
