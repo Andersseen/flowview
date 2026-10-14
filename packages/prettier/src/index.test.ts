@@ -39,6 +39,29 @@ ${TEMPLATE}
     expect(result).toContain(TEMPLATE);
   });
 
+  it("preserves regions containing multi-byte characters", async () => {
+    // The Astro parser reports UTF-8 byte offsets; slicing the source with
+    // them as UTF-16 indexes used to leak trailing markup into the region.
+    const template = `<template flowview={context} is:raw>
+  <p>é € 🙂 {{ context.title }}</p>
+</template>`;
+    const source = `---
+const context = { title: "🙂" };
+---
+
+<p>🙂 before</p>
+
+<section>
+  ${template}
+</section>
+`;
+
+    const result = await formatAstro(source);
+    expect(result).toContain(template);
+    expect(result.match(/<\/section>/g)).toHaveLength(1);
+    expect(await formatAstro(result)).toBe(result);
+  });
+
   it("still formats the rest of the Astro file", async () => {
     const source = `---
 const   context = {title:"Hello"};

@@ -45,3 +45,11 @@ export function reloadItems(): void {
 export function selectTask(id: number): void {
   clientState.update((state) => ({ ...state, selectedTaskId: id }));
 }
+
+export function clearItems(): void {
+  clientState.update((state) => ({
+    ...state,
+    items: [],
+    selectedTaskId: null,
+  }));
+}

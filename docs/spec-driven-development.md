@@ -507,6 +507,44 @@ structurally).
 tarball files, or leave `workspace:*` in published metadata while the
 latest-version suites stay green.
 
+### WS6A — Product acceptance demo (done)
+
+**Why:** Unit, spec, packed-consumer and fuzz gates prove each piece; nothing
+proved that the browser-facing pieces compose in a real application.
+
+**What:** `examples/astro-demo` is now also the browser acceptance app. No
+FlowView language, runtime, or compiler change.
+
+- **Existing coverage kept:** landing/control-flow rendering, Events handlers,
+  escaping/XSS, inline Astro templates, scope isolation, dynamic delegated
+  events, View Transitions, client DOM + reactive state.
+- **New surface:** `/capabilities`, linked from the navbar and landing page. The
+  inventory is typed data rendered by an embedded FlowView template; evidence
+  labels (Live demo, Browser E2E, Compiler/spec, Release compatibility) are
+  declared per capability, and native static rendering is labelled
+  Compiler/spec only.
+- **Proofs** (`e2e/capabilities.spec.ts`): escaped vs raw interpolation (raw
+  is author-trusted, no sanitizer) and an inert hostile value; `[disabled]`,
+  `[attr.aria-busy]`, `[class.loading]`, `[class.active]` on both sides of a
+  transition; `@switch` known cases and `@default`; `@for`/`@empty` as
+  empty → items → empty on the reactive + DOM + Events stack with no rebinding;
+  Unicode (`é € 🙂 U+FFFD`) and marker-looking text (`@if`, `{{ }}`, `{{{ }}}`,
+  `contact@if.example`, escaped markers); standalone `.flow` and embedded
+  Astro authoring.
+- **Runtime error gate:** `e2e/fixtures.ts` fails any test on an unexpected
+  `pageerror` or `console.error`; a known error must be allow-listed per test.
+- **Production acceptance:** `pnpm run test:e2e:acceptance` runs only the
+  capabilities suite against `astro preview` of the existing build
+  (`FLOWVIEW_E2E_TARGET=preview`). The full suite stays on `astro dev`. CI
+  runs both in the `astro-demo` job, reusing its build.
+
+**Bug found:** formatting the new page exposed `@flowview/prettier` treating
+UTF-8 byte offsets as UTF-16 indexes (emoji corrupted `.astro` files). Fixed with
+a regression test and a patch changeset.
+
+**Not here:** the native static renderer is not forced into the browser demo;
+Entwine is its product-level dogfooding. Editor work remains WS7.
+
 ### WS7 — Editor diagnostics (only after WS1–WS6)
 
 **Why:** Listed as future work in the spec; big DX win; strictly additive.

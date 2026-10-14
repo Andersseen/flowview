@@ -484,7 +484,8 @@ The Astro demo also has a Playwright suite:
 
 ```sh
 pnpm --filter @flowview/astro-demo exec playwright install chromium
-pnpm run test:e2e:demo
+pnpm run test:e2e:demo        # full suite against astro dev
+pnpm run build:demo && pnpm run test:e2e:acceptance   # production build
 ```
 
 ## flowview Events
@@ -568,7 +569,10 @@ build, and manifest lookup included.
 pnpm run demo
 ```
 
-The demo is also the [official flowview landing page](examples/astro-demo/).
+The demo is also the [official flowview landing page](examples/astro-demo/),
+and it dogfoods the product: its [`/capabilities`](examples/astro-demo/src/pages/capabilities.astro)
+page shows what FlowView does today, and Playwright runs it as a browser-level
+acceptance app (in development and against the production build).
 It uses Astro, Tailwind CSS 4, `@andersseen/web-components`, and the local
 `@flowview/astro` integration. Inline flowview templates can be authored with
 the editor-compatible `<template flowview is:raw>` wrapper:

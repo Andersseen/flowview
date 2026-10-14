@@ -62,6 +62,18 @@ function hasFlowviewAncestor(path: AstPath<unknown>): boolean {
   }
 }
 
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+/**
+ * The Astro parser reports UTF-8 byte offsets, whereas JavaScript strings are
+ * indexed by UTF-16 code units. Slice the encoded bytes so regions that (or
+ * whose preceding source) contain multi-byte characters are cut correctly.
+ */
+function sliceByByteRange(source: string, [start, end]: [number, number]) {
+  return textDecoder.decode(textEncoder.encode(source).subarray(start, end));
+}
+
 const astroPrinter = astroPlugin.printers?.["astro"] as Printer<unknown>;
 
 /**
@@ -100,7 +112,7 @@ const flowviewAstroPrinter: Printer<unknown> = {
     if (isFlowviewTemplate(node) && !isPrecededByPrettierIgnore(path)) {
       const range = rawSourceRange(node);
       if (range !== undefined) {
-        const raw = (options.originalText as string).slice(range[0], range[1]);
+        const raw = sliceByByteRange(options.originalText as string, range);
         return doc.utils.replaceEndOfLine(raw);
       }
     }

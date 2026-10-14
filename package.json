@@ -47,6 +47,7 @@
     "test:vite-events": "pnpm run build:events && pnpm run build:compiler && pnpm run build:vite && pnpm --filter @flowview/vite-events test",
     "test:vscode": "pnpm --filter vscode-flowview test",
     "test:demo": "pnpm run build:runtime && pnpm run build:reactive && pnpm run build:dom && pnpm run build:events && pnpm run build:vite-events && pnpm run build:astro && pnpm run build:astro-events && pnpm --filter @flowview/astro-demo run check && pnpm --filter @flowview/astro-demo run test:unit",
+    "test:e2e:acceptance": "pnpm --filter @flowview/astro-demo run test:e2e:preview",
     "test:e2e:demo": "pnpm run build:rust && pnpm run build:runtime && pnpm run build:reactive && pnpm run build:dom && pnpm run build:events && pnpm run build:compiler && pnpm run build:vite && pnpm run build:vite-events && pnpm run build:astro && pnpm run build:astro-events && pnpm --filter @flowview/astro-demo run test:e2e",
     "pack:release-artifacts": "node scripts/pack-release-artifacts.mjs",
     "verify:release-artifacts": "node scripts/verify-release-artifacts.mjs",
