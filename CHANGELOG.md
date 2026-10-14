@@ -6,6 +6,9 @@ This project does not have a stable release yet.
 
 ## Unreleased
 
+- Fixed `@flowview/prettier` corrupting `.astro` files that contain multi-byte
+  characters before or inside a FlowView region (UTF-8 byte offsets were used
+  as UTF-16 indexes).
 - Added spec conformance mapping: every testable requirement in
   `docs/flowview-spec.md` has a stable `SPEC-HTML-xxx` ID enforced by
   `@spec`-annotated tests. `scripts/spec-coverage.mjs` (`pnpm run test:spec`)

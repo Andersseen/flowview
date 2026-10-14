@@ -47,7 +47,12 @@ import { site } from "../data/site";
       view.update(clientState());
     });
 
+    // `?manual` skips the sample load so the initial `@empty` state is
+    // observable without racing a timer.
+    const loadSample = !new URLSearchParams(location.search).has("manual");
+
     setTimeout(() => {
+      if (!loadSample) return;
       clientState.update((state) => ({
         ...state,
         items: [

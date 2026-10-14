@@ -1,6 +1,27 @@
-# flowview Landing Page
+# flowview Landing Page and Acceptance App
 
-This is the official landing page for **flowview**, built as an Astro site that dogfoods the flowview template language.
+This is the official landing page for **flowview**, built as an Astro site that dogfoods the flowview template language. It is also the browser-level acceptance application: it checks that the pieces of FlowView compose correctly in a real browser.
+
+## Capabilities and acceptance
+
+`/capabilities` lists what FlowView does today, grouped by area, with honest evidence labels (Live demo, Browser E2E, Compiler/spec, Release compatibility). The inventory is typed data in `src/data/capabilities.ts` rendered by an embedded FlowView template. The page also has live proofs for escaped vs raw interpolation, `@switch`, and Unicode/literal markers, and links to the deeper existing pages (`/events`, `/client-dom`, `/security`, `/e2e/*`).
+
+Playwright verifies rendered behavior and composition, not compiler internals:
+
+- `e2e/capabilities.spec.ts` is the product acceptance suite (also runs against the production build).
+- `e2e/demo.spec.ts`, `events.spec.ts`, `client-dom.spec.ts` cover the landing page, Events, scopes, dynamic DOM and View Transitions.
+- `e2e/fixtures.ts` fails any test on an unexpected `pageerror` or `console.error`.
+
+Native static rendering (`compile_static`) is not demonstrated here; it is covered by the Rust/spec tests.
+
+```sh
+# Development E2E (full suite, astro dev)
+pnpm run test:e2e:demo
+
+# Production acceptance (capabilities suite against `astro preview`)
+pnpm run build:demo
+pnpm run test:e2e:acceptance
+```
 
 Every static section of the page (Hero, Features, Syntax Showcase, Getting Started, Footer) is rendered by a flowview `<template flowview>` region. The live inventory demo further shows `@if`, `@else if`, `@for`, `@empty`, and `@switch` in action.
 

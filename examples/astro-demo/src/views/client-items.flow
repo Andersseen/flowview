@@ -19,13 +19,17 @@
     }
   </button>
 
+  <button type="button" data-testid="clear" (click)="clearItems()">
+    Clear
+  </button>
+
   <ul
     data-testid="client-items-list"
     [attr.aria-busy]="context.loading"
     [class.loading]="context.loading"
   >
     @for (item of context.items; track item.id) {
-      <li data-testid="client-item">
+      <li data-testid="client-item" [class.active]="context.selectedTaskId === item.id">
         <strong>{{ item.name }}</strong>
 
         @if (item.status === "completed") {
@@ -51,10 +55,14 @@
 </section>
 
 <script data-flowview>
-  import { reloadItems, selectTask as setSelectedTask } from "@/state/client-state";
+  import { clearItems as emptyItems, reloadItems, selectTask as setSelectedTask } from "@/state/client-state";
 
   function reload() {
     reloadItems();
+  }
+
+  function clearItems() {
+    emptyItems();
   }
 
   function selectTask(id) {

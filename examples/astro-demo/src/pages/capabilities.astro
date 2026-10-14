@@ -1,0 +1,210 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { site } from "../data/site";
+import {
+  capabilitiesContext,
+  interpolationContext,
+  switchContext,
+  unicodeContext,
+} from "../data/capabilities";
+---
+
+<Layout
+  title={`${site.title} capabilities`}
+  description="What FlowView can do today, with live proofs rendered by the real compiler."
+  siteUrl={site.url}
+>
+  <div class="page-frame grid gap-12 py-12 md:py-14">
+    <header class="grid gap-4">
+      <p
+        class="w-fit rounded-md border border-border bg-background px-3 py-1 text-sm font-bold uppercase tracking-normal text-muted-foreground"
+      >
+        Product capabilities
+      </p>
+      <h1
+        class="max-w-4xl text-4xl font-black tracking-normal text-foreground md:text-5xl"
+      >
+        What FlowView does today
+      </h1>
+      <p class="max-w-3xl text-lg text-muted-foreground">
+        Every live result on this page is produced by the real FlowView compiler
+        and runtime. This site doubles as the browser-level acceptance app:
+        Playwright exercises it in development and against the production build.
+      </p>
+    </header>
+
+    <template flowview={capabilitiesContext} is:raw>
+      <section aria-labelledby="inventory-heading" class="grid gap-8">
+        <h2 id="inventory-heading" class="text-2xl font-bold text-foreground">
+          Capability inventory
+        </h2>
+
+        <dl
+          class="grid gap-3 rounded-md border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4"
+          aria-label="Evidence legend"
+        >
+          @for (entry of context.evidence; track entry.kind) {
+            <div>
+              <dt class="text-sm font-bold text-foreground">{{ entry.label }}</dt>
+              <dd class="text-xs text-muted-foreground">{{ entry.meaning }}</dd>
+            </div>
+          }
+        </dl>
+
+        @for (group of context.groups; track group.id) {
+          <section
+            aria-label="{{ group.title }}"
+            data-testid="capability-group"
+            class="grid gap-4"
+          >
+            <h3 class="text-lg font-extrabold text-foreground">
+              {{ group.title }}
+            </h3>
+            <ul class="grid list-none gap-4 p-0 md:grid-cols-2 lg:grid-cols-3">
+              @for (item of group.items; track item.id) {
+                <li
+                  data-testid="capability"
+                  data-capability="{{ item.id }}"
+                  class="grid content-start gap-2 rounded-md border border-border bg-background p-4"
+                >
+                  <h4 class="text-base font-bold text-foreground">{{ item.title }}</h4>
+                  <p class="text-sm text-muted-foreground">{{ item.description }}</p>
+                  <ul class="flex list-none flex-wrap gap-2 p-0" aria-label="Evidence">
+                    @for (kind of item.evidence; track kind) {
+                      <li class="rounded-full border border-border px-2 py-0.5 text-xs font-bold text-muted-foreground">
+                        @switch (kind) {
+                          @case ('live-demo') { Live demo }
+                          @case ('browser-e2e') { Browser E2E }
+                          @case ('compiler-spec') { Compiler/spec }
+                          @default { Release compatibility }
+                        }
+                      </li>
+                    }
+                  </ul>
+                  @if (item.route) {
+                    <a
+                      href="{{ item.route }}"
+                      class="w-fit text-sm font-bold text-primary underline-offset-4 hover:underline"
+                    >
+                      See it live<span class="sr-only"> : {{ item.title }}</span>
+                    </a>
+                  }
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      </section>
+    </template>
+
+    <section
+      id="interpolation"
+      aria-labelledby="interpolation-heading"
+      class="grid gap-4"
+    >
+      <h2 id="interpolation-heading" class="text-2xl font-bold text-foreground">
+        Escaped vs raw interpolation
+      </h2>
+      <p class="max-w-3xl text-muted-foreground">
+        <code>{"{{ value }}"}</code> escapes. <code>{"{{{ value }}}"}</code> inserts
+        markup you wrote yourself. FlowView never sanitizes raw output, so only use
+        it with trusted, author-controlled HTML.
+      </p>
+      <template flowview={interpolationContext} is:raw>
+        <div class="grid gap-4 md:grid-cols-3">
+          <div class="rounded-md border border-border bg-card p-4">
+            <h3 class="text-sm font-bold uppercase text-muted-foreground">Escaped</h3>
+            <p data-testid="interp-escaped">{{ context.html }}</p>
+          </div>
+          <div class="rounded-md border border-border bg-card p-4">
+            <h3 class="text-sm font-bold uppercase text-muted-foreground">Raw (trusted)</h3>
+            <p data-testid="interp-raw">{{{ context.html }}}</p>
+          </div>
+          <div class="rounded-md border border-border bg-card p-4">
+            <h3 class="text-sm font-bold uppercase text-muted-foreground">Escaped hostile value</h3>
+            <p data-testid="interp-hostile">{{ context.hostile }}</p>
+          </div>
+        </div>
+      </template>
+    </section>
+
+    <section id="switch" aria-labelledby="switch-heading" class="grid gap-4">
+      <h2 id="switch-heading" class="text-2xl font-bold text-foreground">
+        @switch
+      </h2>
+      <template flowview={switchContext} is:raw>
+        <ul class="grid list-none gap-2 p-0 sm:grid-cols-2 lg:grid-cols-4" aria-label="Switch results">
+          @for (status of context.statuses; track status) {
+            <li data-testid="switch-row" data-status="{{ status }}" class="rounded-md border border-border bg-card p-4">
+              <span class="text-xs text-muted-foreground">{{ status }}</span>
+              <p class="font-bold text-foreground" data-testid="switch-result">
+                @switch (status) {
+                  @case ('draft') { Draft }
+                  @case ('published') { Published }
+                  @default { Unknown status }
+                }
+              </p>
+            </li>
+          }
+        </ul>
+      </template>
+    </section>
+
+    <section id="unicode" aria-labelledby="unicode-heading" class="grid gap-4">
+      <h2 id="unicode-heading" class="text-2xl font-bold text-foreground">
+        Unicode and literal markers
+      </h2>
+      <template flowview={unicodeContext} is:raw>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="rounded-md border border-border bg-card p-4">
+            <h3 class="text-sm font-bold uppercase text-muted-foreground">Interpolated values</h3>
+            <ul class="list-none p-0" data-testid="unicode-samples">
+              @for (sample of context.samples; track sample) {
+                <li>{{ sample }}</li>
+              }
+              @for (marker of context.markers; track marker) {
+                <li>{{ marker }}</li>
+              }
+            </ul>
+          </div>
+          <div class="rounded-md border border-border bg-card p-4">
+            <h3 class="text-sm font-bold uppercase text-muted-foreground">Authored literal text</h3>
+            <p data-testid="unicode-literal">é € 🙂 � contact@if.example</p>
+            <p data-testid="unicode-escaped">\@if \{{ value \}\} \{{{ value \}\}\} 🙂 \}</p>
+          </div>
+        </div>
+      </template>
+    </section>
+
+    <section aria-labelledby="authoring-heading" class="grid gap-4">
+      <h2 id="authoring-heading" class="text-2xl font-bold text-foreground">
+        Two authoring paths
+      </h2>
+      <div class="grid gap-4 md:grid-cols-2">
+        <article class="rounded-md border border-border bg-card p-4">
+          <h3 class="font-bold text-foreground">Embedded in Astro</h3>
+          <p class="text-sm text-muted-foreground">
+            Every section above is a <code>&lt;template flowview&gt;</code>
+            region compiled by <code>@flowview/astro</code> at build time.
+          </p>
+        </article>
+        <article class="rounded-md border border-border bg-card p-4">
+          <h3 class="font-bold text-foreground">Standalone .flow</h3>
+          <p class="text-sm text-muted-foreground">
+            <code>client-items.flow</code> is compiled to a module and rendered in
+            the browser. See
+            <a class="font-bold text-primary" href="/client-dom"
+              >the client DOM demo</a
+            >.
+          </p>
+        </article>
+      </div>
+      <p class="max-w-3xl text-sm text-muted-foreground">
+        @flowview/dom and @flowview/reactive are independent optional libraries;
+        the application composes them explicitly. Native static rendering in
+        Rust is verified by the compiler test suite and is not demonstrated in
+        the browser.
+      </p>
+    </section>
+  </div>
+</Layout>
