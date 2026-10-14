@@ -27,9 +27,9 @@ jobs:
       - name: Check spec-to-test conformance
         run: node scripts/spec-coverage.mjs --check
 
-  packed-consumer:
-    name: Packed npm consumer
-    uses: ./.github/workflows/packed-consumer.yml
+  release-readiness:
+    name: Release readiness
+    uses: ./.github/workflows/release-readiness.yml
 
   rust:
     runs-on: ubuntu-latest

@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import {
   copyFile,
@@ -11,40 +9,63 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
-import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import {
+  INTERNAL_DEPENDENCY_SECTIONS,
+  assertLockfileUsesPackedTarballs,
+  internalClosure,
+  loadArtifactSet,
+  pnpmExecutable,
+  readPackedManifests,
+  removeRustFromPath,
+  run,
+  tarballPath,
+  verifyIntegrity,
+} from "./lib/packed-artifacts.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const artifactsArgument = process.argv[2];
-if (!artifactsArgument) {
-  throw new Error(
-    "Usage: node scripts/verify-packed-vite-consumer.mjs <packed-artifact-directory>",
-  );
+const usage =
+  "Usage: node scripts/verify-packed-vite-consumer.mjs <packed-artifact-directory> [--vite <major>]";
+const positional = [];
+let viteMajor = "8";
+for (let index = 2; index < process.argv.length; index += 1) {
+  const argument = process.argv[index];
+  if (argument === "--vite") viteMajor = process.argv[++index] ?? "";
+  else positional.push(argument);
 }
-const inputArtifactsDirectory = resolve(artifactsArgument);
-const artifactManifestPath = join(
-  inputArtifactsDirectory,
-  "packed-flowview-packages.json",
-);
-const artifactManifest = JSON.parse(
-  await readFile(artifactManifestPath, "utf8"),
-);
+if (positional.length !== 1 || !/^\d+$/.test(viteMajor)) throw new Error(usage);
+
+// Vite graph under test: the plugin, the Events plugin, and everything they
+// depend on. Anything else in the artifact set is deliberately not installed.
+const consumerRoots = ["@flowview/vite", "@flowview/vite-events"];
+const artifactSet = await loadArtifactSet(positional[0]);
+const closureNames = internalClosure(artifactSet, consumerRoots);
+for (const required of [
+  "@flowview/compiler",
+  "@flowview/runtime",
+  "@flowview/events",
+  "@flowview/vite",
+  "@flowview/vite-events",
+]) {
+  if (!closureNames.includes(required))
+    throw new Error(`The Vite consumer graph does not include ${required}`);
+}
+const artifactManifest = {
+  artifacts: closureNames.map((name) => artifactSet.byName.get(name)),
+};
 const artifactByName = new Map(
   artifactManifest.artifacts.map((artifact) => [artifact.name, artifact]),
 );
-const packedManifestByName = new Map();
-for (const name of [
-  "@flowview/compiler",
-  "@flowview/runtime",
-  "@flowview/vite",
-]) {
-  if (!artifactByName.has(name))
-    throw new Error(`Missing packed artifact for ${name}`);
-}
+const packedManifestByName = new Map(
+  [...readPackedManifests(artifactSet)].filter(([name]) =>
+    closureNames.includes(name),
+  ),
+);
 
 const temporaryRoot = await mkdtemp(
-  join(tmpdir(), "flowview-packed-consumer-"),
+  join(tmpdir(), `flowview-packed-vite${viteMajor}-`),
 );
 const consumerRoot = join(temporaryRoot, "consumer");
 const artifactsDirectory = join(temporaryRoot, "packed-artifacts");
@@ -55,21 +76,22 @@ async function main() {
   try {
     await mkdir(consumerRoot, { recursive: true });
     await stageTarballs();
-    await verifyTarballs();
     const packageJson = await createConsumerProject();
     await installDependencies();
     await verifyInstalledPackages(packageJson);
+    await verifyViteMajor();
     await verifyCompiler();
     await verifyDevelopmentPipeline();
+    await verifyEvents();
     await verifyProductionBuild();
     await verifyTypes();
     console.log(
-      `Packed consumer passed on ${process.platform} in ${consumerRoot}`,
+      `Packed Vite ${viteMajor} consumer passed on ${process.platform} in ${consumerRoot}`,
     );
   } catch (error) {
     keepTemporaryFiles = true;
     console.error(
-      `Packed consumer failed. Project preserved at ${consumerRoot}`,
+      `Packed Vite ${viteMajor} consumer failed. Project preserved at ${consumerRoot}`,
     );
     throw error;
   } finally {
@@ -85,106 +107,10 @@ async function main() {
 async function stageTarballs() {
   await mkdir(artifactsDirectory, { recursive: true });
   for (const artifact of artifactManifest.artifacts) {
+    await verifyIntegrity(artifactSet, artifact);
     await copyFile(
-      join(inputArtifactsDirectory, artifact.file),
+      tarballPath(artifactSet, artifact),
       join(artifactsDirectory, artifact.file),
-    );
-  }
-}
-
-async function verifyTarballs() {
-  const expectedFiles = new Map([
-    [
-      "@flowview/compiler",
-      [
-        "package/package.json",
-        "package/dist/index.js",
-        "package/dist/index.d.ts",
-        "package/pkg/package.json",
-        "package/pkg/flowview_wasm.js",
-        "package/pkg/flowview_wasm.d.ts",
-        "package/pkg/flowview_wasm_bg.wasm.d.ts",
-        "package/pkg/flowview_wasm_bg.wasm",
-      ],
-    ],
-    [
-      "@flowview/runtime",
-      [
-        "package/package.json",
-        "package/dist/index.js",
-        "package/dist/index.d.ts",
-      ],
-    ],
-    [
-      "@flowview/vite",
-      [
-        "package/package.json",
-        "package/dist/index.js",
-        "package/dist/index.d.ts",
-        "package/client.d.ts",
-      ],
-    ],
-  ]);
-
-  for (const artifact of artifactManifest.artifacts) {
-    const tarball = join(artifactsDirectory, artifact.file);
-    const bytes = await readFile(tarball);
-    const integrity = `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
-    if (integrity !== artifact.integrity) {
-      throw new Error(`Integrity mismatch for ${artifact.file}`);
-    }
-    const entries = new Set(
-      run("tar", ["-tzf", tarball], { capture: true }).trim().split(/\r?\n/),
-    );
-    const requiredFiles = expectedFiles.get(artifact.name) ?? [
-      "package/package.json",
-    ];
-    for (const entry of requiredFiles) {
-      if (!entries.has(entry)) {
-        throw new Error(`${artifact.name} tarball is missing ${entry}`);
-      }
-    }
-    const manifestText = run(
-      "tar",
-      ["-xOzf", tarball, "package/package.json"],
-      { capture: true },
-    );
-    const manifest = JSON.parse(manifestText);
-    packedManifestByName.set(artifact.name, manifest);
-    if (
-      manifest.name !== artifact.name ||
-      manifest.version !== artifact.version
-    ) {
-      throw new Error(
-        `Tarball metadata mismatch for ${artifact.name}: ${manifest.name}@${manifest.version}`,
-      );
-    }
-    for (const section of [
-      "dependencies",
-      "optionalDependencies",
-      "peerDependencies",
-    ]) {
-      for (const [dependency, version] of Object.entries(
-        manifest[section] ?? {},
-      )) {
-        if (typeof version === "string" && version.startsWith("workspace:")) {
-          throw new Error(
-            `${artifact.name} packed ${section}.${dependency} as ${version}`,
-          );
-        }
-        if (
-          dependency.startsWith("@flowview/") &&
-          !artifactByName.has(dependency)
-        ) {
-          throw new Error(
-            `${artifact.name} depends on ${dependency}, but no matching tarball was packed`,
-          );
-        }
-      }
-    }
-    verifyExportTargets(artifact.name, manifest, entries);
-    console.log(
-      `Verified tarball contents and manifest: ${artifact.name}@${artifact.version}`,
     );
   }
 }
@@ -201,12 +127,12 @@ async function createConsumerProject() {
     ]),
   );
   const project = {
-    name: "flowview-packed-consumer",
+    name: `flowview-packed-vite${viteMajor}-consumer`,
     private: true,
     type: "module",
     pnpm: { overrides: dependencies },
     scripts: { build: "vite build", typecheck: "tsc --noEmit" },
-    dependencies: { ...dependencies, vite: "^8.0.0" },
+    dependencies: { ...dependencies, vite: `^${viteMajor}.0.0` },
     devDependencies: {
       "@jridgewell/trace-mapping": "^0.3.31",
       typescript: "^5.9.0",
@@ -226,7 +152,7 @@ async function writeConsumerSources() {
     join(consumerRoot, "index.html"),
     `<!doctype html>
 <html><head><meta charset="UTF-8"><title>Packed FlowView</title></head>
-<body><div id="app"></div><script type="module" src="/src/main.ts"></script></body></html>
+<body><div id="app"></div><script type="module" src="/src/main.ts"></script><script type="module" src="/src/events-main.ts"></script></body></html>
 `,
   );
   await writeFile(
@@ -248,25 +174,50 @@ async function writeConsumerSources() {
   await writeFile(
     join(consumerRoot, "src/main.ts"),
     `import { render } from "./page.flow";
+import { html as eventsHtml } from "./events-main";
 
 export const html = render({
   title: "<FlowView & packed>",
   visible: true,
   items: [{ name: "<Packed & local>" }],
 });
+
+// A side effect keeps both renders alive under production tree-shaking.
+(globalThis as Record<string, unknown>).flowviewConsumer = { html, eventsHtml };
+`,
+  );
+  await writeFile(
+    join(consumerRoot, "src/events.flow"),
+    `<button (click)="save($event)">Save</button>
+
+<script data-flowview>
+function save(event) {
+  console.log("flowview-save", event.type);
+}
+</script>
+`,
+  );
+  await writeFile(
+    join(consumerRoot, "src/events-main.ts"),
+    `import "virtual:flowview-events/src/events.flow.ts";
+import { render } from "./events.flow";
+
+export const html = render({});
 `,
   );
   await writeFile(
     join(consumerRoot, "vite.config.mjs"),
     `import { defineConfig } from "vite";
 import flowview from "@flowview/vite";
+import flowviewEvents from "@flowview/vite-events";
 
-export default defineConfig({ plugins: [flowview()] });
+export default defineConfig({ plugins: [flowviewEvents(), flowview()] });
 `,
   );
   await writeFile(
     join(consumerRoot, "env.d.ts"),
     `/// <reference types="@flowview/vite/client" />
+declare module "virtual:flowview-events/*" {}
 `,
   );
   await writeFile(
@@ -294,19 +245,31 @@ export default defineConfig({ plugins: [flowview()] });
 }
 
 async function installDependencies() {
-  removeRustToolDirectoriesFromPath();
-  for (const executable of ["cargo", "rustc", "wasm-pack"]) {
-    if (findOnPath(executable)) {
-      throw new Error(
-        `Rust tool ${executable} is still available in the consumer PATH`,
-      );
-    }
-  }
-  delete process.env.FLOWVIEW_COMPILER_PATH;
+  removeRustFromPath();
   runPnpm(["install", "--no-frozen-lockfile", "--store-dir", storeDirectory]);
 }
 
+async function verifyViteMajor() {
+  const installed = JSON.parse(
+    await readFile(
+      join(consumerRoot, "node_modules/vite/package.json"),
+      "utf8",
+    ),
+  );
+  if (installed.version.split(".")[0] !== viteMajor) {
+    throw new Error(
+      `Expected Vite ${viteMajor}, installed ${installed.version}`,
+    );
+  }
+  console.log(`Consumer is running Vite ${installed.version}`);
+}
+
 async function verifyInstalledPackages(project) {
+  await assertLockfileUsesPackedTarballs(
+    consumerRoot,
+    artifactSet,
+    closureNames,
+  );
   for (const artifact of artifactManifest.artifacts) {
     const installedManifestPath = join(
       consumerRoot,
@@ -351,11 +314,7 @@ async function verifyInstalledPackages(project) {
     const parentUrl = packagePaths.resolved[parentName];
     const parentEntry = await realpath(fileURLToPath(parentUrl));
     const parentPackageRoot = dirname(dirname(parentEntry));
-    for (const section of [
-      "dependencies",
-      "optionalDependencies",
-      "peerDependencies",
-    ]) {
+    for (const section of INTERNAL_DEPENDENCY_SECTIONS) {
       for (const dependencyName of Object.keys(manifest[section] ?? {})) {
         if (!dependencyName.startsWith("@flowview/")) continue;
         const dependencyArtifact = artifactByName.get(dependencyName);
@@ -452,6 +411,29 @@ async function verifyDevelopmentPipeline() {
   );
 }
 
+async function verifyEvents() {
+  const result = await runNodeModule("verify-installed.mjs", ["--events"]);
+  for (const fragment of ["data-flow-on-click=", "data-flow-scope="]) {
+    if (!result.eventsHtml.includes(fragment)) {
+      throw new Error(`Events render output is missing ${fragment}`);
+    }
+  }
+  if (/<script[^>]*data-flowview/.test(result.eventsHtml + result.eventsCode)) {
+    throw new Error("<script data-flowview> leaked into the Events output");
+  }
+  if (
+    !result.eventsVirtual.includes("registerFlowHandlers") ||
+    !/flowview[_/+]events.*runtime/.test(result.eventsVirtual)
+  ) {
+    throw new Error(
+      "Events registration module is missing runtime registration",
+    );
+  }
+  console.log(
+    "Vite Events plugin rewrote (click), stripped <script data-flowview>, and emitted runtime registration",
+  );
+}
+
 async function verifyProductionBuild() {
   const buildResult = await runNodeModule("verify-installed.mjs", ["--build"]);
   if (buildResult.productionBuild !== true) {
@@ -468,18 +450,11 @@ async function verifyProductionBuild() {
   if (javascriptAssets.length === 0)
     throw new Error("Vite production build emitted no JS bundle");
 
+  // Vite versions chunk differently; assert on the bundle as a whole.
+  let combined = "";
   for (const asset of javascriptAssets) {
     const content = await readFile(join(assetsDirectory, asset.name), "utf8");
-    if (
-      !content.includes("<main") ||
-      !content.includes("<h1") ||
-      !content.includes("FlowView & packed") ||
-      !content.includes("Packed & local")
-    ) {
-      throw new Error(
-        "Production bundle does not contain compiled template markup and render context",
-      );
-    }
+    combined += `${content}\n`;
     if (
       /from\s*["']@flowview\//.test(content) ||
       /import\s*["']@flowview\//.test(content)
@@ -491,6 +466,29 @@ async function verifyProductionBuild() {
     if (content.includes(repositoryRoot)) {
       throw new Error(
         `Production bundle embeds a path into the Flowview checkout: ${asset.name}`,
+      );
+    }
+  }
+  for (const fragment of [
+    "<main",
+    "<h1",
+    "FlowView & packed",
+    "Packed & local",
+  ]) {
+    if (!combined.includes(fragment)) {
+      throw new Error(
+        `Production bundle does not contain compiled template markup (${fragment})`,
+      );
+    }
+  }
+  for (const fragment of [
+    "data-flow-on-click",
+    "data-flow-scope",
+    "flowview-save",
+  ]) {
+    if (!combined.includes(fragment)) {
+      throw new Error(
+        `Production bundle does not contain the Events output (${fragment})`,
       );
     }
   }
@@ -521,72 +519,10 @@ async function runNodeModule(moduleName, args) {
 }
 
 function runPnpm(args) {
-  const executable = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-  run(executable, args, {
+  run(pnpmExecutable(), args, {
     cwd: consumerRoot,
     env: { ...process.env, FLOWVIEW_COMPILER_PATH: undefined },
   });
-}
-
-function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
-    cwd: options.cwd,
-    env: options.env ?? process.env,
-    encoding: "utf8",
-    shell: process.platform === "win32" && command.endsWith(".cmd"),
-    stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
-  });
-  if (result.error) throw result.error;
-  if (result.status !== 0) {
-    throw new Error(
-      `${command} ${args.join(" ")} failed (${result.status})\n${result.stderr ?? ""}`,
-    );
-  }
-  return options.capture ? result.stdout : "";
-}
-
-function removeRustToolDirectoriesFromPath() {
-  const pathEntries = (process.env.PATH ?? "").split(delimiter).filter(Boolean);
-  const filtered = pathEntries.filter(
-    (entry) =>
-      !["cargo", "rustc", "wasm-pack"].some((tool) => pathHasTool(entry, tool)),
-  );
-  process.env.PATH = filtered.join(delimiter);
-}
-
-function pathHasTool(directory, tool) {
-  const extensions =
-    process.platform === "win32"
-      ? [
-          "",
-          ...(process.env.PATHEXT ?? ".EXE;.CMD;.BAT")
-            .split(";")
-            .map((value) => value.toLowerCase()),
-        ]
-      : [""];
-  return extensions.some((extension) => {
-    return existsSync(join(directory, `${tool}${extension}`));
-  });
-}
-
-function findOnPath(tool) {
-  const pathEntries = (process.env.PATH ?? "").split(delimiter).filter(Boolean);
-  for (const directory of pathEntries) {
-    const extensions =
-      process.platform === "win32"
-        ? [
-            "",
-            ...(process.env.PATHEXT ?? ".EXE;.CMD;.BAT")
-              .split(";")
-              .map((value) => value.toLowerCase()),
-          ]
-        : [""];
-    for (const extension of extensions) {
-      const candidate = resolve(directory, `${tool}${extension}`);
-      if (existsSync(candidate)) return candidate;
-    }
-  }
-  return undefined;
 }
 
 function isWithin(parent, candidate) {
@@ -614,25 +550,6 @@ async function findPackageManifest(fromDirectory, packageName) {
   }
 }
 
-function verifyExportTargets(packageName, manifest, entries) {
-  for (const target of collectExportTargets(manifest.exports)) {
-    const tarEntry = `package/${target.replace(/^\.\//, "")}`;
-    if (!entries.has(tarEntry)) {
-      throw new Error(
-        `${packageName} exports ${target}, but the tarball lacks ${tarEntry}`,
-      );
-    }
-  }
-}
-
-function collectExportTargets(value) {
-  if (typeof value === "string") return [value];
-  if (Array.isArray(value)) return value.flatMap(collectExportTargets);
-  if (value && typeof value === "object")
-    return Object.values(value).flatMap(collectExportTargets);
-  return [];
-}
-
 const verificationModule = `import { compileFlowview } from "@flowview/compiler";
 import { eachMapping, TraceMap } from "@jridgewell/trace-mapping";
 import { build, createServer } from "vite";
@@ -645,7 +562,7 @@ import childProcess from "node:child_process";
 delete process.env.FLOWVIEW_COMPILER_PATH;
 installNativeProcessGuard();
 const projectRoot = realpathSync.native(process.cwd());
-const packageNames = ["@flowview/compiler", "@flowview/runtime", "@flowview/vite"];
+const packageNames = ["@flowview/compiler", "@flowview/runtime", "@flowview/events", "@flowview/vite", "@flowview/vite-events"];
 const resolved = Object.fromEntries(packageNames.map((name) => [name, import.meta.resolve(name)]));
 const args = new Set(process.argv.slice(2));
 const output = { resolved };
@@ -670,6 +587,9 @@ if (args.has("--dev")) {
     root: projectRoot,
     appType: "custom",
     server: { middlewareMode: true },
+    // Vite 6/7 can leave server.close() waiting on dependency discovery when
+    // the server only transforms modules; the probe has no deps to optimize.
+    optimizeDeps: { noDiscovery: true, include: [] },
     logLevel: "silent",
   });
   try {
@@ -685,6 +605,31 @@ if (args.has("--dev")) {
     output.devMappingCount = devMappingCount;
     const main = await server.ssrLoadModule("/src/main.ts");
     output.html = main.html;
+  } finally {
+    await server.close();
+  }
+}
+
+if (args.has("--events")) {
+  const server = await createServer({
+    configFile: resolve(projectRoot, "vite.config.mjs"),
+    root: projectRoot,
+    appType: "custom",
+    server: { middlewareMode: true },
+    // Vite 6/7 can leave server.close() waiting on dependency discovery when
+    // the server only transforms modules; the probe has no deps to optimize.
+    optimizeDeps: { noDiscovery: true, include: [] },
+    logLevel: "silent",
+  });
+  try {
+    const eventsTransform = await server.transformRequest("/src/events.flow");
+    output.eventsCode = eventsTransform?.code ?? "";
+    const virtualModule = await server.transformRequest(
+      "virtual:flowview-events/src/events.flow.ts",
+    );
+    output.eventsVirtual = virtualModule?.code ?? "";
+    const loaded = await server.ssrLoadModule("/src/events.flow");
+    output.eventsHtml = loaded.render({});
   } finally {
     await server.close();
   }

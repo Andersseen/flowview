@@ -6,7 +6,7 @@
 > never become, what state it is in, what to work on, and how to prove your
 > change is correct.
 >
-> **Last verified:** 2026-10-11 on top of `f47fa07` (WS5, spec conformance mapping): `node scripts/spec-coverage.mjs --check` (99/99), Rust format/clippy/tests/docs, `pnpm install --frozen-lockfile`, JS format/typecheck/test/lint. Browser E2E and fuzz were not re-run for this change (tests, docs, scripts, and CI only; no compiler code changed). Scheduled fuzzing is an ongoing gate; see WS4.
+> **Last verified:** 2026-10-14 on top of `0c07888` (WS5 merged) plus the WS6 release-engineering changes: `node scripts/spec-coverage.mjs --check` (99/99 requirements, 100%), Rust format/clippy/tests/docs, `pnpm install --frozen-lockfile`, JS format/typecheck/test/lint, and the new release gates (see WS6). WS4 scheduled fuzzing passed on 2026-10-12, 2026-10-13 and 2026-10-14 after the UTF-8 diagnostic fix; fuzzing was not changed by WS6 (no compiler code changed).
 
 ---
 
@@ -313,8 +313,8 @@ enforced by a named test.
 Completed since the first version of this guide: WS1 (packed distribution
 verification), WS2 (Rust JavaScript source maps), WS3 (Events capture analysis,
 superseded by the `<script data-flowview>` model), WS5 (spec conformance
-mapping), and most of WS6 (release engineering). Rust portability and external Rust-consumer checks are also
-covered. WS4 landed in PR #31; fuzzing then found a UTF-8 diagnostic span bug
+mapping), and WS6 (release engineering). Rust portability and external
+Rust-consumer checks are also covered. WS4 landed in PR #31; fuzzing then found a UTF-8 diagnostic span bug
 that is fixed in a follow-up (see WS4 status). Nightly fuzzing continues as a
 regression detector.
 
@@ -328,9 +328,10 @@ and `@flowview/astro` use it in-process with no Rust toolchain, and
 `compilerPath` / `FLOWVIEW_COMPILER_PATH` remain explicit native overrides
 (the monorepo `target/` binary is auto-discovered for development).
 
-The reusable packed-consumer workflow builds and packs the `@flowview/vite`
-dependency graph once, checks the actual manifests and compiler WASM files,
-then installs those exact tarballs into an isolated temporary project. The
+The reusable release-readiness workflow (`release-readiness.yml`, originally
+the packed-consumer workflow) builds and packs every publishable package once,
+checks the actual manifests and compiler WASM files, then installs those exact
+tarballs into an isolated temporary project. The
 consumer checks compiler diagnostics and source maps, Vite development and
 production compilation, rendered escaping, and the published `.flow` types.
 Flowview dependency edges are overridden to the tarballs and their resolved
@@ -451,15 +452,60 @@ bug was found. Contributor workflow: `CONTRIBUTING.md`.
 **Exit checks:** met — the script runs in CI; the report is committed; every
 _new_ spec requirement must land with an ID, a test, and a regenerated report.
 
-### WS6 — Release engineering (mostly done)
+### WS6 — Release engineering (done)
 
-**Done:** packages are public with `publishConfig`, versions are managed with
-Changesets, `release.yml` builds, tests, and publishes through
+**Done before WS6 completion:** packages are public with `publishConfig`,
+versions are managed with Changesets, `release.yml` publishes through
 `changesets/action`, and the demo deploys from CI.
 
-**Remaining:** an explicit compatibility statement (Node ≥ X, Vite ≥ Y, Astro
-≥ Z, tested in CI) and a dry-run publish / `npm pack` install check against the
-WS1 out-of-repo fixture.
+**Compatibility contract.** `docs/compatibility.md` separates repository
+development requirements, published-package compatibility, and what CI tests.
+`scripts/compatibility.json` is the single source of truth, and
+`scripts/check-compatibility.mjs` fails CI if a peer range, the CI matrix, or
+the docs drift from it. Declared equals tested: Node ≥ 22.12, Vite 6/7/8,
+Astro 5/6/7, Prettier 3 (`^3.0.0`). All declared ranges passed unchanged; no
+FlowView compatibility bug was found and no peer range was narrowed. No
+`engines` field is added, because the runtime helpers also run in browsers and
+edge runtimes.
+
+**Gates** (all in the reusable `release-readiness.yml`, run by CI on every PR
+and by `release.yml` before publishing):
+
+- **Build and pack once:** `scripts/pack-release-artifacts.mjs` packs every
+  publishable package (derived from the workspace and Changesets `ignore`, not a
+  hardcoded list) and records each tarball's sha512. Every job below downloads
+  these same tarballs.
+- **Release artifacts:** `scripts/verify-release-artifacts.mjs` validates every
+  tarball (manifest metadata, every `exports`/`types`/`main` target present and
+  inside the tarball, compiler WASM payload, no `workspace:` protocols,
+  internal dependency ranges satisfied by the packed versions, no references to
+  the checkout) and runs `npm publish --dry-run` on each. The job also re-packs
+  the pack job's build outputs in a fresh checkout and compares contents
+  (`scripts/compare-release-artifacts.mjs`).
+- **External packed consumers** (fresh projects, tarballs only, no Rust, native
+  spawns blocked, lockfile pinned to the tarball sha512s): Vite
+  (`@flowview/vite` + `vite-events`) and Astro (`@flowview/astro` +
+  `astro-events`) on Linux, macOS, and Windows.
+- **Version matrices (Ubuntu):** `Vite compatibility (6|7|8)`,
+  `Astro compatibility (5|6|7)` (build, `astro check`, Events), and
+  `Prettier compatibility (3.0.0|^3.0.0)`.
+- **Node minimum:** `Node minimum (22.12.0)` runs the latest Vite and Astro
+  consumers and the Prettier consumer on exactly 22.12.0.
+- **Release gating:** `release.yml` runs `Release readiness` first; the Changesets
+  job `needs` it, restores the build outputs that were verified instead of
+  rebuilding, and re-checks that they repack to the verified contents before
+  publishing.
+
+**Artifact identity boundary.** Every consumer and compatibility job uses the
+byte-identical tarballs from the single pack job. The release job publishes
+through `changeset publish`, which packs again; byte-identical tarballs are not
+guaranteed because pnpm orders `package.json` dependency keys by install order,
+so identity there is asserted as identical package contents (JSON compared
+structurally).
+
+**Exit checks:** met — a PR cannot break Vite 6, Astro 5, the Node floor, omit
+tarball files, or leave `workspace:*` in published metadata while the
+latest-version suites stay green.
 
 ### WS7 — Editor diagnostics (only after WS1–WS6)
 

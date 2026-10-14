@@ -9,12 +9,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  packed-consumer:
-    name: Packed npm consumer
-    uses: ./.github/workflows/packed-consumer.yml
+  # Pack once, validate every tarball, npm publish --dry-run, external Vite and
+  # Astro consumers on three OSes, the Vite/Astro/Prettier compatibility
+  # matrices, and the minimum Node. Publishing below cannot start unless every
+  # one of those jobs passed.
+  release-readiness:
+    name: Release readiness
+    uses: ./.github/workflows/release-readiness.yml
 
   release:
-    needs: packed-consumer
+    needs: release-readiness
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -51,18 +55,27 @@ jobs:
       - name: Build Rust compiler
         run: cargo build --workspace
 
-      - name: Build packages
+      # Publish the exact build the readiness gates verified instead of
+      # rebuilding it: `changeset publish` packs from these directories.
+      - name: Download verified artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: flowview-packed-npm-artifacts
+          path: ${{ runner.temp }}/verified
+
+      - name: Download verified package outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: flowview-built-packages
+          path: ${{ runner.temp }}/built
+
+      - name: Restore verified package outputs
+        run: tar -xzf "$RUNNER_TEMP/built/flowview-built-packages.tgz"
+
+      - name: Confirm the outputs repack to the verified artifacts
         run: |
-          pnpm run build:runtime
-          pnpm run build:reactive
-          pnpm run build:dom
-          pnpm run build:events
-          pnpm run build:compiler
-          pnpm run build:vite
-          pnpm run build:astro
-          pnpm run build:vite-events
-          pnpm run build:astro-events
-          pnpm run build:prettier
+          node scripts/pack-release-artifacts.mjs "$RUNNER_TEMP/repacked"
+          node scripts/compare-release-artifacts.mjs "$RUNNER_TEMP/verified" "$RUNNER_TEMP/repacked"
 
       - name: Test packages
         run: |

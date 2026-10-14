@@ -61,15 +61,21 @@ export function render(context) {
 
 ## Status
 
-flowview is experimental and pre-stable. The public shape is intentionally
-small, but syntax and generated output may still change before a stable release.
+flowview is pre-1.0, small, and compiler-first. It is a template compiler, not
+a framework. The current phase is **v1 hardening and release readiness**, not
+feature expansion.
 
-The current milestone is the inline Astro authoring path: flowview control flow
-inside `<template flowview={...} is:raw>` regions in normal `.astro`
-files.
-Standalone `.flow` imports remain supported, but broader Vite and server-runtime
-usage is a later milestone after the Astro integration and core syntax are
-reliable.
+Already in place: the `.flow` language and the Rust compiler with its
+JavaScript and native static HTML backends; the Vite plugin (Vite 6–8); the
+Astro integration with inline `<template flowview={...} is:raw>` regions and
+standalone `.flow` imports (Astro 5–7); server-side rendering with Hono or
+plain Node.js; the `(event)` bindings and `<script data-flowview>` Events model;
+source maps; bundled WASM so no Rust toolchain is needed; an executable
+specification (every `SPEC-HTML-*` requirement is enforced by a named test);
+adversarial testing and scheduled fuzzing; and packed-tarball consumer,
+compatibility, and npm dry-run gates before every release. Syntax and generated
+output may still change before 1.0. See [docs/compatibility.md](docs/compatibility.md)
+for exactly what is supported and tested.
 
 ## What flowview Is
 
@@ -241,13 +247,20 @@ flowview/
 - pnpm 10.30.1 or compatible
 - Rust stable
 
-Published `@flowview/*` packages do not declare a Node.js `engines` field, so
-package managers do not enforce a minimum. The repository requires Node.js
-22.12 or newer: the current lockfile-resolved Astro 7 release requires that
-version, while Vite 8 itself accepts `^20.19.0 || >=22.12.0`. CI uses Node 22.
-`@flowview/vite` declares support for Vite `^6`, `^7`, and `^8`; CI currently
-tests Vite 8. `@flowview/astro` declares Astro `>=5 <8`; CI currently tests the
-lockfile-resolved Astro 7 release, rather than every version in that range.
+Those are the repository's development requirements. The published packages
+have their own, separately tested compatibility contract:
+
+| Surface  | Supported      | CI coverage                                |
+| -------- | -------------- | ------------------------------------------ |
+| Node.js  | 22.12 or newer | Node 22.12.0 (minimum) and current Node 22 |
+| Vite     | 6, 7, 8        | all three, with `@flowview/vite-events`    |
+| Astro    | 5, 6, 7        | all three, with `@flowview/astro-events`   |
+| Prettier | 3              | 3.0.0 (floor) and latest 3.x               |
+
+Published `@flowview/*` packages do not declare a Node.js `engines` field (the
+runtime helpers also run in browsers and edge runtimes), so package managers do
+not enforce the Node floor. Details, the test method, and how to reproduce each
+case locally: [docs/compatibility.md](docs/compatibility.md).
 
 ## Install
 
