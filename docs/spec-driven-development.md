@@ -6,7 +6,15 @@
 > never become, what state it is in, what to work on, and how to prove your
 > change is correct.
 >
-> **Last verified:** 2026-10-14 on top of `0c07888` (WS5 merged) plus the WS6 release-engineering changes: `node scripts/spec-coverage.mjs --check` (99/99 requirements, 100%), Rust format/clippy/tests/docs, `pnpm install --frozen-lockfile`, JS format/typecheck/test/lint, and the new release gates (see WS6). WS4 scheduled fuzzing passed on 2026-10-12, 2026-10-13 and 2026-10-14 after the UTF-8 diagnostic fix; fuzzing was not changed by WS6 (no compiler code changed).
+> **Baseline reviewed:** 2026-10-15, remote `main`
+> `9eb72c2c82d9b74975498cc3a8ba594375988723`: WS1–WS6, WS6A product acceptance,
+> WS6B Rust consumer readiness and the website refresh are merged. Historical
+> verification below remains attributed to its original workstream. Current
+> evidence and maturity: [v1 roadmap](v1-roadmap.md#current-baseline-and-evidence).
+> This documentation review does not claim a fresh run of every product suite.
+>
+> **Current phase:** controlled pre-1.0 product/DX evolution. The roadmap's active
+> milestone marker is the sole scheduling authority; RC rules override it at freeze.
 
 ---
 
@@ -19,28 +27,35 @@ Follow this loop for every task. Do not skip steps.
 2. **Locate the code** using the architecture map (§3). Do not guess paths.
 3. **Reproduce first.** Before fixing anything, write a failing test that
    demonstrates the problem at the lowest useful layer (§9).
-4. **Make the smallest change that fixes the behavior.** No drive-by
-   refactors, no new features, no new dependencies unless the workstream
-   (§8) explicitly calls for one.
+4. **Make the smallest change within the active milestone or existing contract.**
+   No drive-by refactors. Resolve the milestone's design questions before adding
+   behavior; a new dependency or public API requires its recorded justification.
 5. **Run the validation commands (§10)** relevant to what you touched, plus
-   the full gate before declaring done.
+   the full gate for implementation work. Documentation-only validation is
+   specified separately in §10.
 6. **Update documentation in the same change** if behavior visible to users
-   changed: `README.md`, `docs/flowview-spec.md`, and `CHANGELOG.md`
-   (top of the `Unreleased` section, past tense, one line).
+   changed: usage docs, `docs/flowview-spec.md` and executable conformance mapping.
+   npm-visible work gets a Changeset; Rust releases follow `RELEASE.md`.
+   Documentation-only planning does not bump versions or create a Changeset.
 7. **Definition of done (§11)** must hold before you finish.
 
 Rules that override everything else:
 
-- **Do not add features.** The current phase is: make what exists correct,
-  predictable, and usable in serious projects. A "small nice addition" is a
-  feature. Reject it.
-- **Do not expand the language surface** (§4) or the runtime exports. The
-  surface has changed deliberately exactly once since v1 was frozen: raw
-  interpolation `{{{ expr }}}` (see §4.1 and `flowview-spec.md` §Raw
-  Interpolation). That was an explicit, narrowly scoped language decision, not a
-  precedent for "small additions".
-- **Tests are the spec's enforcement.** A behavior without a test does not
-  exist. A change without a test is not done.
+- **Before RC, only the active roadmap milestone may expand DX, APIs or language.**
+  Read [the roadmap](v1-roadmap.md) for approved outcomes, non-goals and design
+  gates. A queued or deferred feature is not authorized. Do not pull later work
+  forward opportunistically. Changes outside approved scope need a reviewed
+  roadmap amendment before implementation.
+- **The normative spec describes what exists now.** Candidate syntax/APIs in
+  planning documents are non-normative. Only the implementation that ships a
+  feature changes the spec and its conformance tests. Existing-contract bug fixes
+  remain permitted; this does not authorize unrelated additions.
+- **At stabilization, stop adding features; at RC, freeze every public contract.**
+  [The RC contract](rc-contract.md) governs allowed fixes, blockers and new
+  candidates. The active milestone advances only with reviewed exit evidence.
+- **Tests are the spec's enforcement.** New behavior needs enforcing tests;
+  bug fixes need regressions. Planning documents must not add tests asserting
+  that unimplemented features exist.
 - **Diagnostics are a product feature.** Never degrade an error message,
   a location, or a diagnostic code to make an implementation simpler.
 
@@ -50,7 +65,7 @@ Rules that override everything else:
 
 flowview is **not a framework** and **not a static-site generator**. It is two
 small, independent compilers that let you write modern template syntax and get
-plain, dependency-free output:
+plain output with small, explicit runtime dependencies:
 
 1. **The HTML compiler** (Rust, `crates/flowview-compiler`): one language, one
    parser, one AST, two first-class output targets for HTML-like templates
@@ -69,8 +84,9 @@ plain, dependency-free output:
    Server-first. No virtual DOM, no hydration, no components.
 
 2. **The Events compiler** ("flowview Events", TypeScript,
-   `packages/events` + `packages/astro-events`): lets you write Angular-style
-   event bindings (`<button (click)="save($event)">`) in Astro files.
+   `packages/events`, `packages/vite-events`, `packages/astro-events`): supports
+   event bindings (`<button (click)="save($event)">`) in standalone `.flow` and
+   Astro files.
    It compiles them into `data-flow-on-*` attributes plus a tiny client
    module that binds real `addEventListener` calls. No framework runtime.
 
@@ -90,7 +106,9 @@ No framework assumptions.
 
 The normative language specification lives in
 [`docs/flowview-spec.md`](./flowview-spec.md). That file defines _what_ the
-compiler must do; this file defines _how we work_ and _what to improve next_.
+compiler currently does; this file defines _how we work_. The
+[v1 roadmap](v1-roadmap.md) defines approved future work and
+[RC contract](rc-contract.md) defines freeze/release gates.
 If the two ever conflict about language behavior, `flowview-spec.md` wins.
 
 ---
@@ -179,16 +197,12 @@ static-html` / `render_static()` → same parser and AST → native Rust
 
 Language and output contracts. Every change must preserve all of them.
 
-1. **The language surface is frozen** to what
-   [`flowview-spec.md` §Language Surface](./flowview-spec.md) lists:
-   text, HTML-like elements, quoted attributes, `{{ expr }}`,
-   `@if/@else if/@else`, `@for` + `track` + `@empty`,
-   `@switch/@case/@default`, binding attributes (`[disabled]`, `[attr.x]`,
-   `[class.x]`), `{{{ expr }}}` raw interpolation, escapes (`\@if`, `\{{`,
-   `\{{{`, `\}`), and `context` as the only top-level binding. Nothing else.
-   No `ctx` alias. `{{{ }}}` was added deliberately (content positions only;
-   rejected in tag names, attribute names, and attribute values) and is the
-   only unescaped output path.
+1. **The current language surface is exactly the normative spec.**
+   Only an active roadmap milestone with reviewed design may extend it before
+   stabilization. Do not add aliases, syntax or semantics opportunistically.
+   Preserve one parser, one AST and Oxc expression validation across targets;
+   static evaluation remains an explicit subset. Raw interpolation remains the
+   sole explicit unescaped path, restricted to content positions.
 2. **The JavaScript target's generated modules export exactly**
    `export function render(context) { ... }` returning a string. A baseline
    fixture test guards its output. The static HTML target must produce the
@@ -215,7 +229,8 @@ Language and output contracts. Every change must preserve all of them.
    collapsing; the documented `@else`/`@empty` whitespace rules hold).
 10. **The runtime stays tiny**: `escapeHtml`, `renderValue`,
     `renderAttributeValue`, `renderRawValue`, and the types. Do not add
-    runtime exports. Generated modules import `renderRawValue` only when the
+    runtime exports unless the active roadmap explicitly requires and reviews
+    them. Generated modules import `renderRawValue` only when the
     template uses `{{{ }}}`.
 11. **Events stay separate from the HTML compiler.** The Rust compiler
     never learns about `(click)`; the events compiler never learns about
@@ -229,12 +244,15 @@ Language and output contracts. Every change must preserve all of them.
 
 ## 5. Non-goals (never add these)
 
-Static-site generation (routing, Markdown, multi-page output, asset
-pipelines, themes), a JavaScript engine in the static target, components, hydration, signals/reactivity, two-way binding, routing,
-dependency injection, virtual DOM, directives, React/Hono-specific runtime
-integrations, Angular compatibility, user-submitted template execution,
-runtime compilation as a production path. If a task seems to require one of
-these, the task is wrong — stop and report.
+Static-site generation (routing, Markdown, multi-page output, assets, themes),
+a JavaScript engine in the static target, components, hydration, compiler-level
+reactivity/signal tracking, two-way binding, dependency injection, virtual DOM,
+React/Hono-specific runtimes, Angular compatibility and untrusted-template
+execution remain outside v1. Optional `@flowview/reactive` primitives already
+exist; an explicit optional bridge is approved future roadmap scope, not implicit
+compiler reactivity. Native runtime compilation is supported for trusted templates
+that need it; ahead-of-time compilation is the preferred future distribution path
+for templates known before the application runs. Hosts retain application ownership.
 
 ---
 
@@ -282,16 +300,12 @@ What is already genuinely solid (recent hardening phases A–D):
 - Exact whitespace preservation; explicit closing-brace rules; validated
   loop bindings; documented escaping limits per HTML context.
 
-What keeps it from serious production use today (§8 addresses these):
-
-1. **No conformance mapping.** `flowview-spec.md` makes normative claims,
-   but nothing links each claim to the test(s) that enforce it, so spec
-   drift is detected only by humans.
-2. **Editor diagnostics don't exist** (grammar + snippets only). The CLI
-   already emits JSON diagnostics, so the plumbing exists but nothing
-   consumes it.
-3. **Static rendering is Rust/CLI only.** The WASM wrapper does not expose
-   it, and expressions outside the documented subset are rejected by design.
+Remaining product gaps are tracked in the [current-state matrix](v1-roadmap.md#current-baseline-and-evidence)
+and bounded milestones: compiler-backed editor diagnostics, scoped browser
+composition, explicit forms/replacement behavior and compiler-free static
+consumption. Spec conformance is implemented (99/99 at this baseline), not an
+open blocker. Static rendering being Rust/CLI-only is a supported boundary;
+exposing it through WASM is not required for v1.
 
 ---
 
@@ -308,7 +322,7 @@ enforced by a named test.
 
 ---
 
-## 8. Workstreams (prioritized; hardening only, no features)
+## 8. Historical hardening workstreams (WS1–WS6B)
 
 Completed since the first version of this guide: WS1 (packed distribution
 verification), WS2 (Rust JavaScript source maps), WS3 (Events capture analysis,
@@ -318,8 +332,10 @@ Rust-consumer checks are also covered. WS4 landed in PR #31; fuzzing then found 
 that is fixed in a follow-up (see WS4 status). Nightly fuzzing continues as a
 regression detector.
 
-Work top to bottom. Each workstream is independently shippable. Within one,
-do the steps in order and run the exit checks before moving on.
+WS6A product acceptance, WS6B Rust consumer readiness and the v1 website refresh
+are also merged. This section preserves historical decisions and evidence; it is
+not the active queue. Use the [roadmap](v1-roadmap.md#milestone-sequence-and-dependencies)
+for all new product work. Historical deferrals do not authorize implementation.
 
 ### WS1 — Distribution: verify the installable compiler (done)
 
@@ -543,7 +559,7 @@ UTF-8 byte offsets as UTF-16 indexes (emoji corrupted `.astro` files). Fixed wit
 a regression test and a patch changeset.
 
 **Not here:** the native static renderer is not forced into the browser demo;
-Entwine is its product-level dogfooding. Editor work remains WS7.
+Entwine is its product-level dogfooding. Editor work is now roadmap M1 (formerly WS7).
 
 ### WS6B — Rust consumer readiness (done)
 
@@ -585,18 +601,15 @@ context rendering, void-element output style, whitespace-collapsing option.
 
 **Exit checks:** met — MSRV job green, `cargo publish --dry-run` for the
 compiler succeeds, spec coverage 99/99. Publication itself happens only through
-the Rust release workflow after merge. WS7 is unchanged.
+the Rust release workflow after merge. This is the recorded WS6B exit, not a new
+claim about registry state; editor work is now roadmap M1.
 
-### WS7 — Editor diagnostics (only after WS1–WS6)
+### Former WS7 — Editor diagnostics (superseded by M1)
 
-**Why:** Listed as future work in the spec; big DX win; strictly additive.
-
-**What:** A minimal LSP (or VS Code extension addition) that runs the CLI's
-existing JSON diagnostics on save for `.flow` files and inline Astro
-regions. No formatting, no completion — diagnostics only.
-
-**Exit checks:** grammar tests still pass; diagnostics appear at correct
-positions for both `.flow` and embedded templates.
+The diagnostics-only proposal is now part of the bounded
+[Editor experience milestone](v1-roadmap.md#m1--editor-experience). Its transport,
+range mapping, packaging and highlighting contracts must be resolved there.
+Do not execute this historical queue independently of the active roadmap marker.
 
 ---
 
@@ -643,26 +656,36 @@ changes so the two targets cannot drift.
 | Events Astro          | `pnpm --filter @flowview/astro-events test`             |
 | Demo gate             | `pnpm --filter @flowview/astro-demo run check`          |
 
-**Full gate (run before declaring any task done):**
+**Implementation gate:** use the complete verification gate in `AGENTS.md`
+(Rust fmt, locked Clippy/tests, compiler docs; frozen pnpm install, format,
+typecheck, test, build and lint), plus affected browser and consumer checks.
+The [RC contract](rc-contract.md) adds release-level evidence requirements.
+
+**Markdown/process-only changes** that do not alter normative behavior use:
 
 ```sh
-pnpm run lint \
-  && cargo test --workspace \
-  && pnpm run test
+git diff --check
+pnpm install --frozen-lockfile
+pnpm run format:check
+pnpm run test:spec
 ```
+
+Check local documentation links and any repository-specific documentation checks.
+Do not add unimplemented-feature tests or edit product code to validate a plan.
 
 ## 11. Definition of done
 
 A change is done when all of these hold:
 
-1. The full gate (§10) passes locally.
+1. The applicable validation gate (§10) passes; limitations are reported honestly.
 2. New behavior has tests at the lowest useful layer; fixed bugs have
    regression tests.
 3. No invariant (§4) is violated; no non-goal (§5) crept in.
-4. `CHANGELOG.md` has a one-line entry under `Unreleased`.
+4. Release notes/Changesets follow the affected release line; docs-only planning
+   has no Changeset, version bump or publication.
 5. User-visible behavior changes are reflected in `README.md` and
    `docs/flowview-spec.md`, and spec/README/code agree with each other.
 6. Diagnostics affected by the change still report correct locations for
    both standalone `.flow` and Astro-embedded templates.
 7. No new dependencies, no expanded public API, unless the active
-   workstream (§8) explicitly required them and the decision is recorded.
+   roadmap milestone explicitly required them and the design decision is recorded.
