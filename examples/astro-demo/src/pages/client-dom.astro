@@ -76,9 +76,12 @@ import * as code from "../data/snippets";
             >. It works without FlowView templates.
           </p>
           <p>
-            To drive a view, call <code class="inline-code">view.update()</code> from
-            an <code class="inline-code">effect()</code>. That one explicit line
-            is the whole integration; this page uses it.
+            Use <code class="inline-code">view.bind(source)</code> to render a signal
+            or computed value immediately and update on each synchronous change. The
+            returned stop function detaches that source; manual
+            <code class="inline-code">render()</code> and <code
+              class="inline-code">update()</code
+            > remain available.
           </p>
         </div>
         <div class="grid gap-4">
@@ -99,18 +102,16 @@ import * as code from "../data/snippets";
 
   <script>
     import { createView } from "@flowview/dom";
-    import { effect } from "@flowview/reactive";
     import { render } from "../views/client-items.flow";
     import { clientState } from "@/state/client-state";
     import "virtual:flowview-events/src/views/client-items.flow.ts";
 
     const view = createView("#client-items", render);
 
-    // The application owns `clientState`; this is the one explicit boundary
-    // where its value reaches the compiled DOM view.
-    effect(() => {
-      view.update(clientState());
-    });
+    // The application owns `clientState`; binding makes this boundary and its
+    // cleanup explicit while preserving synchronous replacement semantics.
+    const stop = view.bind(clientState);
+    window.addEventListener("pagehide", stop, { once: true });
 
     // `?manual` skips the sample load so the initial `@empty` state is
     // observable without racing a timer.

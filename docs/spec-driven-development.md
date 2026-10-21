@@ -6,14 +6,15 @@
 > never become, what state it is in, what to work on, and how to prove your
 > change is correct.
 >
-> **Baseline reviewed:** 2026-10-15, remote `main`
-> `9eb72c2c82d9b74975498cc3a8ba594375988723`: WS1–WS6, WS6A product acceptance,
-> WS6B Rust consumer readiness and the website refresh are merged. Historical
-> verification below remains attributed to its original workstream. Current
-> evidence and maturity: [v1 roadmap](v1-roadmap.md#current-baseline-and-evidence).
-> This documentation review does not claim a fresh run of every product suite.
+> **Baseline reviewed:** 2026-10-21, remote `main`
+> `6082eafa3108030afb9ab5fdfacf84715fd3d671`: PR #41 completed M1 Editor
+> Experience and PR #42 released its package changes. The reviewed M1 exit
+> evidence is recorded in [PR #41](https://github.com/Andersseen/flowview/pull/41).
+> Historical verification below remains attributed to its original workstream.
+> Current evidence and maturity: [v1 roadmap](v1-roadmap.md#current-baseline-and-evidence).
 >
-> **Current phase:** controlled pre-1.0 product/DX evolution. The roadmap's active
+> **Current phase:** controlled pre-1.0 product/DX evolution. M1 is complete and
+> M2 Browser Composition is active; M3, M4 and S are queued. The roadmap's active
 > milestone marker is the sole scheduling authority; RC rules override it at freeze.
 
 ---

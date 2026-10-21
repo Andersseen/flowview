@@ -34,6 +34,15 @@ fn plain_static_markup() {
     );
 }
 
+// @spec SPEC-HTML-117
+#[test]
+fn data_flow_ref_remains_an_ordinary_static_html_attribute() {
+    assert_eq!(
+        render(r#"<p data-flow-ref="summary">Text</p>"#, json!({})),
+        r#"<p data-flow-ref="summary">Text</p>"#
+    );
+}
+
 // @spec SPEC-HTML-048
 #[test]
 fn interpolation_and_nested_member_access() {

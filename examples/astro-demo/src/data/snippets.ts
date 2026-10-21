@@ -83,7 +83,12 @@ import { render } from "./items.flow";
 const view = createView("#app", render);
 
 view.render({ items: [] });
-view.update({ items: [{ id: 1, name: "Ship it" }] });`;
+
+const summary = view.ref<HTMLParagraphElement>("summary");
+const items = view.refs<HTMLLIElement>("item");
+view.update({ items: [{ id: 1, name: "Ship it" }] });
+const currentItems = view.refs<HTMLLIElement>("item");
+// Earlier Element handles may now be detached.`;
 
 export const reactiveStandalone = `import { signal, computed, effect, untracked } from "@flowview/reactive";
 
@@ -97,16 +102,20 @@ count.set(2);                        // logs 4
 const snapshot = untracked(() => count());`;
 
 export const reactiveCompose = `import { createView } from "@flowview/dom";
-import { effect, signal } from "@flowview/reactive";
+import { signal } from "@flowview/reactive";
 import { render } from "./items.flow";
 
 const state = signal({ loading: false, items: [] });
 const view = createView("#app", render);
 
-// The one explicit boundary: state -> view.
-effect(() => {
-  view.update(state());
-});`;
+// Initial value renders immediately; later writes replace the view.
+const stop = view.bind(state);
+
+const list = view.ref<HTMLUListElement>("list");
+const rows = view.refs<HTMLLIElement>("item");
+
+// Stop only disconnects the source. Manual updates remain available.
+stop();`;
 
 export const eventsTemplate = `<button (click)="save()">Save</button>
 

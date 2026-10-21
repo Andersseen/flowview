@@ -1,0 +1,124 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex" />
+    <title>FlowView view composition acceptance</title>
+  </head>
+  <body>
+    <h1>View composition</h1>
+    <div id="view-one"></div>
+    <div id="view-two"></div>
+    <p id="scope-result"></p>
+    <p id="conditional-result"></p>
+    <p id="child-result"></p>
+    <button id="change">Change source</button>
+    <button id="stop">Stop binding</button>
+    <button id="rebind">Rebind</button>
+    <button id="dispose">Dispose view</button>
+    <button id="replace-parent">Replace parent</button>
+    <button id="change-child">Change child source</button>
+    <output id="detached-child"></output>
+
+    <script>
+      import { createView } from "@flowview/dom";
+      import { signal } from "@flowview/reactive";
+
+      const source = signal({ visible: true, items: ["Alpha", "Beta"] });
+      const childSource = signal("Child before parent replacement");
+      const first = createView<{ visible: boolean; items: string[] }>(
+        "#view-one",
+        (context) => `
+        <p data-flow-ref="summary">${context.items.length} items</p>
+        ${context.visible ? '<input data-flow-ref="search">' : ""}
+        <ul>${context.items.map((item) => `<li data-flow-ref="item">${item}</li>`).join("")}</ul>
+        <section id="nested-root" data-flow-ref="nested-root"></section>
+      `,
+      );
+      const second = createView(
+        "#view-two",
+        () => `<p data-flow-ref="summary">Sibling</p>`,
+      );
+      let stop = first.bind(source);
+      second.render({});
+
+      const createChildView = () => {
+        const childRoot = first.ref("nested-root");
+        if (childRoot === null) throw new Error("missing nested view root");
+        const nested = createView(
+          childRoot,
+          (value) => `<b data-flow-ref="inside">${value}</b>`,
+        );
+        nested.bind(childSource);
+        return nested;
+      };
+      let child = createChildView();
+      const ensureChildView = () => {
+        try {
+          child.ref("inside");
+        } catch {
+          child = createChildView();
+        }
+      };
+      let firstDisposed = false;
+
+      const scopeResult = document.querySelector("#scope-result");
+      const conditionalResult = document.querySelector("#conditional-result");
+      const childResult = document.querySelector("#child-result");
+      const detachedChild = document.querySelector("#detached-child");
+      const reportRefs = () => {
+        if (scopeResult) {
+          scopeResult.textContent = `${first.refs("item").length} first-view items; sibling ${second.ref("summary")?.textContent}`;
+        }
+        if (conditionalResult) {
+          conditionalResult.textContent = first.ref("search")
+            ? "search present"
+            : "search absent";
+        }
+        if (childResult) {
+          childResult.textContent = `${first.ref("inside") ? "leaked" : "isolated"}; ${child.ref("inside")?.textContent}`;
+        }
+      };
+      reportRefs();
+
+      document.querySelector("#change")?.addEventListener("click", () => {
+        source.update((value) => ({
+          visible: !value.visible,
+          items: ["Gamma"],
+        }));
+        if (!firstDisposed) {
+          ensureChildView();
+          reportRefs();
+        }
+      });
+      document.querySelector("#stop")?.addEventListener("click", () => stop());
+      document.querySelector("#rebind")?.addEventListener("click", () => {
+        stop();
+        stop = first.bind(source);
+        ensureChildView();
+        reportRefs();
+      });
+      document.querySelector("#dispose")?.addEventListener("click", () => {
+        first.dispose();
+        firstDisposed = true;
+      });
+      document
+        .querySelector("#replace-parent")
+        ?.addEventListener("click", () => {
+          if (detachedChild) {
+            detachedChild.textContent =
+              child.ref("inside")?.textContent ?? "missing";
+          }
+          first.update({ visible: false, items: [] });
+          try {
+            child.ref("inside");
+            if (childResult) childResult.textContent = "child active";
+          } catch {
+            if (childResult) childResult.textContent = "child disposed";
+          }
+        });
+      document.querySelector("#change-child")?.addEventListener("click", () => {
+        childSource.set("Child after parent replacement");
+      });
+    </script>
+  </body>
+</html>

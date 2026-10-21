@@ -128,21 +128,22 @@ export const packagesContext: PackagesContext = {
           name: "@flowview/dom",
           status: "npm",
           install: "npm install @flowview/dom",
-          owns: "createView(target, render) with render() and update(). Both replace the target's HTML.",
+          owns: "createView() with scoped ref()/refs(), bind()/stop(), and dispose(); render/update replace the target HTML.",
           whenToInstall:
-            "You render a compiled .flow template into an element in the browser.",
-          doesNotOwn: "State, reactivity, DOM diffing or a virtual DOM.",
+            "You render a compiled .flow template into an element and want scoped DOM refs or explicit lifecycle ownership.",
+          doesNotOwn:
+            "State, a reactive runtime, DOM diffing or a virtual DOM.",
         },
         {
           id: "reactive",
           name: "@flowview/reactive",
           status: "npm",
           install: "npm install @flowview/reactive",
-          owns: "signal(), computed(), effect() and untracked(). Usable with or without FlowView.",
+          owns: "signal(), computed(), effect() and untracked(). Subscribe directly or bind a current value to a FlowView view.",
           whenToInstall:
-            "You want fine-grained state and would rather not call view.update() by hand.",
+            "You want fine-grained state and optionally use view.bind() to update a view.",
           doesNotOwn:
-            "Template reactivity. Templates never track signals; your effect() calls view.update().",
+            "Template reactivity. Templates never track signals; applications explicitly bind a source or call view.update().",
         },
       ],
     },

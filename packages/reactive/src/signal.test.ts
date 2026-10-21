@@ -81,6 +81,19 @@ describe("signal", () => {
     expect(spy.mock.calls.length).toBe(callCountAfterUnsubscribe);
   });
 
+  // @spec SPEC-HTML-112
+  it("removes a subscriber when its synchronous initial callback throws", () => {
+    const count = signal(0);
+    const callback = vi.fn(() => {
+      throw new Error("initial callback failed");
+    });
+
+    expect(() => count.subscribe(callback)).toThrow("initial callback failed");
+    count.set(1);
+
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
   it("ignores a same-value write instead of warning or notifying", () => {
     const count = signal(1);
     const spy = vi.fn();

@@ -28,6 +28,8 @@ if (!directoryArgument) {
 
 // Files that must exist beyond what `exports`/`main`/`types` already promise.
 const EXTRA_REQUIRED_FILES = {
+  "@flowview/dom": ["README.md"],
+  "@flowview/reactive": ["README.md"],
   "@flowview/compiler": [
     "pkg/package.json",
     "pkg/flowview_wasm.js",
@@ -46,6 +48,21 @@ const LOCAL_PATH_MARKERS = [
 const set = await loadArtifactSet(directoryArgument);
 const publishable = await discoverPublishablePackages();
 const packedManifests = readPackedManifests(set);
+for (const [name, dependency] of [
+  ["@flowview/dom", "@flowview/reactive"],
+  ["@flowview/reactive", "@flowview/dom"],
+]) {
+  const manifest = packedManifests.get(name);
+  if (
+    manifest?.dependencies?.[dependency] ||
+    manifest?.optionalDependencies?.[dependency] ||
+    manifest?.peerDependencies?.[dependency]
+  ) {
+    throw new Error(
+      `${name} must not have a runtime dependency on ${dependency}`,
+    );
+  }
+}
 const scratch = await mkdtemp(join(tmpdir(), "flowview-release-artifacts-"));
 const problems = [];
 

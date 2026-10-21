@@ -1,7 +1,7 @@
 <section aria-labelledby="client-items-title">
   <h2 id="client-items-title">Client DOM view</h2>
 
-  <p data-testid="summary">
+  <p data-testid="summary" data-flow-ref="summary">
     {{ context.items.length }} task{{ context.items.length === 1 ? "" : "s" }}
   </p>
 
@@ -25,11 +25,12 @@
 
   <ul
     data-testid="client-items-list"
+    data-flow-ref="list"
     [attr.aria-busy]="context.loading"
     [class.loading]="context.loading"
   >
     @for (item of context.items; track item.id) {
-      <li data-testid="client-item" [class.active]="context.selectedTaskId === item.id">
+      <li data-testid="client-item" data-flow-ref="item" [class.active]="context.selectedTaskId === item.id">
         <strong>{{ item.name }}</strong>
 
         @if (item.status === "completed") {
@@ -48,9 +49,9 @@
   </ul>
 
   @if (context.selectedTaskId !== null) {
-    <p data-testid="selected-task">Selected task {{ context.selectedTaskId }}</p>
+    <p data-testid="selected-task" data-flow-ref="selected-task">Selected task {{ context.selectedTaskId }}</p>
   } @else {
-    <p data-testid="selected-task">No task selected</p>
+    <p data-testid="selected-task" data-flow-ref="selected-task">No task selected</p>
   }
 </section>
 
