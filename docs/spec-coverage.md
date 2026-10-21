@@ -6,8 +6,8 @@ Every normative requirement in [flowview-spec.md](flowview-spec.md) is mapped to
 
 ## Summary
 
-- Total normative requirements: 99
-- Covered: 99
+- Total normative requirements: 105
+- Covered: 105
 - Uncovered: 0
 - Coverage: 100.0%
 
@@ -27,7 +27,7 @@ Every normative requirement in [flowview-spec.md](flowview-spec.md) is mapped to
 | Code Generation | 4 | 4 |
 | Vite Plugin | 7 | 7 |
 | Astro Integration | 10 | 10 |
-| Editor Support | 4 | 4 |
+| Editor Support | 10 | 10 |
 
 ## Requirements
 
@@ -132,3 +132,9 @@ Every normative requirement in [flowview-spec.md](flowview-spec.md) is mapped to
 | SPEC-HTML-097 | Snippets for `@if`, `@for` (with `@empty`), and `@switch`, and an Astro snippet for the recommended wrapper form. | `packages/vscode-flowview/test/grammar.test.mjs` (1) |
 | SPEC-HTML-098 | A Prettier plugin (`@flowview/prettier`) wraps prettier-plugin-astro and preserves flowview template regions byte-for-byte, so no... | `packages/prettier/src/index.test.ts` (3) |
 | SPEC-HTML-099 | Embedded highlighting for `<template flowview is:raw>` inside `.astro`. | `packages/vscode-flowview/test/grammar.test.mjs` (2) |
+| SPEC-HTML-100 | The VS Code extension runs the bundled FlowView compiler against standalone `.flow` buffers on open, save, and debounced changes; compiler... | `packages/vscode-flowview/test/diagnostics.test.mjs` (1)<br>`packages/vscode-flowview/test/extension.test.mjs` (1) |
+| SPEC-HTML-101 | VS Code discovers every inline Astro FlowView region with the same Astro AST helper used by `@flowview/astro`, reports wrapper and compiler... | `packages/astro/src/index.test.ts` (1)<br>`packages/vscode-flowview/test/diagnostics.test.mjs` (2)<br>`packages/vscode-flowview/test/extension.test.mjs` (1) |
+| SPEC-HTML-102 | Rust UTF-8 byte spans are converted to exact VS Code UTF-16 ranges, including spans after ASCII, accented, Euro, CJK, astral, ZWJ-sequence, and... | `packages/vscode-flowview/test/offsets.test.mjs` (1) |
+| SPEC-HTML-103 | Astro Events editor diagnostics and transform ordering come from `@flowview/astro-events`; FlowView diagnostics after Events transforms map back... | `packages/astro-events/src/index.test.ts` (1)<br>`packages/vscode-flowview/test/diagnostics.test.mjs` (2) |
+| SPEC-HTML-104 | TextMate scopes identify FlowView context names, boolean, attribute/class and event bindings, in addition to control syntax and interpolation. | `packages/vscode-flowview/test/grammar.test.mjs` (1) |
+| SPEC-HTML-105 | `<script>` and `<style>` regions use their embedded JavaScript/CSS grammars; FlowView control syntax remains literal there. | `packages/vscode-flowview/test/grammar.test.mjs` (2) |

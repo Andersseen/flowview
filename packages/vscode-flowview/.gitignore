@@ -1,0 +1,7 @@
+.vscode/
+.vscode-test/
+node_modules/
+dist/
+pkg/
+astro.wasm
+test-results/

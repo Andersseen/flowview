@@ -349,9 +349,27 @@ importers:
 
   packages/vscode-flowview:
     devDependencies:
+      '@astrojs/compiler':
+        specifier: ^2.13.1
+        version: 2.13.1
+      '@flowview/compiler':
+        specifier: workspace:^
+        version: link:../compiler
+      '@jridgewell/trace-mapping':
+        specifier: ^0.3.31
+        version: 0.3.31
+      '@types/node':
+        specifier: ^26.0.0
+        version: 26.0.0
       '@vscode/vsce':
         specifier: ^3.2.2
         version: 3.9.2
+      esbuild:
+        specifier: ^0.28.1
+        version: 0.28.1
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
       vscode-oniguruma:
         specifier: ^2.0.1
         version: 2.0.1

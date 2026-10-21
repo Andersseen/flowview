@@ -618,9 +618,16 @@ The repository includes a local VS Code language support package at
 `packages/vscode-flowview`. It contributes:
 
 - `.flow` syntax highlighting
+- compiler-backed `.flow` errors and warnings from the bundled WASM compiler
+- diagnostics for multiple inline `<template flowview ... is:raw>` regions in Astro
 - flowview snippets
 - basic highlighting for `<template flowview>` blocks inside `.astro` files
 - highlighting for raw interpolation (`{{{ ... }}}`) alongside `{{ ... }}`
+
+Diagnostics use the current buffer on open, save, and after a short change
+debounce. The VSIX includes the compiler and runs without Rust or a native
+FlowView executable. It does not type-check template context values, provide
+completion/refactoring, or parse FlowView syntax inside Astro scripts/styles.
 
 ## Run The CLI
 

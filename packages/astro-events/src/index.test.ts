@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Plugin } from "vite";
 import flowviewEvents from "./index.js";
+import { analyzeAstroEvents } from "./index.js";
 
 type ConfigSetupHook = (options: {
   updateConfig(config: { vite?: { plugins?: Plugin[] } }): void;
@@ -55,6 +56,21 @@ async function transformAstroResult(
 }
 
 describe("@flowview/astro-events integration", () => {
+  // @spec SPEC-HTML-103
+  it("returns diagnostics from the same Events transform pipeline", () => {
+    const source = `---\n---\n<button (click)="save()">Save</button>\n<script data-flowview>function other() {}</script>`;
+    const result = analyzeAstroEvents(source, "Page.astro");
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        filename: "Page.astro",
+        severity: "error",
+        message: expect.stringContaining(
+          "was used in the template but was not found",
+        ),
+      }),
+    ]);
+  });
+
   it("orders the transform before flowview embedded templates when both integrations are installed", () => {
     const plugin = createPlugin();
     const plugins: Plugin[] = [

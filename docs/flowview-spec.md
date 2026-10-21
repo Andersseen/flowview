@@ -580,10 +580,26 @@ v1 includes basic editor support:
   so no `prettier-ignore` comments are needed.
 - **SPEC-HTML-099** — Embedded highlighting for `<template flowview is:raw>`
   inside `.astro`.
+- **SPEC-HTML-100** — The VS Code extension runs the bundled FlowView compiler
+  against standalone `.flow` buffers on open, save, and debounced changes;
+  compiler error/warning severity and codes are preserved, and diagnostics
+  clear after fixes or close.
+- **SPEC-HTML-101** — VS Code discovers every inline Astro FlowView region with
+  the same Astro AST helper used by `@flowview/astro`, reports wrapper and
+  compiler diagnostics in host-file ranges, and clears diagnostics when regions
+  are removed.
+- **SPEC-HTML-102** — Rust UTF-8 byte spans are converted to exact VS Code
+  UTF-16 ranges, including spans after ASCII, accented, Euro, CJK, astral,
+  ZWJ-sequence, and replacement characters.
+- **SPEC-HTML-103** — Astro Events editor diagnostics and transform ordering
+  come from `@flowview/astro-events`; FlowView diagnostics after Events
+  transforms map back to the original Astro source.
+- **SPEC-HTML-104** — TextMate scopes identify FlowView context names, boolean,
+  attribute/class and event bindings, in addition to control syntax and
+  interpolation.
+- **SPEC-HTML-105** — `<script>` and `<style>` regions use their embedded
+  JavaScript/CSS grammars; FlowView control syntax remains literal there.
 
-Future support:
-
-- Diagnostics in editor.
 - Formatting inside flowview regions (currently preserved verbatim).
 - Go-to-definition for `.flow` imports.
 

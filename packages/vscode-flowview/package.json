@@ -1,7 +1,7 @@
 {
   "name": "vscode-flowview",
   "displayName": "flowview Language Support",
-  "description": "Syntax highlighting and snippets for flowview templates.",
+  "description": "Compiler-backed diagnostics, syntax highlighting and snippets for FlowView templates.",
   "version": "0.2.0",
   "private": true,
   "publisher": "andersseen",
@@ -12,20 +12,33 @@
     "directory": "packages/vscode-flowview"
   },
   "scripts": {
+    "build": "rm -rf dist pkg astro.wasm && pnpm --filter @flowview/compiler build && esbuild src/extension.mjs --bundle --platform=node --format=esm --external:vscode --external:typescript --outfile=dist/extension.mjs && mkdir -p pkg dist/node_modules && printf '{\"type\":\"commonjs\"}\\n' > pkg/package.json && cp ../compiler/pkg/flowview_wasm.js pkg/flowview_wasm.js && cp ../compiler/pkg/flowview_wasm_bg.wasm pkg/flowview_wasm_bg.wasm && cp node_modules/@astrojs/compiler/dist/astro.wasm astro.wasm && cp -RL node_modules/typescript dist/node_modules/typescript",
     "dev": "code --new-window --extensionDevelopmentPath=\"$PWD\" ../../examples/astro-demo",
-    "test": "node ./test/grammar.test.mjs",
-    "package": "mkdir -p dist && vsce package --no-dependencies --out dist/flowview-language-support.vsix",
-    "package:pre-release": "mkdir -p dist && vsce package --no-dependencies --pre-release --out dist/flowview-language-support.vsix",
+    "test": "esbuild src/extension-core.mjs --bundle --platform=node --format=esm --external:typescript --outfile=dist/extension-core.test.mjs && node --test ./test/*.test.mjs && node ./test/grammar.test.mjs",
+    "package": "pnpm run build && vsce package --no-dependencies --out dist/flowview-language-support.vsix",
+    "package:pre-release": "pnpm run build && vsce package --no-dependencies --pre-release --out dist/flowview-language-support.vsix",
     "publish": "vsce publish --no-dependencies"
   },
   "devDependencies": {
+    "@astrojs/compiler": "^2.13.1",
+    "@flowview/compiler": "workspace:^",
+    "@jridgewell/trace-mapping": "^0.3.31",
+    "@types/node": "^26.0.0",
     "@vscode/vsce": "^3.2.2",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.9.0",
     "vscode-oniguruma": "^2.0.1",
     "vscode-textmate": "^9.3.2"
   },
   "engines": {
     "vscode": "^1.90.0"
   },
+  "main": "./dist/extension.mjs",
+  "type": "module",
+  "activationEvents": [
+    "onLanguage:flowview",
+    "onLanguage:astro"
+  ],
   "categories": [
     "Programming Languages",
     "Snippets"
@@ -59,7 +72,9 @@
         "embeddedLanguages": {
           "meta.embedded.flowview": "flowview",
           "meta.interpolation.flowview": "javascript",
-          "meta.control.expression.flowview": "javascript"
+          "meta.control.expression.flowview": "javascript",
+          "meta.embedded.block.javascript.flowview": "javascript",
+          "meta.embedded.block.css.flowview": "css"
         }
       },
       {

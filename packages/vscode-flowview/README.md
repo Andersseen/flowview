@@ -4,10 +4,27 @@ VS Code extension for [flowview](https://github.com/andersseen/flowview) templat
 
 ## Features
 
+- Compiler-backed errors and warnings for `.flow` files.
+- Compiler-backed diagnostics for each inline FlowView region in `.astro` files.
 - Syntax highlighting for `.flow` files.
 - Inline flowview highlighting inside Astro
   `<template flowview={...} is:raw>` blocks.
 - Snippets for flowview control flow (`@if`, `@for`, `@switch`) and Astro embedding.
+
+Diagnostics run from the bundled `@flowview/compiler` WASM build. The installed
+VSIX does not need Rust, Cargo, a native FlowView executable, a local checkout,
+or network access. It compiles the current editor buffer and never evaluates
+template expressions or type-checks the user context.
+
+Diagnostics run when a document opens or saves, and after a short debounce while
+it changes. Errors and warnings retain their compiler severity and code. They
+clear when corrected, when an Astro file no longer contains a FlowView region,
+or when the document closes. Astro region discovery is shared with the
+`@flowview/astro` transform, and Events errors come from the existing Events
+compiler pipeline.
+
+FlowView syntax is not parsed in Astro `<script>` or `<style>` content. The
+extension does not provide completion, rename, type inference, or a formatter.
 
 ## Supported syntax
 
@@ -58,7 +75,8 @@ flowview control markers can be escaped with a backslash:
 ```
 
 Raw HTML interpolation (`{{{ context.contentHtml }}}`) is highlighted like
-`{{ ... }}`. It inserts trusted HTML without escaping.
+`{{ ... }}`. It inserts trusted HTML without escaping. FlowView templates are
+trusted source; the runtime is not a sanitizer.
 
 ## Usage in Astro
 
@@ -105,11 +123,12 @@ highlighting and type `flowview` inside an Astro file to test the snippet.
 Build the extension from the monorepo root:
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm --filter vscode-flowview run package
 ```
 
-Then install the generated `.vsix`:
+The `.vsix` contains the compiler bundle and WASM. Install it without adding a
+FlowView CLI or Rust toolchain:
 
 ```bash
 code --install-extension packages/vscode-flowview/dist/flowview-language-support.vsix
