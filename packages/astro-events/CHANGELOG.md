@@ -1,5 +1,12 @@
 # @flowview/astro-events
 
+## 0.1.4
+
+### Patch Changes
+
+- e75a905: Add bundled compiler-backed VS Code diagnostics for FlowView and Astro, and
+  ship package-local compiler/runtime guidance with the npm tarballs.
+
 ## 0.1.3
 
 ### Patch Changes
