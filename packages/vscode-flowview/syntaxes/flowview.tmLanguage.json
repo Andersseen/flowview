@@ -3,15 +3,87 @@
   "scopeName": "source.flowview",
   "patterns": [
     { "include": "#comments" },
+    { "include": "#raw-script" },
+    { "include": "#raw-style" },
     { "include": "#escape" },
     { "include": "#raw-interpolation" },
     { "include": "#interpolation" },
     { "include": "#control-keyword" },
     { "include": "#control-expression" },
+    { "include": "#binding" },
+    { "include": "#context-name" },
     { "include": "#block" },
     { "include": "text.html.basic" }
   ],
   "repository": {
+    "raw-script": {
+      "name": "meta.embedded.block.javascript.flowview",
+      "begin": "(<)(script)\\b([^>]*)>",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.script.html" }
+      },
+      "end": "(</)(script)(\\s*>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.script.html" },
+        "3": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "contentName": "source.js",
+      "patterns": [{ "include": "source.js" }]
+    },
+    "raw-style": {
+      "name": "meta.embedded.block.css.flowview",
+      "begin": "(<)(style)\\b([^>]*)>",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.style.html" }
+      },
+      "end": "(</)(style)(\\s*>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.style.html" },
+        "3": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "contentName": "source.css",
+      "patterns": [{ "include": "source.css" }]
+    },
+    "binding": {
+      "patterns": [
+        {
+          "name": "meta.binding.boolean.flowview",
+          "match": "(\\[)(disabled|hidden|checked|selected|required|readonly|multiple|open)(\\])",
+          "captures": {
+            "1": { "name": "punctuation.definition.binding.begin.flowview" },
+            "2": { "name": "entity.other.attribute-name.flowview" },
+            "3": { "name": "punctuation.definition.binding.end.flowview" }
+          }
+        },
+        {
+          "name": "meta.binding.attribute.flowview",
+          "match": "(\\[)(attr|class)\\.([\\w-]+)(\\])",
+          "captures": {
+            "1": { "name": "punctuation.definition.binding.begin.flowview" },
+            "2": { "name": "keyword.other.binding.flowview" },
+            "3": { "name": "entity.other.attribute-name.flowview" },
+            "4": { "name": "punctuation.definition.binding.end.flowview" }
+          }
+        },
+        {
+          "name": "meta.binding.event.flowview",
+          "match": "(\\()([\\w:-]+)(\\))",
+          "captures": {
+            "1": { "name": "punctuation.definition.binding.begin.flowview" },
+            "2": { "name": "keyword.operator.event.flowview" },
+            "3": { "name": "punctuation.definition.binding.end.flowview" }
+          }
+        }
+      ]
+    },
+    "context-name": {
+      "match": "\\bcontext\\b",
+      "name": "variable.language.context.flowview"
+    },
     "comments": {
       "patterns": [
         {
@@ -45,7 +117,10 @@
           "endCaptures": {
             "0": { "name": "punctuation.section.embedded.end.flowview" }
           },
-          "patterns": [{ "include": "source.js" }]
+          "patterns": [
+            { "include": "#context-name" },
+            { "include": "source.js" }
+          ]
         }
       ]
     },
@@ -61,7 +136,10 @@
           "endCaptures": {
             "0": { "name": "punctuation.section.embedded.end.flowview" }
           },
-          "patterns": [{ "include": "source.js" }]
+          "patterns": [
+            { "include": "#context-name" },
+            { "include": "source.js" }
+          ]
         }
       ]
     },
@@ -138,6 +216,7 @@
       "patterns": [
         { "include": "#nested-parens" },
         { "include": "#control-operator" },
+        { "include": "#context-name" },
         { "include": "source.js" }
       ]
     },

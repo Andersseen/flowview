@@ -250,12 +250,12 @@ flowview/
 Those are the repository's development requirements. The published packages
 have their own, separately tested compatibility contract:
 
-| Surface  | Supported      | CI coverage                                |
-| -------- | -------------- | ------------------------------------------ |
-| Node.js  | 22.12 or newer | Node 22.12.0 (minimum) and current Node 22 |
-| Vite     | 6, 7, 8        | all three, with `@flowview/vite-events`    |
-| Astro    | 5, 6, 7        | all three, with `@flowview/astro-events`   |
-| Prettier | 3              | 3.0.0 (floor) and latest 3.x               |
+| Surface  | Supported      | CI coverage                                                      |
+| -------- | -------------- | ---------------------------------------------------------------- |
+| Node.js  | 22.12 or newer | Node 22.12.0 minimum; Node 24 for Astro 7's current engine floor |
+| Vite     | 6, 7, 8        | all three, with `@flowview/vite-events`                          |
+| Astro    | 5, 6, 7        | all three, with `@flowview/astro-events`                         |
+| Prettier | 3              | 3.0.0 (floor) and latest 3.x                                     |
 
 Published `@flowview/*` packages do not declare a Node.js `engines` field (the
 runtime helpers also run in browsers and edge runtimes), so package managers do
@@ -618,9 +618,16 @@ The repository includes a local VS Code language support package at
 `packages/vscode-flowview`. It contributes:
 
 - `.flow` syntax highlighting
+- compiler-backed `.flow` errors and warnings from the bundled WASM compiler
+- diagnostics for multiple inline `<template flowview ... is:raw>` regions in Astro
 - flowview snippets
 - basic highlighting for `<template flowview>` blocks inside `.astro` files
 - highlighting for raw interpolation (`{{{ ... }}}`) alongside `{{ ... }}`
+
+Diagnostics use the current buffer on open, save, and after a short change
+debounce. The VSIX includes the compiler and runs without Rust or a native
+FlowView executable. It does not type-check template context values, provide
+completion/refactoring, or parse FlowView syntax inside Astro scripts/styles.
 
 ## Run The CLI
 

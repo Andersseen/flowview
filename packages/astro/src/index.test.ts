@@ -7,6 +7,7 @@ import {
   renderValue,
 } from "../../runtime/src/render-value";
 import flowview from "./index";
+import { findEmbeddedTemplates } from "./embedded-regions.js";
 
 type ConfigSetupHook = (options: {
   updateConfig(config: { vite?: { plugins?: Plugin[] } }): void;
@@ -62,6 +63,20 @@ async function transformAstroResult(
 }
 
 describe("flowview Astro integration", () => {
+  // @spec SPEC-HTML-101
+  it("shares AST-based region discovery with editor tooling and maps Unicode offsets", () => {
+    const source = `---\nconst context = {};\n---\n<p>é🙂</p>\n<template flowview is:raw context={context}>one</template>\n<script>const s = "<template flowview>";</script>\n<template flowview={context} is:raw>two</template>`;
+    const regions = findEmbeddedTemplates(source, "Page.astro");
+    expect(regions).toHaveLength(2);
+    expect(regions.map((region) => region.source)).toEqual(["one", "two"]);
+    expect(source.slice(regions[0]!.bodyStart, regions[0]!.bodyStart + 3)).toBe(
+      "one",
+    );
+    expect(source.slice(regions[1]!.bodyStart, regions[1]!.bodyStart + 3)).toBe(
+      "two",
+    );
+  });
+
   // @spec SPEC-HTML-092
   it("orders embedded template transforms after flowview events when both integrations are installed", () => {
     const plugin = createEmbeddedPlugin();

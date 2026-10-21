@@ -146,7 +146,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Download the same packed artifacts
         uses: actions/download-artifact@v4
@@ -213,7 +213,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.astro == 7 && '24' || '22' }}
 
       - name: Download the same packed artifacts
         uses: actions/download-artifact@v4
@@ -288,7 +288,7 @@ jobs:
         run: node scripts/verify-packed-vite-consumer.mjs "${{ runner.temp }}/flowview-packed-artifacts" --vite 8
 
       - name: Astro consumer on the minimum Node
-        run: node scripts/verify-packed-astro-consumer.mjs "${{ runner.temp }}/flowview-packed-artifacts" --astro 7
+        run: node scripts/verify-packed-astro-consumer.mjs "${{ runner.temp }}/flowview-packed-artifacts" --astro 6
 
       - name: Prettier consumer on the minimum Node
         run: node scripts/verify-packed-prettier-consumer.mjs "${{ runner.temp }}/flowview-packed-artifacts"

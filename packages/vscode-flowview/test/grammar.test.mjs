@@ -47,7 +47,11 @@ const registry = new Registry({
   async loadGrammar(scopeName) {
     const grammarPath = grammarPaths.get(scopeName);
     if (grammarPath === undefined) {
-      if (scopeName === "source.js" || scopeName === "text.html.basic") {
+      if (
+        scopeName === "source.js" ||
+        scopeName === "source.css" ||
+        scopeName === "text.html.basic"
+      ) {
         return parseRawGrammar(
           JSON.stringify({ scopeName, patterns: [] }),
           `${scopeName}.json`,
@@ -140,6 +144,73 @@ const END_SCOPE = "punctuation.section.embedded.end.flowview";
   assert.ok(
     tokens.every((token) => !token.scopes.includes(RAW_SCOPE)),
     "escaped interpolation must not receive the raw scope",
+  );
+}
+
+// @spec SPEC-HTML-104
+{
+  const tokens = tokenize(
+    '<button [disabled]="context.busy" [attr.aria-label]="context.label" (click)="save()">',
+  );
+  const scopes = tokens.flatMap((token) => token.scopes);
+  assert.ok(
+    scopes.includes("entity.other.attribute-name.flowview"),
+    "binding names receive FlowView scopes",
+  );
+  assert.ok(
+    scopes.includes("keyword.other.binding.flowview"),
+    "attr/class binding prefixes receive FlowView scopes",
+  );
+  assert.ok(
+    scopes.includes("keyword.operator.event.flowview"),
+    "event names receive FlowView scopes",
+  );
+  assert.ok(
+    tokenize("{{ context.title }}").some((token) =>
+      token.scopes.includes("variable.language.context.flowview"),
+    ),
+    "context receives a language scope",
+  );
+}
+
+// @spec SPEC-HTML-105
+{
+  const lines = [
+    "<script>",
+    'const source = "@if (context.visible) { {{ value }} }";',
+    "</script>",
+    "<style>",
+    "/* @for (item of context.items) { */",
+    "</style>",
+  ];
+  let stack = null;
+  const tokens = lines.flatMap((line) => {
+    const result = grammar.tokenizeLine(line, stack);
+    stack = result.ruleStack;
+    return result.tokens.map((token) => ({
+      text: line.slice(token.startIndex, token.endIndex),
+      scopes: token.scopes,
+    }));
+  });
+  assert.ok(
+    tokens.some((token) =>
+      token.scopes.includes("meta.embedded.block.javascript.flowview"),
+    ),
+    "script content is an embedded JavaScript region",
+  );
+  assert.ok(
+    tokens.some((token) =>
+      token.scopes.includes("meta.embedded.block.css.flowview"),
+    ),
+    "style content is an embedded CSS region",
+  );
+  assert.ok(
+    tokens.every(
+      (token) =>
+        token.text.startsWith("<") ||
+        !token.scopes.includes("keyword.control.flowview"),
+    ),
+    "FlowView keywords stay literal inside script/style",
   );
 }
 
@@ -271,6 +342,7 @@ const astroRegistry = new Registry({
 
     if (
       scopeName === "source.js" ||
+      scopeName === "source.css" ||
       scopeName === "source.unknown" ||
       scopeName === "text.html.basic"
     ) {
@@ -325,6 +397,50 @@ const astroRegistry = new Registry({
   assert.ok(
     embeddedScopes.includes("meta.interpolation.raw.flowview"),
     "flowview raw interpolations inside Astro must receive the raw scope",
+  );
+}
+
+// @spec SPEC-HTML-105
+{
+  const astroGrammar = await astroRegistry.loadGrammar("source.astro");
+  let ruleStack = null;
+  const lines = [
+    "<template flowview is:raw context={context}>",
+    '<script>const marker = "@if (context.visible) {";</script>',
+    '<style>.x { content: "@for (item of context.items)"; }</style>',
+    "</template>",
+  ];
+  const tokens = lines.flatMap((line) => {
+    const result = astroGrammar.tokenizeLine(line, ruleStack);
+    ruleStack = result.ruleStack;
+    return result.tokens.map((token) => ({
+      text: line.slice(token.startIndex, token.endIndex),
+      scopes: token.scopes,
+    }));
+  });
+  assert.ok(
+    tokens.some((token) =>
+      token.scopes.includes("meta.embedded.block.javascript.flowview"),
+    ),
+  );
+  assert.ok(
+    tokens.some((token) =>
+      token.scopes.includes("meta.embedded.block.css.flowview"),
+    ),
+  );
+  assert.ok(
+    tokens.every(
+      (token) =>
+        !token.text.includes("@if") ||
+        !token.scopes.includes("keyword.control.flowview"),
+    ),
+  );
+  assert.ok(
+    tokens.every(
+      (token) =>
+        !token.text.includes("@for") ||
+        !token.scopes.includes("keyword.control.flowview"),
+    ),
   );
 }
 

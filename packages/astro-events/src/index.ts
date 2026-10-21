@@ -21,6 +21,54 @@ export interface FlowviewAstroEventsOptions {
   runtimeImport?: string;
 }
 
+export interface FlowviewAstroEventsAnalysis {
+  diagnostics: FlowviewEventsDiagnostic[];
+  code: string;
+  map: SourceMap | null;
+}
+
+/**
+ * Run the Events integration's own transform pipeline for editor diagnostics.
+ * It never evaluates template or handler code.
+ */
+export function analyzeAstroEvents(
+  code: string,
+  filename: string,
+): FlowviewAstroEventsAnalysis {
+  try {
+    const transformed = transformAstroSource(
+      code,
+      filename,
+      "@flowview/events/runtime",
+    );
+    return {
+      diagnostics: [],
+      code: transformed?.code ?? code,
+      map: transformed?.map ?? null,
+    };
+  } catch (error) {
+    if (error instanceof FlowviewEventsError) {
+      return { diagnostics: error.diagnostics, code, map: null };
+    }
+    if (error instanceof FlowviewAstroEventsError) {
+      return {
+        diagnostics: [
+          {
+            message: error.message,
+            severity: "error",
+            filename,
+            line: error.loc.line,
+            column: error.loc.column,
+          },
+        ],
+        code,
+        map: null,
+      };
+    }
+    throw error;
+  }
+}
+
 class FlowviewAstroEventsError extends Error {
   readonly loc: { line: number; column: number };
 
@@ -240,7 +288,7 @@ function transformWithScriptBlock(
 
   return {
     code: s.toString(),
-    map: s.generateMap({ source: filename, includeContent: true }),
+    map: s.generateMap({ source: filename, includeContent: true, hires: true }),
   };
 }
 
