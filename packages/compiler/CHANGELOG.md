@@ -1,5 +1,12 @@
 # @flowview/compiler
 
+## 0.2.4
+
+### Patch Changes
+
+- e75a905: Add bundled compiler-backed VS Code diagnostics for FlowView and Astro, and
+  ship package-local compiler/runtime guidance with the npm tarballs.
+
 ## 0.2.3
 
 ### Patch Changes
