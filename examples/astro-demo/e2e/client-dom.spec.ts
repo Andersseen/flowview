@@ -1,5 +1,6 @@
 import { expect, test } from "./fixtures";
 
+// @spec SPEC-HTML-115
 test("updates a compiled Flowview DOM view and keeps events delegated", async ({
   page,
 }) => {
@@ -32,11 +33,9 @@ test("updates a compiled Flowview DOM view and keeps events delegated", async ({
   const updatedRows = page.getByTestId("client-item");
   await expect(updatedRows).toHaveCount(2);
 
-  // Integration proof for @flowview/reactive: the Flowview Event handler
-  // only writes to `clientState` (see src/state/client-state.ts). Nothing in
-  // this test or in the click handler touches the DOM directly — the
-  // `effect()` in client-dom.astro reacting to that write and calling
-  // `view.update()` is the only thing that can make this text appear.
+  // Integration proof for @flowview/reactive and @flowview/dom: the Flowview
+  // Event handler only writes to `clientState`; `view.bind(clientState)` in
+  // client-dom.astro renders that synchronous change into replacement DOM.
   await updatedRows.first().getByRole("button", { name: "Select" }).click();
   await expect(page.getByTestId("selected-task")).toHaveText("Selected task 3");
 });

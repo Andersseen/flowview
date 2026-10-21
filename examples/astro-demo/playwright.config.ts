@@ -9,7 +9,9 @@ const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: preview ? "capabilities.spec.ts" : "*.spec.ts",
+  testMatch: preview
+    ? ["capabilities.spec.ts", "client-dom.spec.ts", "view-composition.spec.ts"]
+    : "*.spec.ts",
   fullyParallel: true,
   reporter: "list",
   use: {

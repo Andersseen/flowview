@@ -106,8 +106,13 @@ export function computed<T>(fn: () => T): Computed<T> {
     };
 
     observers.add(observer);
-    lastValue = read();
-    untracked(() => fn(lastValue));
+    try {
+      lastValue = read();
+      untracked(() => fn(lastValue));
+    } catch (error) {
+      removeObserver(node, observer);
+      throw error;
+    }
 
     return () => removeObserver(node, observer);
   };

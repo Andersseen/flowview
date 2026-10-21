@@ -100,6 +100,38 @@ describe("computed", () => {
     expect(spy.mock.calls.length).toBe(callCountAfterSubscribe);
   });
 
+  // @spec SPEC-HTML-112
+  it("removes a subscriber when its synchronous initial callback throws", () => {
+    const count = signal(0);
+    const doubled = computed(() => count() * 2);
+    const callback = vi.fn(() => {
+      throw new Error("initial callback failed");
+    });
+
+    expect(() => doubled.subscribe(callback)).toThrow(
+      "initial callback failed",
+    );
+    count.set(1);
+
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  // @spec SPEC-HTML-112
+  it("removes a subscriber when its initial computed value throws", () => {
+    const count = signal(0);
+    const guarded = computed(() => {
+      const value = count();
+      if (value === 0) throw new Error("compute failed");
+      return value;
+    });
+    const callback = vi.fn();
+
+    expect(() => guarded.subscribe(callback)).toThrow("compute failed");
+    count.set(1);
+
+    expect(callback).not.toHaveBeenCalled();
+  });
+
   it("peek() reads the value without tracking a dependency", () => {
     const count = signal(0);
     const doubled = computed(() => count() * 2);

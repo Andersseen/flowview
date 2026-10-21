@@ -72,7 +72,12 @@ export function signal<T>(
     };
 
     observers.add(observer);
-    untracked(() => fn(value));
+    try {
+      untracked(() => fn(value));
+    } catch (error) {
+      removeObserver(node, observer);
+      throw error;
+    }
 
     return () => removeObserver(node, observer);
   };

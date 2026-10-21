@@ -39,7 +39,12 @@ if (positional.length !== 1 || !/^\d+$/.test(viteMajor)) throw new Error(usage);
 
 // Vite graph under test: the plugin, the Events plugin, and everything they
 // depend on. Anything else in the artifact set is deliberately not installed.
-const consumerRoots = ["@flowview/vite", "@flowview/vite-events"];
+const consumerRoots = [
+  "@flowview/vite",
+  "@flowview/vite-events",
+  "@flowview/dom",
+  "@flowview/reactive",
+];
 const artifactSet = await loadArtifactSet(positional[0]);
 const closureNames = internalClosure(artifactSet, consumerRoots);
 for (const required of [
@@ -48,6 +53,8 @@ for (const required of [
   "@flowview/events",
   "@flowview/vite",
   "@flowview/vite-events",
+  "@flowview/dom",
+  "@flowview/reactive",
 ]) {
   if (!closureNames.includes(required))
     throw new Error(`The Vite consumer graph does not include ${required}`);
@@ -69,7 +76,9 @@ const temporaryRoot = await mkdtemp(
 );
 const consumerRoot = join(temporaryRoot, "consumer");
 const artifactsDirectory = join(temporaryRoot, "packed-artifacts");
-const storeDirectory = join(temporaryRoot, "pnpm-store");
+const storeDirectory =
+  process.env.FLOWVIEW_PACKED_CONSUMER_STORE ??
+  join(temporaryRoot, "pnpm-store");
 let keepTemporaryFiles = false;
 
 async function main() {
@@ -187,6 +196,27 @@ export const html = render({
 `,
   );
   await writeFile(
+    join(consumerRoot, "src/dom-consumer.ts"),
+    `import { createView, type RenderFunction } from "@flowview/dom";
+import { computed, signal } from "@flowview/reactive";
+
+interface State { count: number }
+declare const root: Element;
+declare const render: RenderFunction<State>;
+const state = signal<State>({ count: 1 });
+const derived = computed(() => state());
+const view = createView<State>(root, render);
+const stop = view.bind(derived);
+view.ref<HTMLInputElement>("search");
+view.refs<HTMLLIElement>("item");
+stop();
+
+const wrongContext = signal({ count: "wrong" });
+// @ts-expect-error a source with the wrong context must not bind
+view.bind(wrongContext);
+`,
+  );
+  await writeFile(
     join(consumerRoot, "src/events.flow"),
     `<button (click)="save($event)">Save</button>
 
@@ -246,7 +276,16 @@ declare module "virtual:flowview-events/*" {}
 
 async function installDependencies() {
   removeRustFromPath();
-  runPnpm(["install", "--no-frozen-lockfile", "--store-dir", storeDirectory]);
+  const args = [
+    "install",
+    "--no-frozen-lockfile",
+    "--store-dir",
+    storeDirectory,
+  ];
+  if (process.env.FLOWVIEW_PACKED_CONSUMER_OFFLINE === "1") {
+    args.push("--offline");
+  }
+  runPnpm(args);
 }
 
 async function verifyViteMajor() {
@@ -562,7 +601,7 @@ import childProcess from "node:child_process";
 delete process.env.FLOWVIEW_COMPILER_PATH;
 installNativeProcessGuard();
 const projectRoot = realpathSync.native(process.cwd());
-const packageNames = ["@flowview/compiler", "@flowview/runtime", "@flowview/events", "@flowview/vite", "@flowview/vite-events"];
+const packageNames = ["@flowview/compiler", "@flowview/runtime", "@flowview/events", "@flowview/vite", "@flowview/vite-events", "@flowview/dom", "@flowview/reactive"];
 const resolved = Object.fromEntries(packageNames.map((name) => [name, import.meta.resolve(name)]));
 const args = new Set(process.argv.slice(2));
 const output = { resolved };

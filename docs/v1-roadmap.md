@@ -16,27 +16,28 @@ release. All candidate syntax/APIs below are **non-normative, subject to milesto
 design**. Only a shipping implementation PR updates normative requirements and
 the executable conformance mapping. This documentation change implements nothing.
 
-**Current phase:** controlled pre-1.0 evolution. **Active milestone: M1, design
-stage.** M2–M4 and S are queued. An agent may implement only the active milestone,
-after its design questions have a reviewed answer. Fixes to existing contracts
-remain permitted. Advancing the active marker requires a maintainer-reviewed PR
-linking the preceding milestone's exit evidence. A roadmap amendment is required
-to add an outcome, waive an exit criterion or activate work out of order; an
-implementation PR cannot quietly broaden its own scope. RC freeze overrides this
-permission entirely.
+**Current phase:** controlled pre-1.0 evolution. **M1 — complete; M2 — active;
+M3, M4 and S — queued.** M1's maintainer-reviewed exit evidence is PR [#41](https://github.com/Andersseen/flowview/pull/41): compiler-backed `.flow` and
+Astro diagnostics, Events diagnostic ownership, UTF-8 → UTF-16 mapping, packaged
+VSIX acceptance without Rust, 105/105 spec coverage, packed artifacts, full CI,
+bounded fuzz and browser acceptance. Its package release followed in PR
+[#42](https://github.com/Andersseen/flowview/pull/42). An agent may implement only
+the active milestone, after its design questions have a reviewed answer. Fixes to
+existing contracts remain permitted. Advancing the active marker requires a
+maintainer-reviewed PR linking the preceding milestone's exit evidence. A roadmap
+amendment is required to add an outcome, waive an exit criterion or activate work
+out of order; an implementation PR cannot quietly broaden its own scope. RC freeze
+overrides this permission entirely.
 
 ## Current baseline and evidence
 
-Inspected remote `main`: `9eb72c2c82d9b74975498cc3a8ba594375988723`, 2026-10-15.
-Recent merges: [WS5 #34](https://github.com/Andersseen/flowview/pull/34),
-[WS6 #35](https://github.com/Andersseen/flowview/pull/35),
-[WS6A #36](https://github.com/Andersseen/flowview/pull/36),
-[website #38](https://github.com/Andersseen/flowview/pull/38), and
-[WS6B #39](https://github.com/Andersseen/flowview/pull/39).
-[Baseline CI](https://github.com/Andersseen/flowview/actions/runs/38593425310),
-[Release](https://github.com/Andersseen/flowview/actions/runs/38593425114), and
-[Fuzz](https://github.com/Andersseen/flowview/actions/runs/38593425104) concluded
-successfully. These are historical results, not verification of future features.
+Inspected remote `main`: `6082eafa3108030afb9ab5fdfacf84715fd3d671`, 2026-10-21.
+Recent relevant merges: roadmap/RC contract [#40](https://github.com/Andersseen/flowview/pull/40),
+M1 editor experience [#41](https://github.com/Andersseen/flowview/pull/41), and
+M1 package release [#42](https://github.com/Andersseen/flowview/pull/42). PR #41
+records successful required CI and bounded fuzz runs plus packaged editor and
+browser acceptance evidence. Those are historical M1 results, not verification of
+M2 behavior.
 
 “Hardened” below means implementation plus focused tests/gates, not proof of no
 bugs. Package manifests have independent npm versions; Rust crates are 0.2.0 with
@@ -49,7 +50,7 @@ MSRV 1.91 and Oxc 0.116. Do not derive milestone numbers from the root package.
 | Escaping / raw / control flow               | Hardened                                                            | Shared `tests/fixtures/*parity.json`; `@if`, `@for`, `@switch`, explicit trusted raw strings; no sanitization; `track` has no reconciliation effect                                                              |
 | Bindings                                    | Implemented and tested; forms ergonomics incomplete                 | Boolean attributes including `checked`, `selected`, `open`; `attr.*`, `class.*`; no general live-property binding                                                                                                |
 | Diagnostics / source maps                   | Hardened                                                            | Structured `FVxxxx`, UTF-8 spans, JS Source Map v3 and host Astro offsets; static rendering has diagnostics, no JS map                                                                                           |
-| Conformance / fuzzing                       | Hardened, ongoing                                                   | 99/99 requirements at baseline; `scripts/spec-coverage.mjs`, proptests, Events fast-check, `fuzz/`, PR/main smoke and scheduled fuzz workflow                                                                    |
+| Conformance / fuzzing                       | Hardened, ongoing                                                   | 105/105 requirements after M1; `scripts/spec-coverage.mjs`, proptests, Events fast-check, `fuzz/`, PR/main smoke and scheduled fuzz workflow                                                                     |
 | Runtime / compiler npm                      | Hardened                                                            | Four escaping/value helpers; bundled WASM compiler, native override; packed consumers do not need Rust                                                                                                           |
 | Vite / Astro                                | Hardened                                                            | `.flow` transform and inline Astro regions; dev/build/map tests; compatibility matrices; no application lifecycle                                                                                                |
 | Events / Vite Events / Astro Events         | Implemented and hardened                                            | Separate compiler and delegated runtime, virtual client modules, inline Astro wiring; explicit client registration required                                                                                      |
@@ -167,14 +168,14 @@ Labels are planning identifiers, not version bumps. Each ships an appropriately
 scoped pre-1.0 minor on affected package lines; unchanged packages need not move.
 Rust and npm numbering remain independent. No release is created by this plan.
 
-| Milestone                          | Status         | Goal / track                                                           | Ownership                                                                      | Potential contract impact                                           | Dependency / exit                                                                                          |
-| ---------------------------------- | -------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| M1 Editor experience               | Active: design | Located diagnostics and trustworthy highlighting / shared tooling      | VS Code, compiler transport, Astro region discovery                            | Editor behavior only; reuse compiler APIs where possible            | Baseline; packaged editor acceptance                                                                       |
-| M2 Browser composition             | Queued         | Scoped references plus explicit reactive bridge / Browser/JS           | DOM, reactive, Events/integrations; compiler only if reference syntax needs it | Additive DOM/bridge APIs; possible narrow reference syntax          | M1; isolation, replacement and disposal evidence                                                           |
-| M3 Forms and replacement semantics | Queued         | Predictable bounded form usage / Browser/JS with shared HTML semantics | DOM, Events, compiler bindings if justified, examples                          | Explicit supported form contract; candidate bounded property helper | M2; actual browser form matrix, no reconciliation requirement                                              |
-| M4 Precompiled Static Templates    | Queued         | Compiler-free final static consumer / Static/Rust                      | Compiler static backend, CLI, possible runtime crate, Cargo/release tooling    | AOT production/consumption API and compatibility envelope           | Baseline architecture; scheduled after M3 to capture final shared semantics; measured parity and packaging |
-| S Stabilization and freeze         | Queued         | Close all contracts and release evidence / both tracks                 | All public surfaces, docs, release workflows                                   | No new outcomes; finalize support inventory                         | M1–M4; all RC entry gates                                                                                  |
-| RC → 1.0                           | Blocked on S   | Validate frozen artifacts / both tracks                                | Release owners and consumers                                                   | Fixes only under RC rules                                           | [RC contract](rc-contract.md)                                                                              |
+| Milestone                          | Status       | Goal / track                                                           | Ownership                                                                      | Potential contract impact                                           | Dependency / exit                                                                                                                     |
+| ---------------------------------- | ------------ | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| M1 Editor experience               | Complete     | Located diagnostics and trustworthy highlighting / shared tooling      | VS Code, compiler transport, Astro region discovery                            | Editor behavior only; reuse compiler APIs where possible            | [PR #41 exit evidence](https://github.com/Andersseen/flowview/pull/41); release [#42](https://github.com/Andersseen/flowview/pull/42) |
+| M2 Browser composition             | Active       | Scoped references plus explicit reactive bridge / Browser/JS           | DOM, reactive, Events/integrations; compiler only if reference syntax needs it | Additive DOM/bridge APIs; possible narrow reference syntax          | M1; isolation, replacement and disposal evidence                                                                                      |
+| M3 Forms and replacement semantics | Queued       | Predictable bounded form usage / Browser/JS with shared HTML semantics | DOM, Events, compiler bindings if justified, examples                          | Explicit supported form contract; candidate bounded property helper | M2; actual browser form matrix, no reconciliation requirement                                                                         |
+| M4 Precompiled Static Templates    | Queued       | Compiler-free final static consumer / Static/Rust                      | Compiler static backend, CLI, possible runtime crate, Cargo/release tooling    | AOT production/consumption API and compatibility envelope           | Baseline architecture; scheduled after M3 to capture final shared semantics; measured parity and packaging                            |
+| S Stabilization and freeze         | Queued       | Close all contracts and release evidence / both tracks                 | All public surfaces, docs, release workflows                                   | No new outcomes; finalize support inventory                         | M1–M4; all RC entry gates                                                                                                             |
+| RC → 1.0                           | Blocked on S | Validate frozen artifacts / both tracks                                | Release owners and consumers                                                   | Fixes only under RC rules                                           | [RC contract](rc-contract.md)                                                                                                         |
 
 ```text
 Baseline ── M1 ── M2 ── M3 ───────┐

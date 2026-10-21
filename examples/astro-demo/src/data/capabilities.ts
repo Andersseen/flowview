@@ -185,7 +185,8 @@ export const capabilityGroups: CapabilityGroup[] = [
         id: "dom",
         group: "client",
         title: "@flowview/dom",
-        description: "createView() replaces the HTML of one target element.",
+        description:
+          "createView() owns one target and exposes scoped refs, binding, and disposal while rendering fresh HTML.",
         route: "/client-dom",
         evidence: ["live-demo", "browser-e2e"],
       },
@@ -194,7 +195,7 @@ export const capabilityGroups: CapabilityGroup[] = [
         group: "client",
         title: "@flowview/reactive",
         description:
-          "An independent signal library. Application code calls view.update() from an effect.",
+          "An independent signal library. A value can bind directly to a view, or be used without DOM.",
         route: "/client-dom",
         evidence: ["live-demo", "browser-e2e"],
       },

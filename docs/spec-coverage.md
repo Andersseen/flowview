@@ -6,8 +6,8 @@ Every normative requirement in [flowview-spec.md](flowview-spec.md) is mapped to
 
 ## Summary
 
-- Total normative requirements: 105
-- Covered: 105
+- Total normative requirements: 117
+- Covered: 117
 - Uncovered: 0
 - Coverage: 100.0%
 
@@ -28,6 +28,7 @@ Every normative requirement in [flowview-spec.md](flowview-spec.md) is mapped to
 | Vite Plugin | 7 | 7 |
 | Astro Integration | 10 | 10 |
 | Editor Support | 10 | 10 |
+| Browser DOM Composition | 12 | 12 |
 
 ## Requirements
 
@@ -138,3 +139,15 @@ Every normative requirement in [flowview-spec.md](flowview-spec.md) is mapped to
 | SPEC-HTML-103 | Astro Events editor diagnostics and transform ordering come from `@flowview/astro-events`; FlowView diagnostics after Events transforms map back... | `packages/astro-events/src/index.test.ts` (1)<br>`packages/vscode-flowview/test/diagnostics.test.mjs` (2) |
 | SPEC-HTML-104 | TextMate scopes identify FlowView context names, boolean, attribute/class and event bindings, in addition to control syntax and interpolation. | `packages/vscode-flowview/test/grammar.test.mjs` (1) |
 | SPEC-HTML-105 | `<script>` and `<style>` regions use their embedded JavaScript/CSS grammars; FlowView control syntax remains literal there. | `packages/vscode-flowview/test/grammar.test.mjs` (2) |
+| SPEC-HTML-106 | `FlowviewView` resolves `data-flow-ref` attributes only within its current owned subtree; absent and conditional refs return `null`, collection... | `examples/astro-demo/e2e/view-composition.spec.ts` (1)<br>`packages/dom/src/index.test.ts` (1) |
+| SPEC-HTML-107 | `view.ref(name)` throws an actionable error when multiple current elements match and directs callers to `view.refs(name)`; ref names are compared... | `examples/astro-demo/e2e/view-composition.spec.ts` (1)<br>`packages/dom/src/index.test.ts` (1) |
+| SPEC-HTML-108 | Elements returned by `ref()` and `refs()` are snapshots of the current DOM; replacement may detach them, and later calls resolve the new nodes. | `examples/astro-demo/e2e/view-composition.spec.ts` (1)<br>`packages/dom/src/index.test.ts` (1) |
+| SPEC-HTML-109 | An outer view may resolve a ref on an active nested view's root, but cannot resolve refs inside that nested boundary; the nested view resolves its... | `examples/astro-demo/e2e/view-composition.spec.ts` (1)<br>`packages/dom/src/index.test.ts` (1) |
+| SPEC-HTML-110 | An active FlowView view exclusively owns its exact root; creating another owner fails, and idempotent disposal releases ownership without clearing... | `packages/dom/src/index.test.ts` (1) |
+| SPEC-HTML-111 | `view.bind(source)` accepts current-value sources by the structural `subscribe(callback)` contract, performs an immediate initial render, and... | `examples/astro-demo/e2e/view-composition.spec.ts` (1)<br>`packages/dom/src/index.test.ts` (1) |
+| SPEC-HTML-112 | A view permits one active binding; the idempotent stop function disconnects only that source, permits later manual updates and rebinding, and... | `examples/astro-demo/e2e/view-composition.spec.ts` (1)<br>`packages/dom/src/index.test.ts` (1)<br>`packages/reactive/src/computed.test.ts` (2)<br>`packages/reactive/src/signal.test.ts` (1) |
+| SPEC-HTML-113 | `view.dispose()` is idempotent and terminal, stops the binding, leaves current DOM in place, and makes later render/update/ref/refs/ bind... | `examples/astro-demo/e2e/view-composition.spec.ts` (1)<br>`packages/dom/src/index.test.ts` (1) |
+| SPEC-HTML-114 | Parent replacement disposes active descendant views before replacing their DOM, stopping their bindings and making the child view terminal. | `examples/astro-demo/e2e/view-composition.spec.ts` (1)<br>`packages/dom/src/index.test.ts` (1) |
+| SPEC-HTML-115 | FlowView Events delegated handlers continue working with the current DOM after a view replacement triggered through `bind()`. | `examples/astro-demo/e2e/client-dom.spec.ts` (1)<br>`packages/dom/src/index.test.ts` (1) |
+| SPEC-HTML-116 | DOM exposes the structural value-source contract without a runtime Reactive dependency; Reactive primitives remain usable without the DOM package,... | `packages/dom/src/index.test.ts` (1) |
+| SPEC-HTML-117 | `data-flow-ref` is an ordinary HTML attribute preserved by both JavaScript and static output; the compiler does not assign it special syntax or... | `crates/flowview-compiler/src/static_html/tests.rs` (1)<br>`packages/dom/src/index.test.ts` (1) |

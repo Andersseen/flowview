@@ -354,6 +354,12 @@ Both `render()` and `update()` currently replace the target contents with the
 compiled HTML. They are separate public concepts so the update strategy can
 improve later without changing application code.
 
+Add ordinary HTML attributes such as `data-flow-ref="summary"` to template
+elements. `view.ref("summary")` returns one current Element or `null`; duplicate
+names throw and direct callers to `view.refs("item")`, which returns matching
+Elements in DOM order. References are scoped to the view and stop at active nested
+view roots. Returned Elements are snapshots: read them again after any replacement.
+
 When a `.flow` file uses flowview Events, import its virtual events module from
 the client entry so delegated handlers are registered once:
 
@@ -375,11 +381,11 @@ view.update({
 `@flowview/reactive` is an optional package for applications that would
 rather not track by hand which UI-relevant values changed. It exports
 `signal()`, `computed()`, `effect()`, and `untracked()` — a small,
-dependency-free, fine-grained reactive core with no relation to Flowview's
+dependency-free, fine-grained reactive core with no dependency on Flowview's
 compiler or DOM runtime.
 
 ```ts
-import { effect, signal } from "@flowview/reactive";
+import { signal } from "@flowview/reactive";
 import { createView } from "@flowview/dom";
 import { render } from "./items.flow";
 
@@ -390,26 +396,25 @@ const state = signal({
 
 const view = createView("#items", render);
 
-effect(() => {
-  view.update(state());
-});
+const stop = view.bind(state); // synchronously renders the current value
 
 state.update((current) => ({ ...current, loading: true }));
+stop(); // disconnects the source; manual render/update remain available
 ```
 
-- Signals are optional. Nothing in the compiler, `@flowview/dom`, or
-  Flowview Events requires them, and neither depends on the `@flowview/reactive`
-  package.
+- Signals are optional. Nothing in the compiler or Flowview Events requires
+  them. `@flowview/dom` accepts any source with a compatible `subscribe()` method
+  and has no runtime dependency on `@flowview/reactive`; Reactive also works
+  without DOM.
 - Flowview does not own application state; `signal()` just holds a value your
   code reads and writes.
-- There is no component model or lifecycle, no automatic hydration, and no
-  `connect(view, ...)` adapter. `effect()` is a generic reactive primitive,
-  not a rendering lifecycle — calling `view.update()` from inside one is
-  ordinary application code, not a Flowview feature.
+- `stop()` detaches a binding without disposing the view. `view.dispose()` is
+  idempotent, stops its binding and nested views, releases root ownership, and
+  leaves the rendered DOM in place. There is no component model, reconciler,
+  virtual DOM or automatic hydration.
 - The `client-dom` example (`examples/astro-demo/src/pages/client-dom.astro`
-  and `src/state/client-state.ts`) shows the full pattern: a Flowview Events
-  handler updates a signal, and the one `effect()` in the page is what turns
-  that into a `view.update()` call.
+  and `src/state/client-state.ts`) uses `view.bind()` with FlowView Events and
+  marks the summary, list, item rows and selected-task output with references.
 
 ## Use With Hono or Plain Node.js
 
