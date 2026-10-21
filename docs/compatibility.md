@@ -17,18 +17,22 @@ compatibility cannot drift from tested compatibility.
 
 ## Published packages
 
-| Surface             | Supported      | CI job(s)                                                         |
-| ------------------- | -------------- | ----------------------------------------------------------------- |
-| Node.js             | 22.12 or newer | `Node minimum (22.12.0)`; current Node 22 everywhere else         |
-| Vite                | 6, 7, 8        | `Vite compatibility (6)`, `(7)`, `(8)`                            |
-| Astro               | 5, 6, 7        | `Astro compatibility (5)`, `(6)`, `(7)`                           |
-| Prettier            | 3 (`^3.0.0`)   | `Prettier compatibility (3.0.0)` (floor), `(^3.0.0)` (latest 3.x) |
-| Rust (native crate) | stable         | `Rust` and `Rust portability` jobs (not part of the npm contract) |
+| Surface             | Supported      | CI job(s)                                                            |
+| ------------------- | -------------- | -------------------------------------------------------------------- |
+| Node.js             | 22.12 or newer | `Node minimum (22.12.0)`; Node 24 for Astro 7's current engine floor |
+| Vite                | 6, 7, 8        | `Vite compatibility (6)`, `(7)`, `(8)`                               |
+| Astro               | 5, 6, 7        | `Astro compatibility (5)`, `(6)`, `(7)`                              |
+| Prettier            | 3 (`^3.0.0`)   | `Prettier compatibility (3.0.0)` (floor), `(^3.0.0)` (latest 3.x)    |
+| Rust (native crate) | stable         | `Rust` and `Rust portability` jobs (not part of the npm contract)    |
 
 Notes:
 
-- **Node.js.** 22.12.0 is the tested floor for the JS tooling (compiler WASM
-  loader, Vite plugin, Astro integration, Events plugins, Prettier plugin).
+- **Node.js.** 22.12.0 is the FlowView JS tooling floor (compiler WASM loader,
+  Vite plugin, Astro integration, Events plugins, Prettier plugin). CI tests
+  this floor with Vite 8, Astro 6 and Prettier. Astro 7 currently requires
+  Node `>=22.23.4`, so its compatibility job and the cross-OS consumer jobs
+  use Node 24. Consumers must also satisfy the selected host tool's own engine
+  requirement.
   Older Node releases are untested and unsupported even where a host tool such
   as Vite 6 would run on them. No `engines` field is declared: the runtime
   helpers (`@flowview/runtime`, `reactive`, `dom`, the Events browser runtime)
@@ -61,14 +65,15 @@ tarballs were packed.
 
 The matrix is deliberately bounded and split by concern:
 
-| Concern                          | Dimension                                 | Where                                      |
-| -------------------------------- | ----------------------------------------- | ------------------------------------------ |
-| OS portability                   | Linux / macOS / Windows (current Node 22) | `Packed npm consumer (<os>)`               |
-| Dependency-version compatibility | Vite 6/7/8, Astro 5/6/7, Prettier 3       | `<Tool> compatibility (<version>)`, Ubuntu |
-| Node floor                       | 22.12.0                                   | `Node minimum (22.12.0)`                   |
+| Concern                          | Dimension                                                      | Where                                      |
+| -------------------------------- | -------------------------------------------------------------- | ------------------------------------------ |
+| OS portability                   | Linux / macOS / Windows (Node 24)                              | `Packed npm consumer (<os>)`               |
+| Dependency-version compatibility | Vite 6/7/8, Astro 5/6 (Node 22), Astro 7 (Node 24), Prettier 3 | `<Tool> compatibility (<version>)`, Ubuntu |
+| Node floor                       | 22.12.0                                                        | `Node minimum (22.12.0)`                   |
 
 There is no cross product of these axes. The Node-minimum job runs the latest
-Vite and Astro consumers plus the Prettier consumer on 22.12.0.
+Vite 8 and Astro 6 consumers plus the Prettier consumer on 22.12.0. Astro 7 is
+tested separately on Node 24 to meet Astro's current engine floor.
 
 ## Release artifacts
 

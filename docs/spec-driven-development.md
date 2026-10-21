@@ -505,8 +505,10 @@ and by `release.yml` before publishing):
 - **Version matrices (Ubuntu):** `Vite compatibility (6|7|8)`,
   `Astro compatibility (5|6|7)` (build, `astro check`, Events), and
   `Prettier compatibility (3.0.0|^3.0.0)`.
-- **Node minimum:** `Node minimum (22.12.0)` runs the latest Vite and Astro
-  consumers and the Prettier consumer on exactly 22.12.0.
+- **Node minimum:** `Node minimum (22.12.0)` runs the latest Vite 8 and Astro 6
+  consumers and the Prettier consumer on exactly 22.12.0. Astro 7 currently
+  requires Node `>=22.23.4` and runs on Node 24 in the compatibility and OS
+  consumer jobs.
 - **Release gating:** `release.yml` runs `Release readiness` first; the Changesets
   job `needs` it, restores the build outputs that were verified instead of
   rebuilding, and re-checks that they repack to the verified contents before
