@@ -8,8 +8,9 @@ maintainer acceptance. No crate or npm package was published for this work.
 ## Candidate and architecture
 
 - Base commit: `0c45006b515a3393ef6f8ffdd72c64fdcfecfa8a` (PR #47 merge).
-- Candidate implementation SHA: record after the first commit. Record the final
-  PR HEAD and ensure its Actions have completed before requesting M4 exit.
+- Candidate implementation SHA: `2f7337bcefa39bfddae69f5a4b2f081df5a17c03`.
+  Record the final PR HEAD and ensure its Actions have completed before
+  requesting M4 exit.
 - Versions: `flowview-static-runtime 0.1.0`; compiler, CLI and WASM `0.3.0`.
 - Accepted design: the existing shared parser/AST and compiler static lowering
   emit deterministic, versioned JSON IR; `flowview-static-runtime` validates,
