@@ -1,6 +1,6 @@
 [package]
 name = "flowview-compiler"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 rust-version.workspace = true
 license.workspace = true
@@ -19,6 +19,7 @@ name = "flowview_compiler"
 path = "src/lib.rs"
 
 [dependencies]
+flowview-static-runtime = { version = "0.1.0", path = "../flowview-static-runtime" }
 oxc_allocator = "0.116.0"
 oxc_ast = "0.116.0"
 oxc_parser = "0.116.0"

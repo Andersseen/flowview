@@ -1,19 +1,18 @@
 #!/usr/bin/env bash
-# Publish flowview-compiler, wait until the exact version resolves in the
-# crates.io sparse index, then publish flowview-cli.
+# Publish flowview-static-runtime, flowview-compiler, then flowview-cli in
+# dependency order, verifying each exact registry artifact before continuing.
 #
 # Safe to rerun: a crate version that is already public is verified against
 # the local package checksum and skipped instead of republished. A checksum
 # mismatch fails the run (crates.io versions are immutable; bump the version).
 #
-# Between the two publications the exact compiler version is consumed from the
-# registry by a throwaway project (scripts/verify-registry-consumer.sh); after
-# the CLI is published, `cargo install` of that exact version is verified.
+# The runtime-only AOT consumer and runtime-compiled compiler consumer each use
+# throwaway projects pinned to the registry. The exact CLI is installed last.
 #
 # Usage: scripts/publish-rust.sh [--dry-run]
-#   --dry-run  run `cargo publish --dry-run` for the compiler, and for the CLI
-#              only once the exact compiler version is already in the index
-#              (cargo cannot resolve it otherwise). Publishes nothing, needs no token.
+#   --dry-run  dry-run runtime; compiler only when runtime is public; CLI only
+#              when compiler is public. Skips are reported honestly. Publishes
+#              nothing and needs no token.
 #
 # Needs CARGO_REGISTRY_TOKEN (read by cargo) unless --dry-run. Never echoes it.
 # Env: INDEX_URL (default https://index.crates.io), MAX_ATTEMPTS (30), SLEEP_SECONDS (10).
@@ -86,6 +85,11 @@ wait_for_public() {
 dry_run() {
   local name="$1" version
   version="$(crate_version "$name")"
+  if [ "$name" = flowview-compiler ] && [ -z "$(public_checksum flowview-static-runtime "$(crate_version flowview-static-runtime)")" ]; then
+    echo "Skipping flowview-compiler dry-run: flowview-static-runtime $(crate_version flowview-static-runtime) is not in the registry yet."
+    echo "(cargo cannot resolve the compiler's runtime dependency before it is published.)"
+    return 0
+  fi
   if [ "$name" = flowview-cli ] && [ -z "$(public_checksum flowview-compiler "$(crate_version flowview-compiler)")" ]; then
     echo "Skipping flowview-cli dry-run: flowview-compiler $(crate_version flowview-compiler) is not in the registry yet."
     echo "(cargo cannot resolve it before the compiler is published; the real run publishes the compiler first.)"
@@ -129,11 +133,14 @@ verify_cli_install() {
 }
 
 if [ "$DRY_RUN" = true ]; then
+  dry_run flowview-static-runtime
   dry_run flowview-compiler
   dry_run flowview-cli
   exit 0
 fi
 
+publish flowview-static-runtime
+scripts/verify-aot-registry-consumer.sh "$(crate_version flowview-static-runtime)"
 publish flowview-compiler
 scripts/verify-registry-consumer.sh "$(crate_version flowview-compiler)"
 publish flowview-cli

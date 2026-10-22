@@ -27,7 +27,7 @@ assert_eq!(html, "<h1>A &amp; B</h1><p>Trusted, pre-rendered.</p>");
 
 ```toml
 [dependencies]
-flowview-compiler = "0.2"
+flowview-compiler = "0.3"
 ```
 
 Minimum supported Rust version: **1.91** (tested in CI on exactly that
@@ -35,6 +35,12 @@ toolchain). Typed models can use `template.render_serializable(&model)`, a
 convenience over `serde_json::to_value` that does not avoid the JSON value
 allocation. Prefer `@if (context.items.length > 0)` over `@if (context.items)`
 for collections: empty arrays are truthy, as in JavaScript.
+
+For templates known before the final application is built, generate an AOT
+artifact with `flowview precompile` and consume it with
+[`flowview-static-runtime`](https://crates.io/crates/flowview-static-runtime).
+This removes the compiler and Oxc from the consumer's normal dependency graph;
+the compiler and CLI are still required when regenerating artifacts.
 
 `{{ value }}` is always escaped; `{{{ value }}}` is explicit trusted raw HTML.
 Flowview is a template compiler, not a framework: no Markdown, routing, layouts or components.

@@ -696,6 +696,28 @@ identical focus, selection or composition behavior in every browser.
   read live properties such as `value`, `checked` and `selected`. FlowView does
   not wrap elements or introduce a form/property helper API.
 
+## Precompiled Static Templates
+
+The AOT workflow uses the Rust compiler's existing parser, validation and
+static expression lowering. The artifact is data interpreted by
+`flowview-static-runtime`; it is not executable code and does not extend the
+static expression subset.
+
+- **SPEC-HTML-127** — `compile_static_artifact` compiles only the supported
+  static subset through the shared compiler pipeline; AOT rendering matches
+  runtime-compiled static output for the shared parity fixtures, and unsupported
+  static expressions fail before an artifact is returned.
+- **SPEC-HTML-128** — `flowview precompile input.flow --out artifact` produces
+  deterministic, path-independent output when source and logical display name
+  are unchanged. `--check` succeeds only for an existing byte-identical
+  artifact; it fails for missing or stale output without changing that output.
+- **SPEC-HTML-129** — `flowview-static-runtime` prepares a versioned artifact
+  once, renders JSON and serializable contexts repeatedly and concurrently, and
+  preserves FlowView runtime diagnostic codes and source spans.
+- **SPEC-HTML-130** — The runtime rejects wrong artifact identity, unsupported
+  format versions, truncated/corrupt input and oversized artifacts without
+  panicking or accepting data above its documented size limit.
+
 ## Test Strategy
 
 Every supported behavior has at least one test at the lowest useful layer:

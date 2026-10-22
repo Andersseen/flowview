@@ -17,7 +17,7 @@ design**. Only a shipping implementation PR updates normative requirements and
 the executable conformance mapping. This documentation change implements nothing.
 
 **Current phase:** controlled pre-1.0 evolution. **M1, M2 and M3 — complete;
-M4 — active; S — queued.** This M3 state is proposed by PR [#45](https://github.com/Andersseen/flowview/pull/45) and becomes authoritative when that reviewed PR is merged. M1's maintainer-reviewed exit evidence is PR [#41](https://github.com/Andersseen/flowview/pull/41): compiler-backed `.flow` and
+M4 — active; S — queued.** M3 exit evidence is PR [#45](https://github.com/Andersseen/flowview/pull/45), merged before this baseline. M1's maintainer-reviewed exit evidence is PR [#41](https://github.com/Andersseen/flowview/pull/41): compiler-backed `.flow` and
 Astro diagnostics, Events diagnostic ownership, UTF-8 → UTF-16 mapping, packaged
 VSIX acceptance without Rust, 105/105 spec coverage, packed artifacts, full CI,
 bounded fuzz and browser acceptance. Its package release followed in PR
@@ -25,13 +25,12 @@ bounded fuzz and browser acceptance. Its package release followed in PR
 is PR [#43](https://github.com/Andersseen/flowview/pull/43): scoped DOM references,
 exclusive view ownership, nested disposal, the structural reactive bridge,
 Events replacement compatibility, browser acceptance, packed artifacts, full CI,
-bounded fuzz and 117/117 spec coverage. Its package release is pending in PR
-[#44](https://github.com/Andersseen/flowview/pull/44). M3's exit evidence is PR
+bounded fuzz and 117/117 spec coverage. Its package release PR
+[#44](https://github.com/Andersseen/flowview/pull/44) is merged. M3's exit evidence is PR
 [#45](https://github.com/Andersseen/flowview/pull/45): the Chromium native form
 matrix, explicit replacement and `view.bind()` behavior, Events toggle capture,
-126/126 spec coverage, packed consumers and green required Actions. PR #44 remains
-open; keep M3 separate and do not merge it until PR #44 is merged or otherwise
-resolved. An agent may implement only
+126/126 spec coverage, packed consumers and green required Actions. M3 package
+release PR [#46](https://github.com/Andersseen/flowview/pull/46) is merged. An agent may implement only
 the active milestone, after its design questions have a reviewed answer. Fixes to
 existing contracts remain permitted. Advancing the active marker requires a
 maintainer-reviewed PR linking the preceding milestone's exit evidence. A roadmap
@@ -41,14 +40,16 @@ overrides this permission entirely.
 
 ## Current baseline and evidence
 
-Inspected remote `main`: `3835d25ac779883d3e7da7a033de1eb7f7fd9560`, 2026-10-22.
+Inspected remote `main`: `d61eedce687ae26ae04bf5d10d6a912f89726f9b`, 2026-10-22.
 Recent relevant merges: roadmap/RC contract [#40](https://github.com/Andersseen/flowview/pull/40),
 M1 editor experience [#41](https://github.com/Andersseen/flowview/pull/41),
-M1 package release [#42](https://github.com/Andersseen/flowview/pull/42), and
-M2 browser composition [#43](https://github.com/Andersseen/flowview/pull/43).
-PR #41 and PR #43 record their respective exit evidence and CI results. PR #44 is
-the open M2 Changesets release PR; M3 remains a separate development and must not
-be merged until that release PR is merged or otherwise resolved.
+M1 package release [#42](https://github.com/Andersseen/flowview/pull/42),
+M2 browser composition [#43](https://github.com/Andersseen/flowview/pull/43),
+M2 package release [#44](https://github.com/Andersseen/flowview/pull/44),
+M3 forms and DOM replacement semantics [#45](https://github.com/Andersseen/flowview/pull/45),
+and M3 package release [#46](https://github.com/Andersseen/flowview/pull/46).
+Current GitHub API status for open PRs and Actions could not be retrieved during
+this inspection.
 
 “Hardened” below means implementation plus focused tests/gates, not proof of no
 bugs. Package manifests have independent npm versions; Rust crates are 0.2.0 with
@@ -61,7 +62,7 @@ MSRV 1.91 and Oxc 0.116. Do not derive milestone numbers from the root package.
 | Escaping / raw / control flow               | Hardened                                                            | Shared `tests/fixtures/*parity.json`; `@if`, `@for`, `@switch`, explicit trusted raw strings; no sanitization; `track` has no reconciliation effect                                                              |
 | Bindings                                    | Implemented and tested; forms ergonomics incomplete                 | Boolean attributes including `checked`, `selected`, `open`; `attr.*`, `class.*`; no general live-property binding                                                                                                |
 | Diagnostics / source maps                   | Hardened                                                            | Structured `FVxxxx`, UTF-8 spans, JS Source Map v3 and host Astro offsets; static rendering has diagnostics, no JS map                                                                                           |
-| Conformance / fuzzing                       | Hardened, ongoing                                                   | 117/117 requirements after M2; `scripts/spec-coverage.mjs`, proptests, Events fast-check, `fuzz/`, PR/main smoke and scheduled fuzz workflow                                                                     |
+| Conformance / fuzzing                       | Hardened, ongoing                                                   | 126/126 requirements after M3; `scripts/spec-coverage.mjs`, proptests, Events fast-check, `fuzz/`, PR/main smoke and scheduled fuzz workflow                                                                     |
 | Runtime / compiler npm                      | Hardened                                                            | Four escaping/value helpers; bundled WASM compiler, native override; packed consumers do not need Rust                                                                                                           |
 | Vite / Astro                                | Hardened                                                            | `.flow` transform and inline Astro regions; dev/build/map tests; compatibility matrices; no application lifecycle                                                                                                |
 | Events / Vite Events / Astro Events         | Implemented and hardened                                            | Separate compiler and delegated runtime, virtual client modules, inline Astro wiring; explicit client registration required                                                                                      |

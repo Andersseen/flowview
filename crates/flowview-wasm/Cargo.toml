@@ -1,6 +1,6 @@
 [package]
 name = "flowview-wasm"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 rust-version.workspace = true
 license = "MIT"
@@ -14,7 +14,7 @@ categories = ["template-engine", "wasm"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-flowview-compiler = { version = "0.2.0", path = "../flowview-compiler" }
+flowview-compiler = { version = "0.3.0", path = "../flowview-compiler" }
 serde = { version = "1.0", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
 wasm-bindgen = "0.2"

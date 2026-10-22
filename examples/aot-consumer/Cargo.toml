@@ -1,0 +1,13 @@
+[package]
+name = "flowview-aot-consumer"
+default-run = "flowview-aot-consumer"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+flowview-static-runtime = { path = "../../crates/flowview-static-runtime" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[workspace]

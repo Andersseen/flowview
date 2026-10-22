@@ -1,6 +1,6 @@
 use serde_json::{json, Value};
 
-use super::evaluator::{eval, lower, Scope, Val};
+use super::evaluator::lower;
 use super::{render_static, StaticRenderOptions};
 use crate::Diagnostic;
 
@@ -13,14 +13,6 @@ fn render(source: &str, context: Value) -> String {
 fn render_err(source: &str, context: Value) -> Diagnostic {
     let errors = render_static(source, &context, StaticRenderOptions::default()).unwrap_err();
     errors.into_iter().next().unwrap()
-}
-
-fn evaluate(expression: &str, context: &Value) -> Result<Value, String> {
-    let expr = lower(expression).map_err(|e| e.message)?;
-    match eval(&expr, &Scope::new(context)).map_err(|e| e.message)? {
-        Val::Undefined => Ok(Value::String("<undefined>".into())),
-        Val::Json(v) => Ok(v.into_owned()),
-    }
 }
 
 // --- renderer -------------------------------------------------------------
@@ -299,104 +291,7 @@ fn parse_errors_still_use_shared_parser_diagnostics() {
     assert_eq!(errors[0].code.as_deref(), Some("FV0011"));
 }
 
-// --- evaluator ----------------------------------------------------------------
-
-// @spec SPEC-HTML-048
-#[test]
-fn literals() {
-    let c = json!({});
-    assert_eq!(evaluate("null", &c), Ok(Value::Null));
-    assert_eq!(evaluate("true", &c), Ok(json!(true)));
-    assert_eq!(evaluate("'s'", &c), Ok(json!("s")));
-    assert_eq!(evaluate("-2", &c), Ok(json!(-2.0)));
-    assert_eq!(evaluate("(1)", &c), Ok(json!(1.0)));
-}
-
-// @spec SPEC-HTML-048
-#[test]
-fn context_lookup_and_member_access() {
-    let c = json!({"a": {"b": [10, 20]}, "s": "héllo"});
-    assert_eq!(evaluate("context.a.b[1]", &c), Ok(json!(20)));
-    assert_eq!(evaluate("context['a'].b.length", &c), Ok(json!(2)));
-    assert_eq!(evaluate("context.s.length", &c), Ok(json!(5)));
-    assert_eq!(evaluate("context.a.b[5]", &c), Ok(json!("<undefined>")));
-    assert_eq!(evaluate("context.nope", &c), Ok(json!("<undefined>")));
-}
-
-// @spec SPEC-HTML-051
-#[test]
-fn unknown_identifier() {
-    let err = evaluate("window", &json!({})).unwrap_err();
-    assert!(err.contains("Unresolved identifier `window`"));
-}
-
-// @spec SPEC-HTML-051
-#[test]
-fn invalid_member_access() {
-    let c = json!({"n": null, "num": 1});
-    assert!(evaluate("context.missing.x", &c)
-        .unwrap_err()
-        .contains("Cannot read property `x` of undefined"));
-    assert!(evaluate("context.n.x", &c).unwrap_err().contains("of null"));
-    assert!(evaluate("context.num.x", &c)
-        .unwrap_err()
-        .contains("number value"));
-}
-
-// @spec SPEC-HTML-049 SPEC-HTML-052
-#[test]
-fn truthiness_and_logic() {
-    let c = json!({"z": 0, "e": "", "arr": [], "o": {}, "n": null});
-    for falsy in ["context.z", "context.e", "context.n", "context.missing"] {
-        assert_eq!(
-            evaluate(&format!("!{falsy}"), &c),
-            Ok(json!(true)),
-            "{falsy}"
-        );
-    }
-    for truthy in ["context.arr", "context.o", "'0'", "1"] {
-        assert_eq!(
-            evaluate(&format!("!{truthy}"), &c),
-            Ok(json!(false)),
-            "{truthy}"
-        );
-    }
-    assert_eq!(evaluate("context.z || 'x'", &c), Ok(json!("x")));
-    assert_eq!(evaluate("context.z ?? 'x'", &c), Ok(json!(0)));
-    assert_eq!(evaluate("context.n ?? 'x'", &c), Ok(json!("x")));
-    assert_eq!(evaluate("context.missing ?? 'x'", &c), Ok(json!("x")));
-    assert_eq!(evaluate("1 && 'y'", &c), Ok(json!("y")));
-    assert_eq!(evaluate("context.z && context.missing.x", &c), Ok(json!(0)));
-}
-
-// @spec SPEC-HTML-050
-#[test]
-fn comparisons() {
-    let c = json!({"n": 3, "s": "b", "z": null});
-    assert_eq!(evaluate("context.n === 3", &c), Ok(json!(true)));
-    assert_eq!(evaluate("context.n !== 3", &c), Ok(json!(false)));
-    assert_eq!(evaluate("context.n === '3'", &c), Ok(json!(false)));
-    assert_eq!(
-        evaluate("context.z == context.missing", &c),
-        Ok(json!(true))
-    );
-    assert_eq!(
-        evaluate("context.z === context.missing", &c),
-        Ok(json!(false))
-    );
-    assert_eq!(evaluate("context.n > 2", &c), Ok(json!(true)));
-    assert_eq!(evaluate("context.n <= 2", &c), Ok(json!(false)));
-    assert_eq!(evaluate("context.s < 'c'", &c), Ok(json!(true)));
-    assert!(evaluate("context.n < 'c'", &c)
-        .unwrap_err()
-        .contains("Cannot compare"));
-    assert!(evaluate("context.n == '3'", &c)
-        .unwrap_err()
-        .contains("coercion"));
-    assert!(evaluate("context.o === context.o", &json!({"o": {}}))
-        .unwrap_err()
-        .contains("by reference"));
-}
+// --- static expression lowering -----------------------------------------
 
 // @spec SPEC-HTML-053
 #[test]
@@ -575,7 +470,7 @@ mod raw_interpolation {
         }
     }
 
-    // @spec SPEC-HTML-027 SPEC-HTML-047
+    // @spec SPEC-HTML-027 SPEC-HTML-047 SPEC-HTML-049
     #[test]
     fn matches_the_shared_javascript_target_fixtures() {
         let fixtures: Value = serde_json::from_str(include_str!(

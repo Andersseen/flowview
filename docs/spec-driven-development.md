@@ -7,16 +7,17 @@
 > change is correct.
 >
 > **Baseline reviewed:** 2026-10-22, remote `main`
-> `3835d25ac779883d3e7da7a033de1eb7f7fd9560`: PR #43 completed M2 Browser
-> Composition after M1 PR #41 and its package release PR #42. M2 exit evidence
-> is recorded in [PR #43](https://github.com/Andersseen/flowview/pull/43).
+> `d61eedce687ae26ae04bf5d10d6a912f89726f9b`: PR #46 completed the M3
+> package release after M3 PR #45; M1 and M2 exit evidence is recorded in PRs
+> #41 and #43. Current baseline and milestone evidence are summarized in the
+> [v1 roadmap](v1-roadmap.md#current-baseline-and-evidence).
 > Historical verification below remains attributed to its original workstream.
 > Current evidence and maturity: [v1 roadmap](v1-roadmap.md#current-baseline-and-evidence).
 >
 > **Current phase:** controlled pre-1.0 product/DX evolution. M1, M2 and M3
 > are complete; M4 Precompiled Static Templates is active; S is queued. M3 exit
-> evidence is [PR #45](https://github.com/Andersseen/flowview/pull/45); this
-> proposed state becomes authoritative when the reviewed PR is merged.
+> evidence is [PR #45](https://github.com/Andersseen/flowview/pull/45), merged
+> before this baseline.
 > The roadmap's active
 > milestone marker is the sole scheduling authority; RC rules override it at freeze.
 

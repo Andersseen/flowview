@@ -6,8 +6,8 @@ Every normative requirement in [flowview-spec.md](flowview-spec.md) is mapped to
 
 ## Summary
 
-- Total normative requirements: 126
-- Covered: 126
+- Total normative requirements: 130
+- Covered: 130
 - Uncovered: 0
 - Coverage: 100.0%
 
@@ -30,6 +30,7 @@ Every normative requirement in [flowview-spec.md](flowview-spec.md) is mapped to
 | Editor Support | 10 | 10 |
 | Browser DOM Composition | 12 | 12 |
 | Native Browser Forms and Replacement | 9 | 9 |
+| Precompiled Static Templates | 4 | 4 |
 
 ## Requirements
 
@@ -82,11 +83,11 @@ Every normative requirement in [flowview-spec.md](flowview-spec.md) is mapped to
 | SPEC-HTML-045 | Warnings such as `FV0015` are produced once at compile time and exposed through `template.warnings()`; `render_static()` returns the same warnings... | `crates/flowview-compiler/src/static_html/compiled_tests.rs` (1)<br>`crates/flowview-compiler/src/static_html/tests.rs` (1) |
 | SPEC-HTML-046 | The context must be a JSON object and is visible to templates as `context`; anything else is `FV0021`, never a panic. | `crates/flowview-cli/tests/cli_tests.rs` (1)<br>`crates/flowview-compiler/src/static_html/compiled_tests.rs` (1)<br>`crates/flowview-compiler/src/static_html/tests.rs` (1)<br>`crates/flowview-compiler/tests/static_embedding.rs` (1) |
 | SPEC-HTML-047 | All control flow and attribute bindings are supported, and output matches the JavaScript target for the same data (including whitespace, escaping,... | `crates/flowview-compiler/src/static_html/tests.rs` (8)<br>`packages/compiler/src/index.test.ts` (2) |
-| SPEC-HTML-048 | Literals (strings, numbers including a leading `-`, `true`, `false`, `null`), identifiers (`context` and enclosing `@for` item names), member... | `crates/flowview-compiler/src/static_html/tests.rs` (3)<br>`crates/flowview-compiler/tests/static_embedding.rs` (2) |
+| SPEC-HTML-048 | Literals (strings, numbers including a leading `-`, `true`, `false`, `null`), identifiers (`context` and enclosing `@for` item names), member... | `crates/flowview-compiler/src/static_html/tests.rs` (1)<br>`crates/flowview-compiler/tests/static_embedding.rs` (2) |
 | SPEC-HTML-049 | Unary `!`, logical `&&`, `\|\|`, `??`, and parentheses. | `crates/flowview-compiler/src/static_html/tests.rs` (1) |
-| SPEC-HTML-050 | `===`, `!==`, `==`, `!=` on primitives (loose equality only between same-type values or null/undefined), and `<`, `<=`, `>`, `>=` on number/number... | `crates/flowview-compiler/src/static_html/tests.rs` (1)<br>`crates/flowview-compiler/tests/static_embedding.rs` (1) |
-| SPEC-HTML-051 | A missing object key or out-of-range index is `undefined`. Reading a property of `undefined`/`null` or of a number/boolean is `FV0018`; an... | `crates/flowview-compiler/src/static_html/tests.rs` (2)<br>`crates/flowview-compiler/tests/static_embedding.rs` (1) |
-| SPEC-HTML-052 | Truthiness follows JavaScript (`0`, `""`, `null`, `undefined`, `false` are falsy; empty arrays and objects are truthy). | `crates/flowview-compiler/src/static_html/tests.rs` (1)<br>`crates/flowview-compiler/tests/static_embedding.rs` (1) |
+| SPEC-HTML-050 | `===`, `!==`, `==`, `!=` on primitives (loose equality only between same-type values or null/undefined), and `<`, `<=`, `>`, `>=` on number/number... | `crates/flowview-compiler/tests/static_embedding.rs` (1) |
+| SPEC-HTML-051 | A missing object key or out-of-range index is `undefined`. Reading a property of `undefined`/`null` or of a number/boolean is `FV0018`; an... | `crates/flowview-compiler/tests/static_embedding.rs` (1) |
+| SPEC-HTML-052 | Truthiness follows JavaScript (`0`, `""`, `null`, `undefined`, `false` are falsy; empty arrays and objects are truthy). | `crates/flowview-compiler/tests/static_embedding.rs` (1) |
 | SPEC-HTML-053 | Anything else (function calls, arrow functions, ternaries, template literals, optional chaining, arithmetic, array/object literals, computed keys,... | `crates/flowview-cli/tests/cli_tests.rs` (1)<br>`crates/flowview-compiler/src/static_html/compiled_tests.rs` (1)<br>`crates/flowview-compiler/src/static_html/tests.rs` (3) |
 | SPEC-HTML-054 | In the static target `@for` accepts an array; `null`/`undefined` count as empty. Other values fail with `FV0019`. | `crates/flowview-compiler/src/static_html/tests.rs` (2) |
 | SPEC-HTML-055 | Arrays and objects cannot be interpolated or used as attribute values (`FV0020`). Numbers render like JavaScript for integers and ordinary decimals. | `crates/flowview-compiler/src/static_html/tests.rs` (2) |
@@ -161,3 +162,7 @@ Every normative requirement in [flowview-spec.md](flowview-spec.md) is mapped to
 | SPEC-HTML-124 | `view.bind(source)` replaces the view synchronously for every source emission. Applications avoid feeding every keystroke from an actively edited... | `examples/astro-demo/e2e/forms.spec.ts` (1) |
 | SPEC-HTML-125 | Form values remain untrusted data. Rendering a submitted value through escaped `{{ expression }}` interpolation keeps markup inert; forms add no... | `examples/astro-demo/e2e/forms.spec.ts` (1) |
 | SPEC-HTML-126 | `view.ref()` and `view.refs()` return the current native `Element` objects, which applications may narrow to native control types to read live... | `examples/astro-demo/e2e/forms.spec.ts` (1) |
+| SPEC-HTML-127 | `compile_static_artifact` compiles only the supported static subset through the shared compiler pipeline; AOT rendering matches runtime-compiled... | `crates/flowview-compiler/tests/aot_parity.rs` (2) |
+| SPEC-HTML-128 | `flowview precompile input.flow --out artifact` produces deterministic, path-independent output when source and logical display name are... | `crates/flowview-cli/tests/cli_tests.rs` (2)<br>`crates/flowview-compiler/tests/aot_parity.rs` (2) |
+| SPEC-HTML-129 | `flowview-static-runtime` prepares a versioned artifact once, renders JSON and serializable contexts repeatedly and concurrently, and preserves... | `crates/flowview-static-runtime/tests/artifact.rs` (2) |
+| SPEC-HTML-130 | The runtime rejects wrong artifact identity, unsupported format versions, truncated/corrupt input and oversized artifacts without panicking or... | `crates/flowview-static-runtime/tests/artifact.rs` (2) |

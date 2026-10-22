@@ -17,13 +17,14 @@ compatibility cannot drift from tested compatibility.
 
 ## Published packages
 
-| Surface             | Supported      | CI job(s)                                                            |
-| ------------------- | -------------- | -------------------------------------------------------------------- |
-| Node.js             | 22.12 or newer | `Node minimum (22.12.0)`; Node 24 for Astro 7's current engine floor |
-| Vite                | 6, 7, 8        | `Vite compatibility (6)`, `(7)`, `(8)`                               |
-| Astro               | 5, 6, 7        | `Astro compatibility (5)`, `(6)`, `(7)`                              |
-| Prettier            | 3 (`^3.0.0`)   | `Prettier compatibility (3.0.0)` (floor), `(^3.0.0)` (latest 3.x)    |
-| Rust (native crate) | stable         | `Rust` and `Rust portability` jobs (not part of the npm contract)    |
+| Surface                   | Supported      | CI job(s)                                                            |
+| ------------------------- | -------------- | -------------------------------------------------------------------- |
+| Node.js                   | 22.12 or newer | `Node minimum (22.12.0)`; Node 24 for Astro 7's current engine floor |
+| Vite                      | 6, 7, 8        | `Vite compatibility (6)`, `(7)`, `(8)`                               |
+| Astro                     | 5, 6, 7        | `Astro compatibility (5)`, `(6)`, `(7)`                              |
+| Prettier                  | 3 (`^3.0.0`)   | `Prettier compatibility (3.0.0)` (floor), `(^3.0.0)` (latest 3.x)    |
+| `flowview-compiler`       | Rust 1.91.0    | `Rust 1.91.0 (MSRV)` and `rust portability` jobs                     |
+| `flowview-static-runtime` | Rust 1.85.0    | `Rust 1.85.0 (static runtime MSRV)` and AOT consumer jobs            |
 
 Notes:
 
@@ -51,9 +52,12 @@ Notes:
 - **Prettier.** `@flowview/prettier` peers on `^3.0.0`; the floor release and
   the latest 3.x both format a FlowView `.astro` file without touching the
   template region.
-- **Rust.** Only needed to build the native crate/CLI. The npm packages never
-  require Rust, `cargo`, `wasm-pack`, or a native FlowView binary; every
-  consumer test removes them from `PATH` and blocks the process spawns.
+- **Rust.** The npm packages never require Rust, `cargo`, `wasm-pack`, or a
+  native FlowView binary; every npm consumer test removes them from `PATH` and
+  blocks process spawns. Runtime-compiled Rust templates require the
+  `flowview-compiler` floor of Rust 1.91.0. AOT consumers that depend only on
+  `flowview-static-runtime` have a separate Rust 1.85.0 floor; regenerating
+  artifacts still requires the compiler/CLI toolchain at Rust 1.91.0.
 
 ## How the compatibility tests work
 
