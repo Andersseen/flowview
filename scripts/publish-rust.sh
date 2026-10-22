@@ -86,13 +86,15 @@ dry_run() {
   local name="$1" version
   version="$(crate_version "$name")"
   if [ "$name" = flowview-compiler ] && [ -z "$(public_checksum flowview-static-runtime "$(crate_version flowview-static-runtime)")" ]; then
-    echo "Skipping flowview-compiler dry-run: flowview-static-runtime $(crate_version flowview-static-runtime) is not in the registry yet."
-    echo "(cargo cannot resolve the compiler's runtime dependency before it is published.)"
+    echo "NOT EXECUTED: flowview-compiler $version cargo publish --dry-run."
+    echo "Reason: required registry dependency flowview-static-runtime $(crate_version flowview-static-runtime) is not published; Cargo cannot resolve the compiler dependency from crates.io."
+    echo "Required after publication: publish the runtime, then run the compiler dry-run and registry consumer verification."
     return 0
   fi
   if [ "$name" = flowview-cli ] && [ -z "$(public_checksum flowview-compiler "$(crate_version flowview-compiler)")" ]; then
-    echo "Skipping flowview-cli dry-run: flowview-compiler $(crate_version flowview-compiler) is not in the registry yet."
-    echo "(cargo cannot resolve it before the compiler is published; the real run publishes the compiler first.)"
+    echo "NOT EXECUTED: flowview-cli $version cargo publish --dry-run."
+    echo "Reason: required registry dependency flowview-compiler $(crate_version flowview-compiler) is not published; Cargo cannot resolve the CLI dependency from crates.io."
+    echo "Required after publication: publish the compiler, then run the CLI dry-run, compiler registry consumer, and exact-version CLI registry installation."
     return 0
   fi
   echo "Dry-run publishing $name $version..."

@@ -142,14 +142,25 @@ task, and no npm Changeset is needed because npm behavior did not change.
 
 The runtime package archive was inspected and excludes tests. The standalone
 committed-artifact consumer builds and renders, and the compiler/Oxc absence is
-verified from its Cargo graph. Linux/macOS/Windows CI jobs exercise that
-consumer and artifact check; those remote results are required before M4 exit.
-Local Rust workspace tests, clippy, formatting, docs, exact runtime MSRV,
-package creation, spec coverage and the complete local pnpm typecheck/test/build/
-lint chain were run. The frozen pnpm install could not access npm due the
-environment's network restriction; existing dependencies were used. Browser
-E2E, packed npm artifacts, scheduled fuzz health and release dry-run remain
-separate remote/release evidence, not claimed as passed here.
+verified from its Cargo graph. `scripts/verify-aot-packaged-consumer.sh` now
+packages the runtime with Cargo, inspects the archive, extracts it outside the
+workspace, and builds a separate consumer from those extracted files. The
+consumer checks typed and native contexts, escaping, trusted raw output,
+Unicode, repeatable output and useful invalid-format errors, then inspects its
+normal/build dependency graph. This local candidate-package result is not
+registry verification. Linux/macOS/Windows CI runs this packaged-consumer
+contract; those candidate-commit results are required before M4 exit. After
+publication, the existing release workflow still performs the distinct
+exact-version registry consumer checks.
+Local Rust workspace tests, clippy, formatting, strict docs, package creation,
+both exact MSRVs, spec coverage, the pnpm typecheck/test/build/lint chain,
+browser acceptance and a bounded fuzz replay passed. PR #48's CI and Fuzz runs
+also passed, including packaged runtime consumers on Linux/macOS/Windows and
+packed npm consumer jobs. Local Cargo publish dry-run and fresh npm consumer
+installs could not resolve their registries in this environment; the npm
+consumer matrix passed in CI. Registry-installed Rust verification remains the
+post-publication release gate. The evidence record links exact candidate SHAs
+and run results.
 
 ## Limitations and deferrals
 

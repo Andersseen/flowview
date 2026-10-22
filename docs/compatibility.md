@@ -26,6 +26,12 @@ compatibility cannot drift from tested compatibility.
 | `flowview-compiler`       | Rust 1.91.0    | `Rust 1.91.0 (MSRV)` and `rust portability` jobs                     |
 | `flowview-static-runtime` | Rust 1.85.0    | `Rust 1.85.0 (static runtime MSRV)` and AOT consumer jobs            |
 
+The Rust CI runs `scripts/verify-aot-packaged-consumer.sh` on Linux, macOS and
+Windows. It consumes the extracted Cargo package in a fresh external project;
+it is candidate-package evidence, separate from registry-installed consumers
+run by the Rust release workflow. M4 status and evidence are tracked in the
+[M4 exit record](milestones/m4-exit.md).
+
 Notes:
 
 - **Node.js.** 22.12.0 is the FlowView JS tooling floor (compiler WASM loader,

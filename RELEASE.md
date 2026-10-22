@@ -86,6 +86,7 @@ the CLI depends on the compiler. `flowview-wasm` stays bundled and
    RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
    cargo package --workspace --exclude flowview-wasm --locked --no-verify
    scripts/publish-rust.sh --dry-run
+   scripts/verify-aot-packaged-consumer.sh
    ```
 
    The compiler MSRV (`rust-version` in `Cargo.toml`, currently 1.91) is tested
@@ -95,6 +96,15 @@ the CLI depends on the compiler. `flowview-wasm` stays bundled and
    compiler. `--dry-run` runs for the runtime first, then for the compiler only
    when its runtime version is in the registry, and for the CLI only when its
    compiler version is in the registry; skipped work is reported with the reason.
+
+   `verify-aot-packaged-consumer.sh` creates the runtime `.crate` with Cargo,
+   inspects and extracts that archive, then builds an external consumer whose
+   path dependency points only at the extracted package. This is local
+   candidate-package evidence; it is not a registry installation. The CI job
+   runs it on Linux, macOS and Windows. A `NOT EXECUTED` downstream publish
+   dry-run means the named dependency is not yet on crates.io and is not a
+   passing dry-run; the release workflow must perform the exact-version
+   registry consumer/install checks after publication.
 
 3. Publish. Preferred: run the **Rust release** workflow (Actions → Rust release →
    Run workflow) with `dry_run: false`. It needs the `CARGO_REGISTRY_TOKEN`
