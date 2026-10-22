@@ -107,6 +107,18 @@ These steps were not run. The workflow is not a substitute for the local
 packaged-candidate test, and the packaged-candidate test is not a substitute for
 those registry checks. Nothing was published.
 
+## Open items and severity
+
+- **Medium, release gate:** Registry-installed runtime/compiler consumers and
+  exact-version CLI installation remain unverified because the crates were not
+  published. Run the existing Rust release workflow in dependency order before
+  describing these versions as available from crates.io. This is expected
+  release sequencing, not an M4 exit blocker.
+- **Low, local environment:** A real `cargo publish --dry-run` could not reach
+  crates.io because DNS resolution failed. The downstream-skip reporting logic
+  was exercised with stubs, and Cargo package creation plus extracted-package
+  consumer validation passed locally and in CI.
+
 ## Acceptance decision
 
 M4's exit criteria are **satisfied on the CI-verified candidate SHA above**.
