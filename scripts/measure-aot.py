@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "examples/aot-consumer/page.flow"
+SMALL_SOURCE = ROOT / "examples/aot-consumer/small.flow"
 RUST_GENERATOR = ROOT / "scripts/aot-rust-prototype.mjs"
 COUNTS = (1, 10, 50)
 PROFILE = {
@@ -68,18 +69,20 @@ def create_consumer(path):
     )
 
 
-def measure_candidate(root, generated, env):
+def measure_candidate(root, generated, env, *, variant, source_path, counts):
     label = "generated-rust" if generated else "serialized-ir"
-    package = root / label
+    package = root / f"{label}-{variant}"
     create_consumer(package)
-    target = root / f"target-{label}"
+    target = root / f"target-{label}-{variant}"
     results = []
     generation_seconds = 0.0
+    rust_generation_seconds = 0.0
 
-    for count in COUNTS:
+    source_text = source_path.read_text(encoding="utf-8")
+    for count in counts:
         for i in range(count):
             source = package / f"template-{i:02}.flow"
-            source.write_text(SOURCE.read_text(encoding="utf-8") + f"\n<!-- measured template {i} -->\n", encoding="utf-8")
+            source.write_text(source_text + f"\n<!-- measured template {i} -->\n", encoding="utf-8")
             artifact = package / f"artifacts/template-{i:02}.json"
             start = time.perf_counter()
             run([
@@ -89,7 +92,9 @@ def measure_candidate(root, generated, env):
             generation_seconds += time.perf_counter() - start
             if generated:
                 module = package / f"src/template_{i:02}.rs"
+                start = time.perf_counter()
                 run(["node", RUST_GENERATOR, artifact, module], quiet=True)
+                rust_generation_seconds += time.perf_counter() - start
 
         main = package / "src/main.rs"
         main.write_text(main_source(count, generated), encoding="utf-8")
@@ -102,7 +107,10 @@ def measure_candidate(root, generated, env):
         source_bytes = sum((package / f"src/template_{i:02}.rs").stat().st_size for i in range(count)) if generated else 0
         results.append((count, artifact_bytes, source_bytes, binary.stat().st_size, seconds))
 
-    print(f"\n{label}: generation {generation_seconds:.3f}s for {sum(COUNTS)} artifacts")
+    print(
+        f"\n{label} ({variant}): artifact generation {generation_seconds:.3f}s, "
+        f"Rust wrapper generation {rust_generation_seconds:.3f}s for {sum(counts)} templates"
+    )
     print("templates | artifact bytes | generated Rust bytes | binary bytes | build seconds")
     for row in results:
         count, artifact_bytes, source_bytes, binary_bytes, seconds = row
@@ -119,8 +127,10 @@ def main():
     env.update(PROFILE)
     with tempfile.TemporaryDirectory(prefix="flowview-aot-measure-") as temporary:
         root = Path(temporary)
-        measure_candidate(root, False, env)
-        measure_candidate(root, True, env)
+        measure_candidate(root, False, env, variant="small", source_path=SMALL_SOURCE, counts=(1,))
+        measure_candidate(root, True, env, variant="small", source_path=SMALL_SOURCE, counts=(1,))
+        measure_candidate(root, False, env, variant="report", source_path=SOURCE, counts=COUNTS)
+        measure_candidate(root, True, env, variant="report", source_path=SOURCE, counts=COUNTS)
 
 
 if __name__ == "__main__":

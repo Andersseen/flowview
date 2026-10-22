@@ -35,14 +35,19 @@ observations, not guarantees.
 | Serialized JSON IR     | 4,455 / 44,550 / 222,830    | —                           | 517,776 / 567,312 / 748,944 |
 | Generated Rust wrapper | 4,455 / 44,550 / 222,830    | 4,722 / 47,220 / 236,180    | 517,776 / 567,312 / 748,944 |
 
-The single-template clean build took 12.213 s for serialized IR and 10.738 s
-for generated Rust in this run. The 10- and 50-template builds were
-incremental in the same project: 2.818 / 3.297 s for serialized IR and 2.891 /
-3.146 s for generated Rust. Clean timings are sensitive to machine/compiler
-caches and are reported as observations. The generated wrapper adds about 6%
-source bytes without reducing binary size, changing runtime preparation or
-rendering, or improving multi-template scaling. A direct generated renderer or
-static structure would need a second emitted evaluator/API surface and was not
+The distinct small template (`<p>{{ context.title }}</p>`) produced a 569 B
+artifact, 836 B generated Rust module, and 517,776 B consumer binary in either
+form. Its clean builds took 11.934 s (IR) and 8.665 s (generated Rust). For the
+report template, the clean one-template builds took 8.476 s and 9.442 s;
+incremental builds from 1→10 and 10→50 templates took 2.980 / 3.599 s (IR) and
+2.868 / 2.958 s (generated Rust). Artifact generation for the 61 report
+artifacts took 0.472 s for IR; the generated-Rust candidate took 0.517 s for
+those artifacts plus 1.543 s to generate Rust wrappers. The small wrapper
+generation took 0.033 s. These are single-run wall-clock observations and vary
+with machine/compiler caches. The generated wrapper adds about 6% source bytes
+without reducing binary size, changing runtime preparation or rendering, or
+improving multi-template scaling. A direct generated renderer or static
+structure would need a second emitted evaluator/API surface and was not
 implemented as a production alternative; see limitations below.
 
 For the same representative page model, 500 `compile_static` calls took
