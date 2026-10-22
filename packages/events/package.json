@@ -1,6 +1,6 @@
 {
   "name": "@flowview/events",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "flowview Events compiler and runtime for client-side bindings.",
   "license": "MIT",
   "type": "module",

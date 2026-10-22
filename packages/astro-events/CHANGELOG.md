@@ -1,5 +1,13 @@
 # @flowview/astro-events
 
+## 1.0.0
+
+### Patch Changes
+
+- Updated dependencies [2937a38]
+  - @flowview/events@0.2.0
+  - @flowview/vite-events@0.1.2
+
 ## 0.1.4
 
 ### Patch Changes
