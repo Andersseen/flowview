@@ -142,8 +142,16 @@ task, and no npm Changeset is needed because npm behavior did not change.
 
 The runtime package archive was inspected and excludes tests. The standalone
 committed-artifact consumer builds and renders, and the compiler/Oxc absence is
-verified from its Cargo graph. Linux/macOS/Windows CI jobs exercise that
-consumer and artifact check; those remote results are required before M4 exit.
+verified from its Cargo graph. `scripts/verify-aot-packaged-consumer.sh` now
+packages the runtime with Cargo, inspects the archive, extracts it outside the
+workspace, and builds a separate consumer from those extracted files. The
+consumer checks typed and native contexts, escaping, trusted raw output,
+Unicode, repeatable output and useful invalid-format errors, then inspects its
+normal/build dependency graph. This local candidate-package result is not
+registry verification. Linux/macOS/Windows CI runs this packaged-consumer
+contract; those candidate-commit results are required before M4 exit. After
+publication, the existing release workflow still performs the distinct
+exact-version registry consumer checks.
 Local Rust workspace tests, clippy, formatting, docs, exact runtime MSRV,
 package creation, spec coverage and the complete local pnpm typecheck/test/build/
 lint chain were run. The frozen pnpm install could not access npm due the

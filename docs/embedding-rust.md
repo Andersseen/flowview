@@ -97,6 +97,13 @@ strings verbatim and does not sanitize HTML.
 - **Consumer toolchain: Rust 1.85 or newer** for the runtime-only dependency
   graph; this is distinct from the compiler/regeneration floor.
 
+The CI packaged-consumer check runs `scripts/verify-aot-packaged-consumer.sh`.
+It packages `flowview-static-runtime`, inspects and extracts the `.crate`, then
+builds a fresh consumer from that extracted package on Linux, macOS and Windows.
+This proves the candidate Cargo package boundary; it does not prove a crates.io
+installation. The release workflow separately checks registry-installed crate
+versions after publication. See the [M4 exit evidence](milestones/m4-exit.md).
+
 ### AOT design measurements
 
 The checked-in prototype compares serialized artifacts with generated Rust

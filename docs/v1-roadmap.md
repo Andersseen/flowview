@@ -17,7 +17,10 @@ design**. Only a shipping implementation PR updates normative requirements and
 the executable conformance mapping. This documentation change implements nothing.
 
 **Current phase:** controlled pre-1.0 evolution. **M1, M2 and M3 — complete;
-M4 — active; S — queued.** M3 exit evidence is PR [#45](https://github.com/Andersseen/flowview/pull/45), merged before this baseline. M1's maintainer-reviewed exit evidence is PR [#41](https://github.com/Andersseen/flowview/pull/41): compiler-backed `.flow` and
+M4 — active; S — queued.** M4's current candidate evidence and pending exit
+checks are tracked in [the M4 exit record](milestones/m4-exit.md). M3 exit
+evidence is PR [#45](https://github.com/Andersseen/flowview/pull/45), merged
+before this baseline. M1's maintainer-reviewed exit evidence is PR [#41](https://github.com/Andersseen/flowview/pull/41): compiler-backed `.flow` and
 Astro diagnostics, Events diagnostic ownership, UTF-8 → UTF-16 mapping, packaged
 VSIX acceptance without Rust, 105/105 spec coverage, packed artifacts, full CI,
 bounded fuzz and browser acceptance. Its package release followed in PR

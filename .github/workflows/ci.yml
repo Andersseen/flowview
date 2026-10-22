@@ -67,6 +67,9 @@ jobs:
             exit 1
           fi
 
+      - name: Verify the packaged AOT runtime in an isolated consumer
+        run: scripts/verify-aot-packaged-consumer.sh
+
       - name: Build docs
         run: cargo doc -p flowview-compiler --no-deps --locked
         env:
@@ -114,6 +117,10 @@ jobs:
             echo 'AOT consumer unexpectedly depends on the compiler/Oxc.' >&2
             exit 1
           fi
+
+      - name: Verify the packaged AOT runtime in an isolated consumer
+        shell: bash
+        run: scripts/verify-aot-packaged-consumer.sh
 
   typescript:
     runs-on: ubuntu-latest
