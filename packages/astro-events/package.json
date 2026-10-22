@@ -1,6 +1,6 @@
 {
   "name": "@flowview/astro-events",
-  "version": "0.1.4",
+  "version": "1.0.0",
   "type": "module",
   "sideEffects": false,
   "description": "flowview Events integration for Astro.",
@@ -54,7 +54,7 @@
   },
   "peerDependencies": {
     "astro": ">=5 <8",
-    "@flowview/events": "^0.1.1",
-    "@flowview/vite-events": "^0.1.1"
+    "@flowview/events": "^0.2.0",
+    "@flowview/vite-events": "^0.1.2"
   }
 }

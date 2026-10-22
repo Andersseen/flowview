@@ -1,5 +1,11 @@
 # @flowview/dom
 
+## 0.3.0
+
+### Minor Changes
+
+- 2937a38: Define native form-control behavior with explicit DOM replacement, and delegate non-bubbling details toggle events through capture.
+
 ## 0.2.0
 
 ### Minor Changes
