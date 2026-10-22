@@ -13,8 +13,10 @@
 > Historical verification below remains attributed to its original workstream.
 > Current evidence and maturity: [v1 roadmap](v1-roadmap.md#current-baseline-and-evidence).
 >
-> **Current phase:** controlled pre-1.0 product/DX evolution. M1 and M2 are
-> complete; M3 Forms and DOM Replacement Semantics is active; M4 and S are queued.
+> **Current phase:** controlled pre-1.0 product/DX evolution. M1, M2 and M3
+> are complete; M4 Precompiled Static Templates is active; S is queued. M3 exit
+> evidence is [PR #45](https://github.com/Andersseen/flowview/pull/45); this
+> proposed state becomes authoritative when the reviewed PR is merged.
 > The roadmap's active
 > milestone marker is the sole scheduling authority; RC rules override it at freeze.
 
@@ -303,10 +305,10 @@ What is already genuinely solid (recent hardening phases A–D):
   loop bindings; documented escaping limits per HTML context.
 
 Remaining product gaps are tracked in the [current-state matrix](v1-roadmap.md#current-baseline-and-evidence)
-and bounded milestones: explicit native forms/replacement behavior and
-compiler-free static consumption. M1 editor diagnostics and M2 scoped browser
-composition are complete. Spec conformance is implemented (117/117 at this
-baseline), not an open blocker. Static rendering being Rust/CLI-only is a
+and bounded milestones: compiler-free static consumption. M1 editor diagnostics,
+M2 scoped browser composition and M3 native forms/replacement behavior are
+complete. Spec conformance is implemented (126/126 at this baseline), not an open
+blocker. Static rendering being Rust/CLI-only is a
 supported boundary; exposing it through WASM is not required for v1.
 
 ---
