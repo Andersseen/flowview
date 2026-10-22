@@ -134,7 +134,9 @@ flowview currently supports:
 Binding attributes: `[disabled]` (and `hidden`, `checked`, `selected`,
 `required`, `readonly`, `multiple`, `open`), `[attr.name]="expr"`, and
 `[class.name]="expr"`. Full-value interpolation (`href="{{ expr }}"`) is also
-supported.
+supported. Boolean bindings serialize ordinary HTML boolean attributes; they
+initialize native control defaults but do not bind a live DOM property after
+the browser or user changes it.
 
 In the JavaScript target, iterables are normalized with `Array.from`, so
 arrays, sets, maps, generators, and array-like objects can be rendered.
@@ -416,6 +418,42 @@ stop(); // disconnects the source; manual render/update remain available
   and `src/state/client-state.ts`) uses `view.bind()` with FlowView Events and
   marks the summary, list, item rows and selected-task output with references.
 
+### Native forms and DOM replacement
+
+Use native HTML controls and commit application state at an intentional update
+boundary. A text input's initial value comes from its `value` attribute; a
+textarea's initial value comes from its element text. `[checked]`, `[selected]`,
+`[open]`, `[disabled]` and `[required]` serialize HTML boolean attributes.
+After user interaction, live properties such as `input.value`, `input.checked`
+and `option.selected` may differ from those attributes and default properties.
+Native `form.reset()` restores the rendered defaults for form controls.
+
+```flow
+<form (submit)="saveDraft($event, $el)">
+  <input data-flow-ref="name" value="{{ context.name }}" />
+  <textarea data-flow-ref="notes">{{ context.notes }}</textarea>
+  <input type="checkbox" data-flow-ref="enabled" [checked]="context.enabled" />
+  <button type="submit">Save</button>
+</form>
+
+<script data-flowview>
+  function saveDraft(event, form) {
+    event.preventDefault();
+    const values = new FormData(form);
+    // Commit values to application state, then perform an explicit view update.
+  }
+</script>
+```
+
+Do not bind every text-input keystroke to `view.bind(source)` when preserving
+active editing matters: each synchronous emission replaces the entire view and
+may detach the focused input. Refs expose current native controls when an
+application needs a live property; reacquire them after `render()` or `update()`.
+FlowView does not promise preservation of dirty values, focus, caret, selection
+or IME composition across replacement, and provides no two-way binding or form
+framework. The Chromium-tested form route is an E2E fixture, not a promise of
+identical behavior in every browser.
+
 ## Use With Hono or Plain Node.js
 
 flowview generates a plain `render(context)` function, so it works with any
@@ -527,7 +565,9 @@ appends a `registerFlowHandlers(scope, handlers, events)` call to the script.
 The runtime (`@flowview/events/runtime`) attaches one delegated `document`
 listener per event type and resolves the handler at dispatch time, so elements
 added to the DOM later (view transitions, `@for` re-renders) work without
-rebinding. `data-flowview` (not `flowview`) is required because `<script>`
+rebinding. It supports `click`, `input`, `change`, `submit`, `keydown`,
+`focus`, `blur`, `focusin`, `focusout`, composition events, and `toggle`; focus,
+blur and toggle use capture delegation. `data-flowview` (not `flowview`) is required because `<script>`
 attributes are strictly typed in Astro's JSX namespace, and only `data-*`
 attributes are permitted to hold arbitrary custom markers.
 

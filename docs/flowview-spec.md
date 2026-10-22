@@ -643,6 +643,59 @@ v1 includes basic editor support:
   by both JavaScript and static output; the compiler does not assign it special
   syntax or runtime meaning.
 
+## Native Browser Forms and Replacement
+
+These requirements describe the browser behavior of existing HTML attributes,
+FlowView Events and `@flowview/dom`. They do not add compiler property-binding
+semantics. Browser acceptance currently runs in Chromium; it does not promise
+identical focus, selection or composition behavior in every browser.
+
+- **SPEC-HTML-118** — HTML attributes initialize native control defaults when
+  the browser parses FlowView output. Native reflection rules determine whether
+  interaction also changes a corresponding attribute; non-reflected live
+  properties can diverge from serialized attributes and defaults. A later
+  FlowView replacement creates new controls from the newly rendered
+  attributes/content.
+- **SPEC-HTML-119** — A text input's initial value is authored with its ordinary
+  `value` attribute. A textarea's initial/default value is authored as its
+  element text content; a `value` attribute does not set the textarea value.
+  The browser's live `value` property remains locally editable until replacement.
+- **SPEC-HTML-120** — Existing boolean bindings such as `[checked]`,
+  `[selected]`, `[open]`, `[disabled]` and `[required]` serialize ordinary HTML
+  boolean attributes. Native checkbox/radio, select/option, multiple-select,
+  disabled, required and details behavior follows browser rules. `form.reset()`
+  restores controls from their default attributes/content; it does not reset a
+  `<details>` element. The `<details>.open` property reflects its `open`
+  attribute when toggled. Replacement initializes fresh controls from rendered
+  defaults.
+- **SPEC-HTML-121** — FlowView Events delegates `click`, `input`, `change`,
+  `submit`, `keydown`, `focus`, `blur`, `focusin`, `focusout`,
+  `compositionstart`, `compositionupdate`, `compositionend` and `toggle` to
+  native events. `$event`, `$el`, literal and template-scope property-path
+  arguments remain native values. Focus, blur and toggle use capture delegation;
+  delegated handlers continue to work on replacement nodes.
+- **SPEC-HTML-122** — A FlowView submit handler receives the native submit event
+  and form element. FlowView does not prevent the browser's default action; the
+  application may call `preventDefault()` and read native values with APIs such
+  as `FormData` before choosing whether to update a view.
+- **SPEC-HTML-123** — `render()` and `update()` replace the owned `innerHTML`.
+  Existing controls and refs become detached; browser-local values and node
+  identity do not survive automatically, and focus, selection/caret and
+  composition continuity are not promised. Callers reacquire current controls
+  through scoped refs after replacement.
+- **SPEC-HTML-124** — `view.bind(source)` replaces the view synchronously for
+  every source emission. Applications avoid feeding every keystroke from an
+  actively edited control into a bound source when they need browser-local
+  editing continuity; they can commit draft values at an explicit event/update
+  boundary instead.
+- **SPEC-HTML-125** — Form values remain untrusted data. Rendering a submitted
+  value through escaped `{{ expression }}` interpolation keeps markup inert;
+  forms add no raw interpolation path.
+- **SPEC-HTML-126** — `view.ref()` and `view.refs()` return the current native
+  `Element` objects, which applications may narrow to native control types to
+  read live properties such as `value`, `checked` and `selected`. FlowView does
+  not wrap elements or introduce a form/property helper API.
+
 ## Test Strategy
 
 Every supported behavior has at least one test at the lowest useful layer:

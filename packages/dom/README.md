@@ -59,3 +59,44 @@ FlowView Events keeps using its delegated event listeners across replacement;
 DOM views do not create or own another Events lifecycle. FlowView remains a
 string renderer with no virtual DOM, reconciler, hydration or implicit component
 lifecycle.
+
+## Native form controls
+
+Bindings such as `[checked]`, `[selected]`, `[open]`, `[disabled]` and
+`[required]` serialize ordinary HTML boolean attributes. They seed the browser's
+initial and default control state; they do not keep live DOM properties bound
+after user interaction.
+
+```flow
+<input data-flow-ref="name" value="{{ context.name }}" />
+<textarea data-flow-ref="notes">{{ context.notes }}</textarea>
+<input type="checkbox" [checked]="context.enabled" />
+<option value="south" [selected]="context.region === 'south'">South</option>
+<details [open]="context.showDetails">...</details>
+```
+
+For textareas, render the initial value as element text, not a `value` attribute.
+The browser may change `input.value`, `checked`, `select.value` and
+`option.selected` while the corresponding attributes/default properties remain
+unchanged. `form.reset()` restores native controls to their HTML defaults.
+
+Read a live value through a scoped native reference when needed:
+
+```ts
+const name = view.ref<HTMLInputElement>("name");
+const draft = name?.value;
+```
+
+Keep active typing browser-local and commit at an explicit event boundary, such
+as form submit. `view.bind(source)` synchronously replaces the entire view on
+every source emission; connecting each keystroke to a bound source can detach
+the focused input immediately. Every `render()` or `update()` also replaces
+controls, losing their local dirty values and node identity. Focus, selection,
+caret and IME composition are not automatically restored. Reacquire refs after
+replacement. There is no two-way binding, form state model, validation layer,
+general property setter, or reconciliation.
+
+FlowView Events does not prevent form submission. A handler chooses whether to
+call `event.preventDefault()` and can read current controls with native APIs
+such as `new FormData(form)`. See the browser-tested acceptance example in
+`examples/astro-demo/e2e/forms.spec.ts`.

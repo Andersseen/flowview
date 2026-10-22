@@ -89,6 +89,22 @@ describe("registerFlowHandlers", () => {
     expect(calls).toEqual(["focused"]);
   });
 
+  it("delegates the non-bubbling details toggle event via capture", () => {
+    setDocument(
+      `<details data-flow-on-toggle="onToggle" data-flow-scope="scope-toggle"></details>`,
+    );
+    const calls: string[] = [];
+    registerFlowHandlers(
+      "scope-toggle",
+      { onToggle: () => calls.push("toggled") },
+      ["toggle"],
+    );
+
+    const details = document.querySelector("details") as HTMLDetailsElement;
+    details.dispatchEvent(new Event("toggle"));
+    expect(calls).toEqual(["toggled"]);
+  });
+
   it("unbind removes only its own scope", () => {
     setDocument(`
       <button data-flow-on-click="save" data-flow-scope="scope-x">X</button>

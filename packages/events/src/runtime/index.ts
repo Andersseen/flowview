@@ -9,8 +9,8 @@ const FLOW_EVENT_MARKER = "__flow";
 // Elements without a `data-flow-scope` attribute resolve against this scope.
 const DEFAULT_SCOPE = "";
 
-// focus/blur do not bubble, so delegation for them must use the capture phase.
-const CAPTURE_EVENTS = new Set(["focus", "blur"]);
+// These native events do not bubble, so delegation uses the capture phase.
+const CAPTURE_EVENTS = new Set(["focus", "blur", "toggle"]);
 
 const registry = new Map<string, FlowEventHandlers>();
 const listening = new Set<string>();

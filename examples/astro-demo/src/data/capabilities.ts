@@ -100,7 +100,7 @@ export const capabilityGroups: CapabilityGroup[] = [
         group: "compiler",
         title: "@for / @empty",
         description:
-          "Keyed loops with an empty fallback, including transitions.",
+          "Loops with an empty fallback; track is accepted but does not preserve DOM identity.",
         route: "/client-dom",
         evidence: ALL_RENDERED,
       },
@@ -152,8 +152,9 @@ export const capabilityGroups: CapabilityGroup[] = [
       {
         id: "click-input",
         group: "events",
-        title: "(click) and (input)",
-        description: "Native, delegated listeners declared in the template.",
+        title: "Native delegated Events",
+        description:
+          "click, input, change, submit, keyboard, focus/blur, composition and toggle events.",
         route: "/events",
         evidence: ALL_RENDERED,
       },
@@ -206,6 +207,15 @@ export const capabilityGroups: CapabilityGroup[] = [
         description: "Delegated handlers keep working with no rebinding code.",
         route: "/client-dom#dynamic",
         evidence: ["live-demo", "browser-e2e"],
+      },
+      {
+        id: "native-forms",
+        group: "client",
+        title: "Native forms with explicit replacement",
+        description:
+          "Text, textarea, checkbox, radio, select and details use native HTML defaults. There is no two-way binding, form framework or focus/caret preservation.",
+        route: "/events#native-forms",
+        evidence: ["browser-e2e"],
       },
     ],
   },
