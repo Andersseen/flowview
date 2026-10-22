@@ -9,11 +9,12 @@ maintainer acceptance. No crate or npm package was published for this work.
 
 - Base commit: `0c45006b515a3393ef6f8ffdd72c64fdcfecfa8a` (PR #47 merge).
 - Candidate implementation SHA: `2f7337bcefa39bfddae69f5a4b2f081df5a17c03`.
-- CI-verified PR candidate SHA: `229d4d9ab6c177379d8340c09ed9d113bdb49fa4`.
-  [CI run 115](https://github.com/Andersseen/flowview/actions/runs/39801747440)
-  and [Fuzz run 52](https://github.com/Andersseen/flowview/actions/runs/39801747487)
-  completed successfully on this SHA. The status/documentation-only follow-up
-  must also pass its candidate Actions before merge.
+- CI-verified phase-transition candidate SHA:
+  `c69fb8ec985227b19f29d707bdafbdd90baf27a4`.
+  [CI run 116](https://github.com/Andersseen/flowview/actions/runs/39803656544)
+  and [Fuzz run 53](https://github.com/Andersseen/flowview/actions/runs/39803656401)
+  completed successfully on this SHA, including all three packaged-consumer OS
+  jobs, Rust MSRVs, release readiness and browser acceptance.
 - Versions: `flowview-static-runtime 0.1.0`; compiler, CLI and WASM `0.3.0`.
 - Accepted design: the existing shared parser/AST and compiler static lowering
   emit deterministic, versioned JSON IR; `flowview-static-runtime` validates,
