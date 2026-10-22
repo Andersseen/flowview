@@ -15,21 +15,29 @@ CompiledStaticTemplate::render
 HTML String
 ```
 
+There are two supported ways to consume a static template:
+
+- **Runtime compilation:** use `flowview-compiler` when the template is chosen
+  or created while the application is running.
+- **AOT:** use the compiler/CLI during development or release, commit the
+  generated artifact, then use `flowview-static-runtime` in the final app. The
+  app does not need the compiler or Oxc in its dependency graph.
+
 ## Install
 
 ```toml
 [dependencies]
-flowview-compiler = "0.2"
+flowview-compiler = "0.3"
 serde_json = "1"
 ```
 
-`flowview-compiler` 0.2.0 is the first release prepared for crates.io. Until it
+`flowview-compiler` 0.3.0 is the first release prepared for crates.io. Until it
 has been published, depend on a Git revision of this repository instead; the
 release process is in [RELEASE.md](../RELEASE.md). The npm packages
 (`@flowview/*`) do not provide the Rust crate and the crate does not provide
 the npm packages: the two install stories are independent.
 
-- **MSRV: Rust 1.91.** Declared as `rust-version` and verified in CI on
+- **Compiler MSRV: Rust 1.91.** Declared as `rust-version` and verified in CI on
   exactly 1.91.0. It is set by the JavaScript parser dependency (`oxc_parser`);
   see [rust-consumer-readiness.md](rust-consumer-readiness.md) for the
   evidence. Raising it is a minor-version change while Flowview is pre-1.0.
@@ -40,6 +48,89 @@ the npm packages: the two install stories are independent.
   stripped, LTO release binary. This is a measurement on one machine, not a
   guarantee; `scripts/measure-static-footprint.sh` reproduces it.
 
+## Precompiled templates (AOT)
+
+Use this path when templates are known before building the final application.
+It does not change `compile_static`, `CompiledStaticTemplate` or
+`render_static`; those remain supported for runtime compilation.
+
+Generate and commit the artifact:
+
+```bash
+cargo install flowview-cli --version 0.3.0
+flowview precompile templates/page.flow --out src/page.flowview.json \
+  --display-name templates/page.flow
+flowview precompile templates/page.flow --out src/page.flowview.json \
+  --display-name templates/page.flow --check
+```
+
+Consume it without the compiler:
+
+```toml
+[dependencies]
+flowview-static-runtime = "0.1"
+serde = { version = "1", features = ["derive"] }
+```
+
+```rust
+use flowview_static_runtime::Template;
+
+const PAGE: &[u8] = include_bytes!("page.flowview.json");
+let template = Template::from_bytes(PAGE)?; // decode and prepare once
+let html = template.render_serializable(&page_model)?;
+```
+
+The artifact is compact JSON data with identity `FLOWVIEW-STATIC` and format
+version `1`. The runtime rejects unknown format versions, malformed input and
+artifacts larger than 16 MiB. Regenerate artifacts when the format version is
+unsupported; the compiler version is recorded for diagnosis. The `.flow`
+source and logical filename are included for runtime source locations, so
+artifact generation must avoid putting secrets in templates and must use a
+relative `--display-name`. Raw interpolation remains a trust boundary: it emits
+strings verbatim and does not sanitize HTML.
+
+- **Runtime MSRV: Rust 1.85.** The separate runtime crate is tested with exactly
+  1.85.0. A final consumer using only that crate and dependencies can build from
+  Rust 1.85, subject to its own dependency and target requirements.
+- **Regeneration toolchain: Rust 1.91.** The compiler and CLI use the Oxc
+  parser and require the compiler MSRV to regenerate artifacts.
+- **Consumer toolchain: Rust 1.85 or newer** for the runtime-only dependency
+  graph; this is distinct from the compiler/regeneration floor.
+
+### AOT design measurements
+
+The checked-in prototype compares serialized artifacts with generated Rust
+modules that embed the same artifact bytes and call the same runtime decoder.
+On macOS with Rust 1.91, the shared release profile (opt-level 3, LTO, one codegen
+unit, stripped, panic abort) produced these results for the included page model:
+
+| Consumer                            | Compile/prepare per template | Render per call | Binary size |
+| ----------------------------------- | ---------------------------: | --------------: | ----------: |
+| Runtime compiler (`compile_static`) |                       600 µs |         6.14 µs | 1,163,504 B |
+| AOT (`Template::from_bytes`)        |                      18.9 µs |         1.67 µs |   517,824 B |
+
+The measurement loops ran 500 compilations/preparations and 10,000 renders per
+consumer. They are one-machine observations, not performance guarantees. The
+AOT consumer binary was 645,680 bytes (55.5%) smaller, and its normal/build
+dependency tree contains no compiler or Oxc crate.
+
+The scaling prototype measured a single artifact several times and reports the
+bytes for the requested set. Generated Rust adds its wrapper source around the
+same serialized bytes; it did not change binary size or behavior in this
+prototype. `n=1` is a clean consumer build; `n=10` and `n=50` are incremental
+builds in that same temporary project.
+
+| Templates | Serialized artifacts | Generated Rust source | Binary, either form |
+| --------: | -------------------: | --------------------: | ------------------: |
+|         1 |              4,455 B |               4,722 B |           517,776 B |
+|        10 |             44,550 B |              47,220 B |           567,312 B |
+|        50 |            222,830 B |             236,180 B |           748,944 B |
+
+Reproduce the scaling run with `CARGO_NET_OFFLINE=true python3
+scripts/measure-aot.py`; it needs the Rust CLI build and Node already available.
+The paired operation loops live in `examples/compiler-consumer` and
+`examples/aot-consumer` (`cargo run --release --bin measure` in each project).
+
 ## Public surface
 
 | Item                                                 | Role                                                         |
@@ -48,6 +139,7 @@ the npm packages: the two install stories are independent.
 | `CompiledStaticTemplate::render(&Value)`             | Render one context. Immutable, `Send + Sync`.                |
 | `CompiledStaticTemplate::render_serializable(&T)`    | `T: Serialize` convenience over `render` (see below).        |
 | `render_static(source, &Value, StaticRenderOptions)` | One-shot convenience.                                        |
+| `compile_static_artifact(source, options)`           | Produce deterministic versioned AOT bytes.                   |
 | `Diagnostic`, `DiagnosticFormatter`                  | Structured errors (code, severity, line, column, byte span). |
 | `compile(source, CompileOptions)`                    | The JavaScript backend (used by the npm packages).           |
 

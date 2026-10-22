@@ -6,20 +6,20 @@
 
 mod evaluator;
 
-use std::{borrow::Cow, collections::HashMap};
+use std::collections::HashMap;
 
 use serde::Serialize;
 use serde_json::Value;
 
 use crate::{
-    ast::{Attribute, ElementNode, InterpolationMode, Node, RootNode, Span},
+    ast::{Attribute, InterpolationMode, Node, RootNode, Span},
     diagnostics::{Diagnostic, DiagnosticCode},
     parser, validation,
 };
-use evaluator::{
-    eval, lower, render_attribute_value, render_raw_value, render_value, EvalError, Expr, Scope,
-    Val,
-};
+use evaluator::{lower, EvalError, Expr, Key};
+use oxc_ast::ast::{BinaryOperator, LogicalOperator};
+
+type LoweredArtifact = (Vec<u8>, Vec<Diagnostic>, Option<String>);
 
 /// Options for [`render_static`] (and, through [`StaticCompileOptions`],
 /// [`compile_static`]).
@@ -49,18 +49,182 @@ pub struct StaticRenderOutput {
     pub warnings: Vec<Diagnostic>,
 }
 
+/// A deterministic serialized artifact for [`flowview_static_runtime`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StaticArtifactOutput {
+    pub bytes: Vec<u8>,
+    pub warnings: Vec<Diagnostic>,
+}
+
+/// Compile a `.flow` template into the versioned artifact consumed by
+/// `flowview-static-runtime`. Compilation uses the same parser, validation and
+/// Oxc-backed expression lowering as [`compile_static`].
+pub fn compile_static_artifact(
+    source: &str,
+    options: StaticCompileOptions,
+) -> Result<StaticArtifactOutput, Vec<Diagnostic>> {
+    if options
+        .filename
+        .as_deref()
+        .is_some_and(is_nonlogical_filename)
+    {
+        return Err(vec![Diagnostic::new(
+            "AOT artifact source names must be logical relative paths",
+            1,
+            1,
+            0,
+            0,
+        )]);
+    }
+    let (bytes, warnings, _) = lower_artifact(source, options)?;
+    Ok(StaticArtifactOutput { bytes, warnings })
+}
+
+fn is_nonlogical_filename(filename: &str) -> bool {
+    std::path::Path::new(filename).is_absolute()
+        || filename.starts_with(['/', '\\'])
+        || filename.as_bytes().get(1) == Some(&b':')
+        || filename
+            .split(['/', '\\'])
+            .any(|component| component == "..")
+}
+
+fn lower_artifact(
+    source: &str,
+    options: StaticCompileOptions,
+) -> Result<LoweredArtifact, Vec<Diagnostic>> {
+    let root = parser::parse(source)?;
+    let warnings = validation::validate(&root, source);
+    let mut exprs = HashMap::new();
+    let mut errors = Vec::new();
+    collect_root(&root, source, &mut exprs, &mut errors);
+    if !errors.is_empty() {
+        return Err(errors);
+    }
+    let filename = options.filename;
+    let artifact_filename = filename.as_deref().unwrap_or("<template>");
+    let nodes = artifact_nodes(&root.children, &exprs, source);
+    let artifact = serde_json::json!({
+        "magic": flowview_static_runtime::ARTIFACT_MAGIC,
+        "format_version": flowview_static_runtime::FORMAT_VERSION,
+        "compiler_version": env!("CARGO_PKG_VERSION"),
+        "source": source,
+        "filename": artifact_filename,
+        "nodes": nodes,
+    });
+    let bytes = serde_json::to_vec(&artifact).map_err(|error| {
+        vec![Diagnostic::new(
+            format!("Could not serialize static template artifact: {error}"),
+            1,
+            1,
+            0,
+            0,
+        )]
+    })?;
+    if bytes.len() > flowview_static_runtime::MAX_ARTIFACT_BYTES {
+        return Err(vec![Diagnostic::new(
+            format!(
+                "Static template artifact exceeds the {}-byte runtime limit",
+                flowview_static_runtime::MAX_ARTIFACT_BYTES
+            ),
+            1,
+            1,
+            0,
+            source.len(),
+        )]);
+    }
+    Ok((bytes, warnings, filename))
+}
+
+fn artifact_span(span: Span) -> Value {
+    serde_json::json!({"start": span.start, "end": span.end})
+}
+
+fn artifact_expr(expr: &Expr) -> Value {
+    match expr {
+        Expr::Null => serde_json::json!({"type": "null"}),
+        Expr::Bool(value) => serde_json::json!({"type": "bool", "value": value}),
+        Expr::Num(value) => serde_json::json!({"type": "number", "value": value}),
+        Expr::Str(value) => serde_json::json!({"type": "string", "value": value}),
+        Expr::Ident(name) => serde_json::json!({"type": "ident", "name": name}),
+        Expr::Member(object, Key::Name(value)) => serde_json::json!({
+            "type": "member", "object": artifact_expr(object), "key": {"type": "name", "value": value}
+        }),
+        Expr::Member(object, Key::Index(value)) => serde_json::json!({
+            "type": "member", "object": artifact_expr(object), "key": {"type": "index", "value": value}
+        }),
+        Expr::Not(inner) => serde_json::json!({"type": "not", "inner": artifact_expr(inner)}),
+        Expr::Logical(op, left, right) => serde_json::json!({
+            "type": "logical",
+            "op": match op { LogicalOperator::And => "and", LogicalOperator::Or => "or", LogicalOperator::Coalesce => "coalesce" },
+            "left": artifact_expr(left), "right": artifact_expr(right)
+        }),
+        Expr::Binary(op, left, right) => serde_json::json!({
+            "type": "binary",
+            "op": match op {
+                BinaryOperator::Equality => "equality",
+                BinaryOperator::Inequality => "inequality",
+                BinaryOperator::StrictEquality => "strict_equality",
+                BinaryOperator::StrictInequality => "strict_inequality",
+                BinaryOperator::LessThan => "less_than",
+                BinaryOperator::LessEqualThan => "less_equal_than",
+                BinaryOperator::GreaterThan => "greater_than",
+                BinaryOperator::GreaterEqualThan => "greater_equal_than",
+                _ => unreachable!("only supported operators reach artifact conversion"),
+            },
+            "left": artifact_expr(left), "right": artifact_expr(right)
+        }),
+    }
+}
+
+fn artifact_nodes(nodes: &[Node], exprs: &Exprs, source: &str) -> Vec<Value> {
+    let get = |expression: &str| {
+        artifact_expr(
+            exprs
+                .get(expression)
+                .expect("expression lowered in compile pre-pass"),
+        )
+    };
+    nodes.iter().map(|node| match node {
+        Node::Text(text) => serde_json::json!({"type": "text", "value": text.value, "span": artifact_span(text.span)}),
+        Node::Interpolation(i) => serde_json::json!({"type": "interpolation", "expression": get(&i.expression), "raw": i.mode == InterpolationMode::Raw, "span": artifact_span(i.span)}),
+        Node::Element(element) => {
+            let attributes: Vec<Value> = element.attributes.iter().map(|attribute| match attribute {
+                Attribute::Plain(a) => serde_json::json!({"kind": "plain", "name": source_attribute_name(a.span, source).unwrap_or(&a.name), "value": a.value, "quote": a.quote.to_string(), "span": artifact_span(a.span)}),
+                Attribute::Dynamic(a) => serde_json::json!({"kind": "dynamic", "name": a.name, "expression": get(&a.expression), "span": artifact_span(a.span)}),
+                Attribute::BooleanBinding(a) => serde_json::json!({"kind": "boolean", "name": a.name, "expression": get(&a.expression), "span": artifact_span(a.span)}),
+                Attribute::AttributeBinding(a) => serde_json::json!({"kind": "bound", "name": a.name, "expression": get(&a.expression), "span": artifact_span(a.span)}),
+                Attribute::ClassBinding(a) => serde_json::json!({"kind": "class", "name": a.name, "expression": get(&a.expression), "span": artifact_span(a.span)}),
+            }).collect();
+            let tag = source_tag_name(element.span, source).unwrap_or(&element.tag);
+            serde_json::json!({"type": "element", "tag": tag, "attributes": attributes, "children": artifact_nodes(&element.children, exprs, source), "self_closing": element.self_closing, "span": artifact_span(element.span)})
+        }
+        Node::IfBlock(block) => {
+            let branches: Vec<Value> = block.branches.iter().map(|branch| serde_json::json!({"condition": get(&branch.condition), "children": artifact_nodes(&branch.children, exprs, source), "span": artifact_span(branch.span)})).collect();
+            let otherwise = block.else_branch.as_ref().map_or_else(Vec::new, |items| artifact_nodes(items, exprs, source));
+            serde_json::json!({"type": "if", "branches": branches, "otherwise": otherwise, "span": artifact_span(block.span)})
+        }
+        Node::ForBlock(block) => {
+            let empty = block.empty.as_ref().map_or_else(Vec::new, |items| artifact_nodes(items, exprs, source));
+            serde_json::json!({"type": "for", "item": block.item, "iterable": get(&block.iterable), "children": artifact_nodes(&block.children, exprs, source), "empty": empty, "span": artifact_span(block.span)})
+        }
+        Node::SwitchBlock(block) => {
+            let cases: Vec<Value> = block.cases.iter().map(|case| serde_json::json!({"expression": get(&case.expression), "children": artifact_nodes(&case.children, exprs, source), "span": artifact_span(case.span)})).collect();
+            let otherwise = block.default.as_ref().map_or_else(Vec::new, |items| artifact_nodes(items, exprs, source));
+            serde_json::json!({"type": "switch", "expression": get(&block.expression), "cases": cases, "otherwise": otherwise, "span": artifact_span(block.span)})
+        }
+    }).collect()
+}
+
 /// A template that has been parsed, validated and expression-lowered once.
 ///
-/// It owns everything needed to render (AST, source text for diagnostics,
-/// lowered expressions, compile-time warnings), so the original source string
-/// may be dropped. It is immutable: [`render`](Self::render) borrows it and
-/// keeps all per-render state (scope, output) local to the call, so one
+/// It owns the compiler-free prepared runtime representation and compile-time
+/// warnings, so the original source string may be dropped. It is immutable:
+/// [`render`](Self::render) borrows it and keeps per-render state local, so one
 /// compiled template can render any number of contexts, from any thread.
 #[derive(Debug)]
 pub struct CompiledStaticTemplate {
-    source: String,
-    root: RootNode,
-    exprs: Exprs,
+    runtime: flowview_static_runtime::Template,
     warnings: Vec<Diagnostic>,
     filename: Option<String>,
 }
@@ -80,22 +244,21 @@ pub fn compile_static(
 impl CompiledStaticTemplate {
     /// Same as [`compile_static`].
     pub fn compile(source: &str, options: StaticCompileOptions) -> Result<Self, Vec<Diagnostic>> {
-        let root = parser::parse(source)?;
-        let warnings = validation::validate(&root, source);
-
-        let mut exprs = HashMap::new();
-        let mut errors = Vec::new();
-        collect_root(&root, source, &mut exprs, &mut errors);
-        if !errors.is_empty() {
-            return Err(errors);
-        }
-
+        let (artifact, warnings, filename) = lower_artifact(source, options)?;
+        let runtime =
+            flowview_static_runtime::Template::from_bytes(&artifact).map_err(|error| {
+                vec![Diagnostic::new(
+                    format!("Could not prepare static template: {error}"),
+                    1,
+                    1,
+                    0,
+                    source.len(),
+                )]
+            })?;
         Ok(Self {
-            source: source.to_owned(),
-            root,
-            exprs,
+            runtime,
             warnings,
-            filename: options.filename,
+            filename,
         })
     }
 
@@ -113,16 +276,21 @@ impl CompiledStaticTemplate {
     /// Render against a JSON object context (visible to the template as
     /// `context`). Only context-dependent failures can occur here.
     pub fn render(&self, context: &Value) -> Result<String, Vec<Diagnostic>> {
-        check_context(context)?;
-        let mut renderer = Renderer {
-            template: self,
-            scope: Scope::new(context),
-            out: String::new(),
-        };
-        renderer
-            .nodes(&self.root.children)
-            .map_err(|diagnostic| vec![diagnostic])?;
-        Ok(renderer.out)
+        self.runtime.render(context).map_err(|errors| {
+            errors
+                .into_iter()
+                .map(|error| {
+                    Diagnostic::new(
+                        error.message,
+                        error.line,
+                        error.column,
+                        error.start,
+                        error.end,
+                    )
+                    .with_code(error.code)
+                })
+                .collect()
+        })
     }
 
     /// Serialize `context` with `serde_json` and render the result.
@@ -136,17 +304,21 @@ impl CompiledStaticTemplate {
         &self,
         context: &T,
     ) -> Result<String, Vec<Diagnostic>> {
-        let value = serde_json::to_value(context).map_err(|error| {
-            vec![Diagnostic::new(
-                format!("Static render context could not be serialized to JSON: {error}"),
-                1,
-                1,
-                0,
-                0,
-            )
-            .with_diagnostic_code(DiagnosticCode::StaticInvalidContext)]
-        })?;
-        self.render(&value)
+        self.runtime.render_serializable(context).map_err(|errors| {
+            errors
+                .into_iter()
+                .map(|error| {
+                    Diagnostic::new(
+                        error.message,
+                        error.line,
+                        error.column,
+                        error.start,
+                        error.end,
+                    )
+                    .with_code(error.code)
+                })
+                .collect()
+        })
     }
 }
 
@@ -273,246 +445,6 @@ fn to_diagnostic(error: EvalError, source: &str, span: Span) -> Diagnostic {
         .with_diagnostic_code(error.code)
 }
 
-// ---------------------------------------------------------------------------
-// Renderer
-// ---------------------------------------------------------------------------
-
-/// Per-render state. Borrows the immutable template; owns only the scope and
-/// output buffer.
-struct Renderer<'t, 'a> {
-    template: &'t CompiledStaticTemplate,
-    scope: Scope<'a>,
-    out: String,
-}
-
-type RenderResult = Result<(), Diagnostic>;
-
-impl<'a> Renderer<'_, 'a> {
-    fn source(&self) -> &str {
-        &self.template.source
-    }
-
-    fn value(&self, expression: &str, span: Span) -> Result<Val<'a>, Diagnostic> {
-        let expr = self
-            .template
-            .exprs
-            .get(expression)
-            .expect("expression lowered in pre-pass");
-        eval(expr, &self.scope).map_err(|e| to_diagnostic(e, self.source(), span))
-    }
-
-    fn fail<T>(&self, result: Result<T, EvalError>, span: Span) -> Result<T, Diagnostic> {
-        result.map_err(|e| to_diagnostic(e, self.source(), span))
-    }
-
-    fn nodes(&mut self, nodes: &[Node]) -> RenderResult {
-        nodes.iter().try_for_each(|node| self.node(node))
-    }
-
-    fn node(&mut self, node: &Node) -> RenderResult {
-        match node {
-            Node::Text(text) => self.out.push_str(&text.value),
-            Node::Interpolation(i) => {
-                let value = self.value(&i.expression, i.span)?;
-                let rendered = self.fail(
-                    match i.mode {
-                        InterpolationMode::Escaped => render_value(&value),
-                        InterpolationMode::Raw => render_raw_value(&value),
-                    },
-                    i.span,
-                )?;
-                self.out.push_str(&rendered);
-            }
-            Node::Element(element) => self.element(element)?,
-            Node::IfBlock(block) => {
-                for branch in &block.branches {
-                    if self.value(&branch.condition, branch.span)?.truthy() {
-                        return self.nodes(&branch.children);
-                    }
-                }
-                if let Some(children) = &block.else_branch {
-                    self.nodes(children)?;
-                }
-            }
-            Node::ForBlock(block) => {
-                let iterable = self.value(&block.iterable, block.span)?;
-                let items: Vec<Cow<'a, Value>> = match iterable {
-                    Val::Json(json) => match json {
-                        Cow::Borrowed(Value::Array(items)) => {
-                            items.iter().map(Cow::Borrowed).collect()
-                        }
-                        Cow::Owned(Value::Array(items)) => {
-                            items.into_iter().map(Cow::Owned).collect()
-                        }
-                        other if other.is_null() => Vec::new(),
-                        other => {
-                            return Err(invalid_iterable(self.source(), block.span, &other));
-                        }
-                    },
-                    Val::Undefined => Vec::new(),
-                };
-
-                if items.is_empty() {
-                    if let Some(empty) = &block.empty {
-                        self.nodes(empty)?;
-                    }
-                } else {
-                    self.scope.push(&block.item, Cow::Owned(Value::Null));
-                    for item in items {
-                        self.scope.set_last(item);
-                        if let Err(error) = self.nodes(&block.children) {
-                            self.scope.pop();
-                            return Err(error);
-                        }
-                    }
-                    self.scope.pop();
-                }
-            }
-            Node::SwitchBlock(block) => {
-                let subject = self.value(&block.expression, block.span)?;
-                for case in &block.cases {
-                    let candidate = self.value(&case.expression, case.span)?;
-                    let matched = self.fail(strict_equal(&subject, &candidate), case.span)?;
-                    if matched {
-                        return self.nodes(&case.children);
-                    }
-                }
-                if let Some(children) = &block.default {
-                    self.nodes(children)?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn element(&mut self, element: &ElementNode) -> RenderResult {
-        let source = self.template.source.as_str();
-        self.out.push('<');
-        let tag_name = source_tag_name(element.span, source)
-            .unwrap_or(&element.tag)
-            .to_owned();
-        self.out.push_str(&tag_name);
-
-        let has_class_bindings = element
-            .attributes
-            .iter()
-            .any(|attr| matches!(attr, Attribute::ClassBinding(_)));
-
-        if has_class_bindings {
-            self.merged_class(element)?;
-        }
-
-        for attribute in &element.attributes {
-            match attribute {
-                Attribute::Plain(plain) => {
-                    if has_class_bindings && plain.name == "class" {
-                        continue;
-                    }
-                    self.out.push(' ');
-                    let name = source_attribute_name(plain.span, source).unwrap_or(&plain.name);
-                    self.out.push_str(name);
-                    if let Some(value) = &plain.value {
-                        self.out.push('=');
-                        self.out.push(plain.quote);
-                        self.out.push_str(value);
-                        self.out.push(plain.quote);
-                    }
-                }
-                Attribute::Dynamic(dynamic) => {
-                    if has_class_bindings && dynamic.name == "class" {
-                        continue;
-                    }
-                    let value = self.value(&dynamic.expression, dynamic.span)?;
-                    let rendered = self.fail(render_value(&value), dynamic.span)?;
-                    self.out.push(' ');
-                    self.out.push_str(&dynamic.name);
-                    self.out.push_str("=\"");
-                    self.out.push_str(&rendered);
-                    self.out.push('"');
-                }
-                Attribute::BooleanBinding(binding) => {
-                    if self.value(&binding.expression, binding.span)?.truthy() {
-                        self.out.push(' ');
-                        self.out.push_str(&binding.name);
-                    }
-                }
-                Attribute::AttributeBinding(binding) => {
-                    let value = self.value(&binding.expression, binding.span)?;
-                    if !value.is_nullish() {
-                        let rendered = self.fail(render_attribute_value(&value), binding.span)?;
-                        self.out.push(' ');
-                        self.out.push_str(&binding.name);
-                        self.out.push_str("=\"");
-                        self.out.push_str(&rendered);
-                        self.out.push('"');
-                    }
-                }
-                Attribute::ClassBinding(_) => {}
-            }
-        }
-
-        if element.self_closing {
-            self.out.push_str("/>");
-            return Ok(());
-        }
-        self.out.push('>');
-        self.nodes(&element.children)?;
-        self.out.push_str("</");
-        self.out.push_str(&tag_name);
-        self.out.push('>');
-        Ok(())
-    }
-
-    /// Mirror of the JavaScript backend's class merging: plain and dynamic
-    /// `class` values plus `[class.x]` bindings, de-duplicated in order.
-    fn merged_class(&mut self, element: &ElementNode) -> RenderResult {
-        let mut classes: Vec<String> = Vec::new();
-        let add = |name: &str, classes: &mut Vec<String>| {
-            if !classes.iter().any(|c| c == name) {
-                classes.push(name.to_owned());
-            }
-        };
-
-        for attribute in &element.attributes {
-            match attribute {
-                Attribute::Plain(plain) if plain.name == "class" => {
-                    if let Some(value) = &plain.value {
-                        for name in value.split_whitespace() {
-                            add(name, &mut classes);
-                        }
-                    }
-                }
-                Attribute::Dynamic(dynamic) if dynamic.name == "class" => {
-                    let value = self.value(&dynamic.expression, dynamic.span)?;
-                    let rendered = self.fail(render_attribute_value(&value), dynamic.span)?;
-                    for name in rendered.split_whitespace() {
-                        add(name, &mut classes);
-                    }
-                }
-                Attribute::ClassBinding(binding) => {
-                    let active = self.value(&binding.expression, binding.span)?.truthy();
-                    if active {
-                        add(&binding.name, &mut classes);
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        if !classes.is_empty() {
-            // Same as the JS target: values are escaped once when read and
-            // once more when the joined list is written.
-            let joined = Val::Json(Cow::Owned(Value::String(classes.join(" "))));
-            let rendered =
-                render_attribute_value(&joined).expect("string values always render as attributes");
-            self.out.push_str(" class=\"");
-            self.out.push_str(&rendered);
-            self.out.push('"');
-        }
-        Ok(())
-    }
-}
-
 fn source_tag_name(span: Span, source: &str) -> Option<&str> {
     let rest = source.get(span.start.checked_add(1)?..)?;
     let end = rest.find(|ch: char| ch.is_ascii_whitespace() || ch == '/' || ch == '>')?;
@@ -523,29 +455,6 @@ fn source_attribute_name(span: Span, source: &str) -> Option<&str> {
     let rest = source.get(span.start..span.end)?;
     let end = rest.find(|ch: char| ch.is_ascii_whitespace() || ch == '=')?;
     Some(&rest[..end])
-}
-
-fn invalid_iterable(source: &str, span: Span, value: &Value) -> Diagnostic {
-    let kind = match value {
-        Value::Bool(_) => "boolean",
-        Value::Number(_) => "number",
-        Value::String(_) => "string",
-        _ => "object",
-    };
-    Diagnostic::from_source(
-        format!(
-            "`@for` needs an array in static templates, found a {} value",
-            kind
-        ),
-        source,
-        span.start,
-        span.end,
-    )
-    .with_diagnostic_code(DiagnosticCode::StaticInvalidIterable)
-}
-
-fn strict_equal(left: &Val, right: &Val) -> Result<bool, EvalError> {
-    evaluator::strict_equals(left, right)
 }
 
 #[cfg(test)]

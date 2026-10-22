@@ -78,6 +78,11 @@ compatibility, and npm dry-run gates before every release. Syntax and generated
 output may still change before 1.0. See [docs/compatibility.md](docs/compatibility.md)
 for exactly what is supported and tested.
 
+Rust consumers can either compile templates at runtime with `flowview-compiler`
+or precompile known templates with `flowview precompile` and render them using
+the smaller `flowview-static-runtime` crate. The AOT runtime does not link the
+compiler or Oxc; see the [Rust embedding guide](docs/embedding-rust.md).
+
 ## What flowview Is
 
 - A Rust compiler crate: `flowview-compiler`

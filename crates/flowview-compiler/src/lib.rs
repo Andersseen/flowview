@@ -63,8 +63,8 @@ pub use cursor::CursorPosition;
 pub use diagnostics::Diagnostic;
 pub use diagnostics::{DiagnosticCode, DiagnosticFormatter, DiagnosticSeverity};
 pub use static_html::{
-    compile_static, render_static, CompiledStaticTemplate, StaticCompileOptions,
-    StaticRenderOptions, StaticRenderOutput,
+    compile_static, compile_static_artifact, render_static, CompiledStaticTemplate,
+    StaticArtifactOutput, StaticCompileOptions, StaticRenderOptions, StaticRenderOutput,
 };
 
 /// Options that control code generation.

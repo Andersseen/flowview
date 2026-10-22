@@ -67,36 +67,43 @@ Rust crates are versioned independently from the npm packages (`[workspace.packa
 and each crate's `version` in `Cargo.toml`). `flowview-wasm` is bundled into
 the npm compiler package and is `publish = false`.
 
-Order matters: `flowview-compiler` first, then `flowview-cli` (which depends on it).
+Release order follows dependencies: `flowview-static-runtime`, then
+`flowview-compiler`, then `flowview-cli`. The compiler depends on the runtime;
+the CLI depends on the compiler. `flowview-wasm` stays bundled and
+`publish = false`.
 
-1. Bump `version` in `crates/flowview-compiler/Cargo.toml` and
-   `crates/flowview-cli/Cargo.toml`, and the `version = "…"` of the
-   `flowview-compiler` dependency in the CLI (and wasm) manifests. Commit and merge.
+1. Bump the coherent Rust release-line version in `[workspace.package]`,
+   `crates/flowview-compiler/Cargo.toml`, `crates/flowview-cli/Cargo.toml`, and
+   `crates/flowview-wasm/Cargo.toml`; keep the independently versioned runtime
+   package version deliberate. Update internal compiler dependency versions in
+   CLI and wasm manifests. Commit and merge.
 2. Quality gate (also what the **Rust release** workflow runs):
 
    ```bash
    cargo fmt --all -- --check
    cargo clippy --workspace --all-targets --locked -- -D warnings
    cargo test --workspace --locked
-   RUSTDOCFLAGS="-D warnings" cargo doc -p flowview-compiler --no-deps --locked
+   RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
    cargo package --workspace --exclude flowview-wasm --locked --no-verify
    scripts/publish-rust.sh --dry-run
    ```
 
-   The MSRV (`rust-version` in `Cargo.toml`, currently 1.91) is tested on exactly
-   that toolchain by `.github/workflows/rust-msrv.yml`, which pins the version
-   and fails if it drifts from `Cargo.toml`. Raising it (for example by bumping
-   Oxc) is a deliberate minor-version change. Workspace tests compile the CLI
-   against the local compiler; cargo cannot dry-run the CLI publish before the
-   compiler version exists in the registry, so `--dry-run` runs the compiler
-   dry-run and runs the CLI one only when the exact compiler version is already
-   public (otherwise it says why it skipped).
+   The compiler MSRV (`rust-version` in `Cargo.toml`, currently 1.91) is tested
+   on exactly that toolchain by `.github/workflows/rust-msrv.yml`, which pins the version
+   and fails if it drifts from `Cargo.toml`. The static runtime's Rust 1.85 MSRV
+   is tested independently. Workspace tests compile the CLI against the local
+   compiler. `--dry-run` runs for the runtime first, then for the compiler only
+   when its runtime version is in the registry, and for the CLI only when its
+   compiler version is in the registry; skipped work is reported with the reason.
 
 3. Publish. Preferred: run the **Rust release** workflow (Actions → Rust release →
    Run workflow) with `dry_run: false`. It needs the `CARGO_REGISTRY_TOKEN`
-   repository secret and runs `scripts/publish-rust.sh`: it publishes `flowview-compiler`,
-   polls the crates.io index (bounded, 30 × 10 s) until that exact version resolves, then
-   runs `scripts/verify-registry-consumer.sh`: a throwaway project that depends on
+   repository secret and runs `scripts/publish-rust.sh`: it publishes
+   `flowview-static-runtime`, polls for the exact version, then runs
+   `scripts/verify-aot-registry-consumer.sh`, which builds an AOT consumer pinned
+   to the runtime registry version. Next it publishes `flowview-compiler`,
+   polls for that version and runs `scripts/verify-registry-consumer.sh`, a
+   throwaway project that depends on
    `flowview-compiler = "=<version>"` from the registry (no path/git/workspace
    dependency) and checks `compile_static` + `render` with escaped and trusted-raw
    output. Only then does it publish `flowview-cli`, and finally it

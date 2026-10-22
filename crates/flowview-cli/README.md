@@ -14,6 +14,10 @@ flowview compile page.flow --source-map --display-name src/page.flow
 
 # Final HTML, rendered natively from JSON data
 flowview compile page.flow --target static-html --data context.json --out page.html
+
+# Precompile a template for compiler-free Rust consumers
+flowview precompile page.flow --out page.flowview.json
+flowview precompile page.flow --out page.flowview.json --check
 ```
 
 Templates can be read from stdin with `-` (use `--display-name` to label diagnostics).
@@ -25,5 +29,10 @@ For embedded templates, `--source-map-input-json` reads `source` and the full
 
 To embed Flowview in a Rust tool, depend on
 [`flowview-compiler`](https://crates.io/crates/flowview-compiler) instead.
+For build-time generation and a smaller final dependency graph, use
+`flowview precompile` with
+[`flowview-static-runtime`](https://crates.io/crates/flowview-static-runtime).
+`--check` compares the committed artifact with canonical compiler output and
+never writes files.
 
 License: MIT

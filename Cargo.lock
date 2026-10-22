@@ -277,7 +277,7 @@ checksum = "9f1f227452a390804cdb637b74a86990f2a7d7ba4b7d5693aac9b4dd6defd8d6"
 
 [[package]]
 name = "flowview-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "assert_cmd",
  "clap",
@@ -288,8 +288,9 @@ dependencies = [
 
 [[package]]
 name = "flowview-compiler"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
+ "flowview-static-runtime",
  "oxc_allocator",
  "oxc_ast",
  "oxc_parser",
@@ -301,8 +302,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "flowview-static-runtime"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "flowview-wasm"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "flowview-compiler",
  "serde",

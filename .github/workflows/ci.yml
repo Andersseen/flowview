@@ -51,6 +51,22 @@ jobs:
       - name: Run Rust tests
         run: cargo test --workspace --locked
 
+      - name: Check committed AOT artifact
+        run: cargo run -p flowview-cli --locked -- precompile examples/aot-consumer/page.flow --out examples/aot-consumer/page.flowview.json --display-name pages/page.flow --check
+
+      - name: Run compiler-free AOT consumer
+        run: cargo run --manifest-path examples/aot-consumer/Cargo.toml --locked
+
+      - name: Prove the consumer dependency graph excludes the compiler
+        shell: bash
+        run: |
+          tree="$(cargo tree --manifest-path examples/aot-consumer/Cargo.toml -e normal,build --locked)"
+          printf '%s\n' "$tree"
+          if grep -E 'flowview-compiler|oxc_allocator|oxc_ast|oxc_parser|oxc_span' <<<"$tree"; then
+            echo 'AOT consumer unexpectedly depends on the compiler/Oxc.' >&2
+            exit 1
+          fi
+
       - name: Build docs
         run: cargo doc -p flowview-compiler --no-deps --locked
         env:
@@ -80,8 +96,24 @@ jobs:
       - name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - name: Test compiler and CLI
-        run: cargo test -p flowview-compiler -p flowview-cli --locked
+      - name: Test compiler, CLI and AOT runtime
+        run: cargo test -p flowview-compiler -p flowview-cli -p flowview-static-runtime --locked
+
+      - name: Check committed AOT artifact
+        run: cargo run -p flowview-cli --locked -- precompile examples/aot-consumer/page.flow --out examples/aot-consumer/page.flowview.json --display-name pages/page.flow --check
+
+      - name: Run compiler-free AOT consumer
+        run: cargo run --manifest-path examples/aot-consumer/Cargo.toml --locked
+
+      - name: Prove the consumer dependency graph excludes the compiler
+        shell: bash
+        run: |
+          tree="$(cargo tree --manifest-path examples/aot-consumer/Cargo.toml -e normal,build --locked)"
+          printf '%s\n' "$tree"
+          if grep -E 'flowview-compiler|oxc_allocator|oxc_ast|oxc_parser|oxc_span' <<<"$tree"; then
+            echo 'AOT consumer unexpectedly depends on the compiler/Oxc.' >&2
+            exit 1
+          fi
 
   typescript:
     runs-on: ubuntu-latest

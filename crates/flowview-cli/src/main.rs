@@ -1,11 +1,12 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use flowview_compiler::{
-    compile, render_static, CompileOptions, Diagnostic, DiagnosticFormatter, StaticRenderOptions,
+    compile, compile_static_artifact, render_static, CompileOptions, Diagnostic,
+    DiagnosticFormatter, StaticRenderOptions,
 };
 use std::{
     fs,
-    io::{self, Read},
-    path::Path,
+    io::{self, Read, Write},
+    path::{Path, PathBuf},
     process,
 };
 
@@ -83,6 +84,23 @@ enum Command {
         #[arg(long, value_enum, default_value_t = DiagnosticFormat::Human)]
         diagnostic_format: DiagnosticFormat,
     },
+    /// Generate or verify a precompiled static template artifact
+    Precompile {
+        /// Path to the .flow template file
+        input: String,
+        /// Artifact output path (required for both generation and --check)
+        #[arg(long)]
+        out: String,
+        /// Logical source name stored in runtime diagnostics; must be relative
+        #[arg(long)]
+        display_name: Option<String>,
+        /// Verify that --out exactly matches canonical compiler output
+        #[arg(long)]
+        check: bool,
+        /// Format used for compiler diagnostics
+        #[arg(long, value_enum, default_value_t = DiagnosticFormat::Human)]
+        diagnostic_format: DiagnosticFormat,
+    },
 }
 
 fn main() {
@@ -116,7 +134,139 @@ fn main() {
             source_map_column_offset,
             diagnostic_format,
         ),
+        Command::Precompile {
+            input,
+            out,
+            display_name,
+            check,
+            diagnostic_format,
+        } => precompile_file(
+            &input,
+            &out,
+            display_name.as_deref(),
+            check,
+            diagnostic_format,
+        ),
     }
+}
+
+fn precompile_file(
+    input: &str,
+    out: &str,
+    display_name: Option<&str>,
+    check: bool,
+    format: DiagnosticFormat,
+) {
+    let input_path = Path::new(input);
+    if input_path.extension().and_then(|ext| ext.to_str()) != Some("flow") {
+        eprintln!("{}: expected a .flow file", input);
+        process::exit(1);
+    }
+    let source = match fs::read_to_string(input_path) {
+        Ok(source) => source,
+        Err(error) => {
+            eprintln!("Failed to read {}: {}", input, error);
+            process::exit(1);
+        }
+    };
+    let logical_name = display_name.map(str::to_owned).unwrap_or_else(|| {
+        input_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("template.flow")
+            .to_owned()
+    });
+    if Path::new(&logical_name).is_absolute()
+        || logical_name.starts_with(['/', '\\'])
+        || logical_name.as_bytes().get(1) == Some(&b':')
+        || logical_name.split(['/', '\\']).any(|part| part == "..")
+    {
+        eprintln!("--display-name must be a logical relative source name");
+        process::exit(1);
+    }
+    let generated = match compile_static_artifact(
+        &source,
+        StaticRenderOptions::default().with_filename(logical_name.clone()),
+    ) {
+        Ok(output) => output,
+        Err(diagnostics) => {
+            report(&diagnostics, &logical_name, 0, format);
+            process::exit(1);
+        }
+    };
+    report(&generated.warnings, &logical_name, 0, format);
+    let output_path = Path::new(out);
+    if check {
+        let current = match fs::read(output_path) {
+            Ok(bytes) => bytes,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                eprintln!(
+                    "{}: AOT artifact is missing; run `flowview precompile {} --out {}`",
+                    out, input, out
+                );
+                process::exit(1);
+            }
+            Err(error) => {
+                eprintln!("Failed to read {}: {}", out, error);
+                process::exit(1);
+            }
+        };
+        if current != generated.bytes {
+            eprintln!(
+                "{}: AOT artifact is stale; run `flowview precompile {} --out {}`",
+                out, input, out
+            );
+            process::exit(1);
+        }
+        return;
+    }
+    if let Err(error) = write_atomic(output_path, &generated.bytes) {
+        eprintln!("Failed to write {}: {}", out, error);
+        process::exit(1);
+    }
+}
+
+fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    static NEXT_TEMP: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let name = path.file_name().unwrap_or_default().to_string_lossy();
+    let mut temp_path = PathBuf::new();
+    let mut file = None;
+    for _ in 0..32 {
+        let id = NEXT_TEMP.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        temp_path = parent.join(format!(".{name}.{}.{}.tmp", process::id(), id));
+        match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temp_path)
+        {
+            Ok(created) => {
+                file = Some(created);
+                break;
+            }
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error),
+        }
+    }
+    let mut file = file.ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "could not allocate a temporary output file",
+        )
+    })?;
+    let result = (|| {
+        file.write_all(bytes)?;
+        file.sync_all()?;
+        drop(file);
+        fs::rename(&temp_path, path)
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&temp_path);
+    }
+    result
 }
 
 #[allow(clippy::too_many_arguments)]

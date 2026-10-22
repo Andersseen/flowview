@@ -31,7 +31,7 @@ jobs:
           cargo fmt --all -- --check
           cargo clippy --workspace --all-targets --locked -- -D warnings
           cargo test --workspace --locked
-          cargo doc -p flowview-compiler --no-deps --locked
+          cargo doc --workspace --no-deps --locked
         env:
           RUSTDOCFLAGS: -D warnings
 
@@ -42,8 +42,7 @@ jobs:
         run: cargo package --workspace --exclude flowview-wasm --locked --no-verify
 
       - name: Inspect packages
-        # Inspects the real .crate archives produced above (the CLI cannot be
-        # listed alone before its compiler version exists in the registry).
+        # Inspects every publishable .crate archive produced above.
         run: |
           ls -l target/package/*.crate
           for crate in target/package/*.crate; do
@@ -65,7 +64,7 @@ jobs:
         # the registry (cargo cannot resolve it before that).
         run: scripts/publish-rust.sh --dry-run
 
-      - name: Publish flowview-compiler, verify it from the registry, publish flowview-cli
+      - name: Publish runtime, compiler, then CLI with registry consumer checks
         if: ${{ !inputs.dry_run }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

@@ -399,3 +399,90 @@ fn cli_static_html_diagnostics_use_display_name() {
         .unwrap()
         .contains("docs/page.flow:1:"));
 }
+
+#[test]
+// @spec SPEC-HTML-128
+fn precompile_generates_deterministic_artifact_and_check_is_read_only() {
+    let temp = tempfile::tempdir().unwrap();
+    let input = temp.path().join("page.flow");
+    let output = temp.path().join("page.flowview.json");
+    fs::write(&input, "<h1>{{ context.title }}</h1>").unwrap();
+
+    let generated = Command::cargo_bin("flowview")
+        .unwrap()
+        .args(["precompile"])
+        .arg(&input)
+        .args(["--out"])
+        .arg(&output)
+        .output()
+        .unwrap();
+    assert!(
+        generated.status.success(),
+        "{}",
+        String::from_utf8_lossy(&generated.stderr)
+    );
+    let original = fs::read(&output).unwrap();
+
+    let check = Command::cargo_bin("flowview")
+        .unwrap()
+        .args(["precompile"])
+        .arg(&input)
+        .args(["--out"])
+        .arg(&output)
+        .args(["--check"])
+        .output()
+        .unwrap();
+    assert!(check.status.success());
+    assert_eq!(fs::read(&output).unwrap(), original);
+
+    fs::write(&input, "<h1>{{ context.title( }}</h1>").unwrap();
+    let failed = Command::cargo_bin("flowview")
+        .unwrap()
+        .args(["precompile"])
+        .arg(&input)
+        .args(["--out"])
+        .arg(&output)
+        .output()
+        .unwrap();
+    assert!(!failed.status.success());
+    assert_eq!(
+        fs::read(&output).unwrap(),
+        original,
+        "failed compilation must preserve the last good artifact"
+    );
+}
+
+#[test]
+// @spec SPEC-HTML-128
+fn precompile_check_fails_for_missing_and_stale_artifacts_without_writing() {
+    let temp = tempfile::tempdir().unwrap();
+    let input = temp.path().join("page.flow");
+    let output = temp.path().join("missing.flowview.json");
+    fs::write(&input, "<p>fresh</p>").unwrap();
+
+    let missing = Command::cargo_bin("flowview")
+        .unwrap()
+        .args(["precompile"])
+        .arg(&input)
+        .args(["--out"])
+        .arg(&output)
+        .args(["--check"])
+        .output()
+        .unwrap();
+    assert!(!missing.status.success());
+    assert!(!output.exists());
+    assert!(String::from_utf8_lossy(&missing.stderr).contains("missing"));
+
+    fs::write(&output, "stale").unwrap();
+    let stale = Command::cargo_bin("flowview")
+        .unwrap()
+        .args(["precompile"])
+        .arg(&input)
+        .args(["--out"])
+        .arg(&output)
+        .args(["--check"])
+        .output()
+        .unwrap();
+    assert!(!stale.status.success());
+    assert_eq!(fs::read(&output).unwrap(), b"stale");
+}
