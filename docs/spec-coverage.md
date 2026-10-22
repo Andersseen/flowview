@@ -6,8 +6,8 @@ Every normative requirement in [flowview-spec.md](flowview-spec.md) is mapped to
 
 ## Summary
 
-- Total normative requirements: 117
-- Covered: 117
+- Total normative requirements: 126
+- Covered: 126
 - Uncovered: 0
 - Coverage: 100.0%
 
@@ -29,6 +29,7 @@ Every normative requirement in [flowview-spec.md](flowview-spec.md) is mapped to
 | Astro Integration | 10 | 10 |
 | Editor Support | 10 | 10 |
 | Browser DOM Composition | 12 | 12 |
+| Native Browser Forms and Replacement | 9 | 9 |
 
 ## Requirements
 
@@ -151,3 +152,12 @@ Every normative requirement in [flowview-spec.md](flowview-spec.md) is mapped to
 | SPEC-HTML-115 | FlowView Events delegated handlers continue working with the current DOM after a view replacement triggered through `bind()`. | `examples/astro-demo/e2e/client-dom.spec.ts` (1)<br>`packages/dom/src/index.test.ts` (1) |
 | SPEC-HTML-116 | DOM exposes the structural value-source contract without a runtime Reactive dependency; Reactive primitives remain usable without the DOM package,... | `packages/dom/src/index.test.ts` (1) |
 | SPEC-HTML-117 | `data-flow-ref` is an ordinary HTML attribute preserved by both JavaScript and static output; the compiler does not assign it special syntax or... | `crates/flowview-compiler/src/static_html/tests.rs` (1)<br>`packages/dom/src/index.test.ts` (1) |
+| SPEC-HTML-118 | HTML attributes initialize native control defaults when the browser parses FlowView output. Native reflection rules determine whether interaction... | `examples/astro-demo/e2e/forms.spec.ts` (2) |
+| SPEC-HTML-119 | A text input's initial value is authored with its ordinary `value` attribute. A textarea's initial/default value is authored as its element text... | `examples/astro-demo/e2e/forms.spec.ts` (1) |
+| SPEC-HTML-120 | Existing boolean bindings such as `[checked]`, `[selected]`, `[open]`, `[disabled]` and `[required]` serialize ordinary HTML boolean attributes.... | `examples/astro-demo/e2e/forms.spec.ts` (1) |
+| SPEC-HTML-121 | FlowView Events delegates `click`, `input`, `change`, `submit`, `keydown`, `focus`, `blur`, `focusin`, `focusout`, `compositionstart`,... | `examples/astro-demo/e2e/forms.spec.ts` (2) |
+| SPEC-HTML-122 | A FlowView submit handler receives the native submit event and form element. FlowView does not prevent the browser's default action; the... | `examples/astro-demo/e2e/forms.spec.ts` (1) |
+| SPEC-HTML-123 | `render()` and `update()` replace the owned `innerHTML`. Existing controls and refs become detached; browser-local values and node identity do not... | `examples/astro-demo/e2e/forms.spec.ts` (1) |
+| SPEC-HTML-124 | `view.bind(source)` replaces the view synchronously for every source emission. Applications avoid feeding every keystroke from an actively edited... | `examples/astro-demo/e2e/forms.spec.ts` (1) |
+| SPEC-HTML-125 | Form values remain untrusted data. Rendering a submitted value through escaped `{{ expression }}` interpolation keeps markup inert; forms add no... | `examples/astro-demo/e2e/forms.spec.ts` (1) |
+| SPEC-HTML-126 | `view.ref()` and `view.refs()` return the current native `Element` objects, which applications may narrow to native control types to read live... | `examples/astro-demo/e2e/forms.spec.ts` (1) |

@@ -1,0 +1,140 @@
+<form data-flow-ref="form" (submit)="submitForm($event, $el)">
+  <label>
+    Name
+    <input
+      type="text"
+      name="name"
+      data-flow-ref="name"
+      [required]="context.nameRequired"
+      value="{{ context.name }}"
+      (input)="recordInput($event, $el)"
+      (change)="recordInput($event, $el)"
+      (keydown)="recordKey($event)"
+      (focus)="recordEvent($event)"
+      (blur)="recordEvent($event)"
+      (focusin)="recordEvent($event)"
+      (focusout)="recordEvent($event)"
+      (compositionstart)="recordEvent($event)"
+      (compositionupdate)="recordEvent($event)"
+      (compositionend)="recordEvent($event)"
+    />
+  </label>
+
+  <label>
+    Locked
+    <input
+      type="text"
+      name="locked"
+      data-flow-ref="locked"
+      value="Read only"
+      [disabled]="context.locked"
+    />
+  </label>
+
+  <label>
+    Notes
+    <textarea name="notes" data-flow-ref="notes">{{ context.notes }}</textarea>
+  </label>
+
+  <label>
+    <input
+      type="checkbox"
+      name="enabled"
+      data-flow-ref="enabled"
+      [checked]="context.enabled"
+      (input)="recordInput($event, $el)"
+      (change)="recordInput($event, $el)"
+    />
+    Enabled
+  </label>
+
+  <fieldset>
+    <legend>Plan</legend>
+    <label>
+      <input
+        type="radio"
+        name="plan"
+        value="basic"
+        data-flow-ref="basic-plan"
+        [checked]="context.plan === 'basic'"
+      />
+      Basic
+    </label>
+    <label>
+      <input
+        type="radio"
+        name="plan"
+        value="pro"
+        data-flow-ref="pro-plan"
+        [checked]="context.plan === 'pro'"
+      />
+      Pro
+    </label>
+  </fieldset>
+
+  <label>
+    Region
+    <select name="region" data-flow-ref="region" (change)="recordInput($event, $el)">
+      <option value="north" [selected]="context.region === 'north'">North</option>
+      <option value="south" [selected]="context.region === 'south'">South</option>
+    </select>
+  </label>
+
+  <label>
+    Topics
+    <select name="topics" multiple data-flow-ref="topics">
+      <option value="red" [selected]="context.topics.includes('red')">Red</option>
+      <option value="blue" [selected]="context.topics.includes('blue')">Blue</option>
+      <option value="green" [selected]="context.topics.includes('green')">Green</option>
+    </select>
+  </label>
+
+  <details data-flow-ref="details" [open]="context.detailsOpen" (toggle)="recordEvent($event)">
+    <summary>More information</summary>
+    <p>Details content</p>
+  </details>
+
+  <p data-flow-ref="escaped-name">{{ context.name }}</p>
+  <button type="button" (click)="recordClick($event, $el, 'native-button', context.name)">
+    Record click arguments
+  </button>
+  <button type="submit">Save draft</button>
+  <button type="reset">Reset form</button>
+</form>
+
+<script data-flowview>
+  function appendReport(entry) {
+    const report = document.querySelector("#event-log");
+    if (report) report.textContent += `${entry}\n`;
+  }
+
+  function recordInput(event, element) {
+    appendReport(`${event.type}:${element.name}:${element.value}:${event.target === element}`);
+  }
+
+  function recordKey(event) {
+    appendReport(`keydown:${event.key}`);
+  }
+
+  function recordClick(event, element, literal, renderedName) {
+    appendReport(`click:${event.type}:${event.target === element}:${element.textContent.trim()}:${literal}:${renderedName}`);
+  }
+
+  function recordEvent(event) {
+    appendReport(event.type);
+  }
+
+  function submitForm(event, form) {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const values = Object.fromEntries(formData.entries());
+    const result = document.querySelector("#submit-result");
+    if (result) {
+      result.textContent = JSON.stringify({
+        values,
+        entries: Array.from(formData.entries()),
+      });
+    }
+    document.dispatchEvent(new CustomEvent("flowview:form-commit", { detail: values }));
+  }
+</script>

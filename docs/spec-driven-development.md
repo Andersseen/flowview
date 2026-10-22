@@ -6,15 +6,16 @@
 > never become, what state it is in, what to work on, and how to prove your
 > change is correct.
 >
-> **Baseline reviewed:** 2026-10-21, remote `main`
-> `6082eafa3108030afb9ab5fdfacf84715fd3d671`: PR #41 completed M1 Editor
-> Experience and PR #42 released its package changes. The reviewed M1 exit
-> evidence is recorded in [PR #41](https://github.com/Andersseen/flowview/pull/41).
+> **Baseline reviewed:** 2026-10-22, remote `main`
+> `3835d25ac779883d3e7da7a033de1eb7f7fd9560`: PR #43 completed M2 Browser
+> Composition after M1 PR #41 and its package release PR #42. M2 exit evidence
+> is recorded in [PR #43](https://github.com/Andersseen/flowview/pull/43).
 > Historical verification below remains attributed to its original workstream.
 > Current evidence and maturity: [v1 roadmap](v1-roadmap.md#current-baseline-and-evidence).
 >
-> **Current phase:** controlled pre-1.0 product/DX evolution. M1 is complete and
-> M2 Browser Composition is active; M3, M4 and S are queued. The roadmap's active
+> **Current phase:** controlled pre-1.0 product/DX evolution. M1 and M2 are
+> complete; M3 Forms and DOM Replacement Semantics is active; M4 and S are queued.
+> The roadmap's active
 > milestone marker is the sole scheduling authority; RC rules override it at freeze.
 
 ---
@@ -302,11 +303,11 @@ What is already genuinely solid (recent hardening phases A–D):
   loop bindings; documented escaping limits per HTML context.
 
 Remaining product gaps are tracked in the [current-state matrix](v1-roadmap.md#current-baseline-and-evidence)
-and bounded milestones: compiler-backed editor diagnostics, scoped browser
-composition, explicit forms/replacement behavior and compiler-free static
-consumption. Spec conformance is implemented (99/99 at this baseline), not an
-open blocker. Static rendering being Rust/CLI-only is a supported boundary;
-exposing it through WASM is not required for v1.
+and bounded milestones: explicit native forms/replacement behavior and
+compiler-free static consumption. M1 editor diagnostics and M2 scoped browser
+composition are complete. Spec conformance is implemented (117/117 at this
+baseline), not an open blocker. Static rendering being Rust/CLI-only is a
+supported boundary; exposing it through WASM is not required for v1.
 
 ---
 

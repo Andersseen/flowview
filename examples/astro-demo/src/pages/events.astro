@@ -9,7 +9,7 @@ import compiledExample from "../snippets/events-compiled.html.txt?raw";
 
 <Layout
   title={pageTitle("Events")}
-  description="FlowView Events: native browser event bindings such as (click), (input), (change) and (submit), compiled to delegated listeners for Astro and Vite."
+  description="FlowView Events compiles native browser event bindings into delegated listeners for Astro and Vite, including form, focus and composition events."
 >
   <div class="page-frame grid gap-12 py-12 md:py-14">
     <header class="grid gap-4">
@@ -220,6 +220,29 @@ import compiledExample from "../snippets/events-compiled.html.txt?raw";
           label="Supported forms"
         />
       </div>
+    </section>
+
+    <section
+      id="native-forms"
+      aria-labelledby="native-forms-heading"
+      class="grid gap-3"
+    >
+      <h2 id="native-forms-heading" class="text-2xl font-bold text-foreground">
+        Native forms and explicit replacement
+      </h2>
+      <p class="prose-width text-muted-foreground">
+        Events passes native <code class="inline-code">input</code>,
+        <code class="inline-code">change</code>,
+        <code class="inline-code">submit</code>, keyboard, focus/blur,
+        composition and details toggle events to the handler. The handler owns
+        <code class="inline-code">preventDefault()</code> and any state commit. Boolean
+        bindings such as <code class="inline-code">[checked]</code>
+        serialize HTML attributes; they do not track later live control properties.
+        An explicit <code class="inline-code">view.update()</code>
+        replaces controls and does not promise to preserve dirty values, focus, selection
+        or IME composition. See the form examples and tested limits in the repository
+        README.
+      </p>
     </section>
 
     <section
