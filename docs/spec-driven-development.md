@@ -21,6 +21,11 @@
 > [M4 exit record](milestones/m4-exit.md).
 > The roadmap's active
 > milestone marker is the sole scheduling authority; RC rules override it at freeze.
+>
+> **S1 audit baseline:** `origin/main` was fetched and inspected at
+> `c4c86d01d22421b24f30fc3ab0989d703f12d9f6` on 2026-10-24. M1–M4 remain
+> complete, S is active, and RC has not started. The 2026-10-22 baseline below
+> is retained as historical evidence; this S1 PR records current verification.
 
 ---
 

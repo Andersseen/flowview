@@ -81,6 +81,14 @@ The matrix is deliberately bounded and split by concern:
 | Dependency-version compatibility | Vite 6/7/8, Astro 5/6 (Node 22), Astro 7 (Node 24), Prettier 3 | `<Tool> compatibility (<version>)`, Ubuntu |
 | Node floor                       | 22.12.0                                                        | `Node minimum (22.12.0)`                   |
 
+Direct packed import and declaration coverage is also run by
+`verify:packed-public-exports` for the runtime, WASM compiler wrapper, DOM,
+reactive, and Events packages. It executes the packed ESM imports and checks
+representative declarations under TypeScript `NodeNext` and `Bundler`
+resolution, without a Rust toolchain on `PATH`. Vite and Astro exports and
+`.flow` declarations remain covered by their dedicated external consumers;
+Prettier remains covered by its external formatter consumer.
+
 There is no cross product of these axes. The Node-minimum job runs the latest
 Vite 8 and Astro 6 consumers plus the Prettier consumer on 22.12.0. Astro 7 is
 tested separately on Node 24 to meet Astro's current engine floor.

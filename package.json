@@ -56,6 +56,7 @@
     "verify:packed-vite-consumer": "node scripts/verify-packed-vite-consumer.mjs",
     "verify:packed-astro-consumer": "node scripts/verify-packed-astro-consumer.mjs",
     "verify:packed-prettier-consumer": "node scripts/verify-packed-prettier-consumer.mjs",
+    "verify:packed-public-exports": "node scripts/verify-packed-public-exports.mjs",
     "typecheck": "pnpm --filter @flowview/runtime typecheck && pnpm --filter @flowview/reactive typecheck && pnpm --filter @flowview/dom typecheck && pnpm --filter @flowview/events typecheck && pnpm --filter @flowview/compiler typecheck && pnpm --filter @flowview/vite typecheck && pnpm --filter @flowview/astro typecheck && pnpm --filter @flowview/astro-events typecheck && pnpm --filter @flowview/vite-events typecheck && pnpm --filter @flowview/prettier typecheck",
     "format": "pnpm run format:rust && pnpm run format:ts",
     "format:check": "cargo fmt --all -- --check && prettier --check --no-error-on-unmatched-pattern \"**/*.{astro,css,js,json,md,mjs,ts,yml,yaml}\"",

@@ -110,6 +110,9 @@ jobs:
       - name: Validate every tarball and npm publish --dry-run
         run: node scripts/verify-release-artifacts.mjs "$RUNNER_TEMP/flowview-packed-artifacts"
 
+      - name: Verify packed public JavaScript and TypeScript exports
+        run: node scripts/verify-packed-public-exports.mjs "$RUNNER_TEMP/flowview-packed-artifacts"
+
       # What `changeset publish` packs from the built outputs must equal what
       # was verified, so the release can reuse the pack job's build.
       - name: Download built package outputs
