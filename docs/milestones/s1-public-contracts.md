@@ -52,8 +52,9 @@ this record does not claim S exit or API freeze.
   `examples/hono-demo/playwright.config.ts` enables reuse outside CI. The four
   tests therefore saw the Astro home page instead of Hono content and failed
   to find `Buy milk`/Hono controls. `lsof -nP -iTCP:4322 -sTCP:LISTEN` identified
-  PID 21158 as `astro preview --port 4322`; the process was left running. This
-  needs a clean hosted CI result; it is not evidence of a source regression.
+  PID 21158 as `astro preview --port 4322`; the process was left running. The
+  clean GitHub runner passed the Hono E2E suite in CI run 120, confirming this
+  was a local port-reuse collision, not a source regression.
 
 ## Implementation and docs
 
@@ -96,7 +97,7 @@ this record does not claim S exit or API freeze.
 | **PASS**                     | Node 22.12.0 packed consumers: Vite 8, Astro 6, Prettier latest 3.x. Node 24 was used for Astro 7 per its engine floor.                                                                                                      |
 | **PASS**                     | `scripts/publish-rust.sh --dry-run`: runtime Cargo dry-run passed. Compiler and CLI report `NOT EXECUTED` because their exact prerequisite versions are not published to crates.io. No upload occurred.                      |
 | **PASS**                     | Local bounded fuzz replay of checked-in corpus plus retained crash inputs: `cargo +nightly fuzz run compiler <temp-corpus> -- -runs=100 -max_len=8192 -timeout=10 -rss_limit_mb=4096`; 96 initial files, 100 runs, no crash. |
-| **NOT EXECUTED**             | The CI-only 75-second smoke / scheduled 600-second hosted fuzz runs and Linux/Windows npm/Rust portability matrices. These require hosted runners.                                                                           |
+| **NOT EXECUTED locally**     | Linux/Windows consumer matrices and hosted fuzz runs require hosted runners. Hosted PR results are recorded below.                                                                                                           |
 
 The first release-artifact validation attempt used the broken default npm cache
 and failed with `EPERM`; it passed after setting `npm_config_cache` to the
@@ -106,11 +107,13 @@ environment constraints, not green results attributed to the failed attempts.
 
 ## Hosted CI and disposition
 
-| Check                                                                                 | Result at candidate preparation                                                         |
-| ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| GitHub Actions on this PR HEAD                                                        | **NOT EXECUTED** until the branch is pushed and PR opened.                              |
-| CI / Spec conformance, Rust, MSRV, portability, release readiness, browser acceptance | **NOT EXECUTED** on this candidate. CI must confirm the Hono suite on its clean runner. |
-| Publication                                                                           | **NOT APPLICABLE**; no publication requested or performed.                              |
+| Check                                                             | Result                                                                                                                                                                                        |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CI / Spec conformance, Rust, MSRV, TypeScript, browser acceptance | **PASS** — [CI run 120](https://github.com/Andersseen/flowview/actions/runs/40117725926), all jobs succeeded, including Hono E2E and Astro production-preview acceptance.                     |
+| Release readiness                                                 | **PASS** — CI run 120: release artifact validation, packed public-export/type check, packed Linux/macOS/Windows consumers, Vite 6/7/8, Astro 5/6/7, Prettier 3 and Node 22.12 jobs succeeded. |
+| Fuzz smoke                                                        | **PASS** — [Fuzz run 59](https://github.com/Andersseen/flowview/actions/runs/40117725955), compiler smoke job succeeded.                                                                      |
+| Scheduled 600-second fuzz run                                     | **NOT EXECUTED** on this candidate; the PR workflow ran the 75-second smoke check.                                                                                                            |
+| Publication                                                       | **NOT APPLICABLE**; no publication requested or performed.                                                                                                                                    |
 
 No P0/P1 defect was discovered in the audited existing contracts. P2 items are
 the documented Rust module visibility risk and the local Hono test-port reuse
@@ -118,8 +121,8 @@ collision. P3 items are follow-up clarity and tooling concerns already captured
 in current support docs.
 
 Deferred to later S work: broad browser security review, Events source-map
-attribution and source attribution edge cases, platform-specific consumer
-matrices on hosted runners, review/acceptance of public-module visibility,
-remaining support/install docs and full RC entry evidence. S remains active;
-RC remains blocked until its complete entry contract passes and maintainers
-accept the freeze.
+attribution and source attribution edge cases, a scheduled 600-second fuzz run
+on the candidate, review/acceptance of public-module visibility, remaining
+support/install docs and full RC entry evidence. S remains active; RC remains
+blocked until its complete entry contract passes and maintainers accept the
+freeze.
