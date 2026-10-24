@@ -62,9 +62,12 @@ export function render(context) {
 ## Status
 
 flowview is pre-1.0, small, and compiler-first. It is a template compiler, not
-a framework. The current phase is **controlled pre-1.0 product/DX evolution**:
-only the active [v1 roadmap](docs/v1-roadmap.md) milestone may expand behavior.
-The [RC contract](docs/rc-contract.md) defines feature freeze and release gates.
+a framework. The current phase is **stabilization**: M1–M4 are complete, S is
+active, and RC has not started. S closes existing contracts without adding
+features; the [v1 roadmap](docs/v1-roadmap.md) records the milestone status and
+the [RC contract](docs/rc-contract.md) defines freeze and release gates. See
+the [public API and compatibility contract](docs/public-api-contract.md) for
+supported imports and platform/version ranges.
 
 Already in place: the `.flow` language and the Rust compiler with its
 JavaScript and native static HTML backends; the Vite plugin (Vite 6–8); the

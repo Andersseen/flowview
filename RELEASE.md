@@ -1,23 +1,23 @@
 # Release process
 
-This monorepo uses [Changesets](https://github.com/changesets/changesets) to manage versioning and publishes to npm under the `@flowview` scope. Rust crates can also be published to crates.io, but npm is the primary distribution path.
+This monorepo uses [Changesets](https://github.com/changesets/changesets) to manage independently versioned npm packages under the `@flowview` scope. Rust crates are versioned independently and published to crates.io. Browser/JavaScript and Static/Rust are both first-class distribution tracks; neither release path defines the product's primary track.
 
 ## Quick scripts from root
 
 ```bash
-# Primary: publish npm packages under @flowview
+# Publish npm packages under @flowview
 pnpm run publish:npm
 
-# Optional: publish Rust crates (flowview-compiler + flowview-cli)
+# Publish Rust crates (flowview-static-runtime, flowview-compiler, flowview-cli)
 pnpm run publish:rust
 ```
 
-## npm (primary)
+## npm packages
 
 Requires npm login with access to the `@flowview` scope.
 
 ```bash
-cd /Users/andriipap/Andersseen/Web/Projects/flowview
+cd <flowview-checkout>
 pnpm run publish:npm
 ```
 
